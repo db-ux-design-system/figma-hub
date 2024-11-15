@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+code {
+  text-wrap: pretty;
+}
+
+pre:has(code):has(.hljs) {
+  background-color: initial;
+  color: initial;
+}
+
+code:is(.hljs) {
+  background-color: initial;
+  color: initial;
+}

@@ -1,0 +1,10 @@
+{
+  "name": "shared",
+  "dependencies": {
+    "@sindresorhus/slugify": "^2.2.1",
+    "js-beautify": "^1.15.1"
+  },
+  "devDependencies": {
+    "@types/js-beautify": "^1.14.3"
+  }
+}

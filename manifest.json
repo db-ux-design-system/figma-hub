@@ -1,0 +1,15 @@
+{
+  "name": "generate-app",
+  "id": "1418157121635562344",
+  "api": "1.0.0",
+  "capabilities": ["inspect", "codegen"],
+  "codegenLanguages": [
+    { "label": "JSON", "value": "json" },
+    { "label": "Web Components", "value": "html" },
+    { "label": "React", "value": "react" }
+  ],
+  "enableProposedApi": true,
+  "editorType": ["dev"],
+  "ui": "dist/index.html",
+  "main": "dist/index.js"
+}

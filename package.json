@@ -1,0 +1,22 @@
+{
+  "name": "@db-ui/figma-hub",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm-run-all -p build:*",
+    "build:code": "npm run build -w=code -- --minify",
+    "build:ui": "npm run build -w=ui ",
+    "dev": "npm-run-all -p dev:*",
+    "dev:code": "npm run dev -w=code",
+    "dev:ui": "npm run dev -w=ui"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "npm-run-all": "4.1.5"
+  }
+}
