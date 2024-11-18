@@ -1,0 +1,20 @@
+{
+  "name": "@db-ui/inspect",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "workspaces": [
+    "plugin/*",
+    "ui/*"
+  ],
+  "scripts": {
+    "build": "npm-run-all -p build:*",
+    "build:code": "npm run build -w=inspect-code -- --minify",
+    "build:ui": "npm run build -w=inspect-ui ",
+    "dev": "npm-run-all -p dev:*",
+    "dev:code": "npm run dev -w=inspect-code",
+    "dev:ui": "npm run dev -w=inspect-ui"
+  },
+  "author": "",
+  "license": "MIT"
+}

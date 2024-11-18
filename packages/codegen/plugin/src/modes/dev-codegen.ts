@@ -1,14 +1,9 @@
 // TODO: Add to settings
-import { generateData } from "../utils/generate.js";
-import {
-  formatCss,
-  formatHtml,
-  FrameworkTarget,
-  generateCode,
-  generateStyles,
-} from "shared/code-generation.js";
 
-const maxDepth = 3;
+import { generateData } from "shared/figma/generate";
+import { formatCss, formatHtml, FrameworkTarget } from "shared/generate";
+import { generateCode } from "shared/generate/code";
+import { generateStyles } from "shared/generate/style";
 
 const getDisplayLanguage = (
   language: string,
@@ -23,18 +18,24 @@ const getDisplayLanguage = (
   return "HTML";
 };
 
-const getFormat = (language: string): "html" | "babel" => {
-  if (language === "react") {
-    return "babel";
-  }
-  return "html";
-};
-
 export const handleDevCodegen = () => {
   figma.codegen.on("generate", async (event: CodegenEvent) => {
     const { node, language } = event;
+    const withCss = figma.codegen.preferences.customSettings["css"] === "yes";
+    const maxDepth = Number(
+      figma.codegen.preferences.customSettings["maxDepth"] ?? 5,
+    );
 
-    const outputNode = await generateData(true, maxDepth, node);
+    const outputNode = await generateData(withCss, maxDepth, node);
+
+    if (!outputNode) {
+      return [
+        {
+          title: "Error",
+          code: "Failed to load node",
+        },
+      ];
+    }
 
     if (language === "json") {
       return [
@@ -48,19 +49,24 @@ export const handleDevCodegen = () => {
 
     const target = language as FrameworkTarget;
     const code = formatHtml(generateCode(outputNode, target));
-    const css = formatCss(generateStyles(outputNode));
 
-    return [
+    const result = [
       {
         title: `${language}`,
         code,
         language: getDisplayLanguage(language),
       },
-      {
+    ];
+
+    if (withCss) {
+      const css = formatCss(generateStyles(outputNode));
+      result.push({
         title: "CSS",
         code: css,
         language: "CSS",
-      },
-    ];
+      });
+    }
+
+    return result;
   });
 };

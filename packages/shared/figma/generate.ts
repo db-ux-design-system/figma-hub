@@ -1,5 +1,5 @@
-import { delay } from "./index.js";
-import { OutputNode } from "shared/data.js";
+import { OutputNode } from "shared/data";
+import { delay } from "shared/utils";
 
 export const getNodesRecursive = async (
   node: SceneNode,
@@ -22,7 +22,7 @@ export const getNodesRecursive = async (
       result.variantProperties = node.variantProperties;
     }
 
-    const mainComponent = node.mainComponent;
+    const mainComponent = await node.getMainComponentAsync();
     if (mainComponent) {
       result.mainComponentName = mainComponent.name;
       if (mainComponent.parent) {

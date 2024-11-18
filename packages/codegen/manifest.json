@@ -1,0 +1,36 @@
+{
+  "name": "codegen",
+  "id": "1418157121635562344",
+  "api": "1.0.0",
+  "capabilities": ["inspect", "codegen"],
+  "codegenLanguages": [
+    { "label": "JSON", "value": "json" },
+    { "label": "Web Components", "value": "html" },
+    { "label": "React", "value": "react" }
+  ],
+  "codegenPreferences": [
+    {
+      "itemType": "select",
+      "propertyName": "css",
+      "label": "With CSS (takes long time)",
+      "options": [
+        { "label": "Yes", "value": "yes" },
+        { "label": "No", "value": "no", "isDefault": true }
+      ]
+    },
+    {
+      "itemType": "select",
+      "propertyName": "maxDepth",
+      "label": "Max Depth (how many children should be included - performance)",
+      "options": [
+        { "label": "4", "value": "4", "isDefault": true },
+        { "label": "5", "value": "5" },
+        { "label": "6", "value": "6" },
+        { "label": "7", "value": "7" }
+      ]
+    }
+  ],
+  "enableProposedApi": true,
+  "editorType": ["dev"],
+  "main": "dist/index.js"
+}

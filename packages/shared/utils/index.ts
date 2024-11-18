@@ -5,3 +5,6 @@ export const toPascalCase = (text: string) =>
 
 export const toCamelCase = (text: string) =>
   text.replace(/-\w/g, clearAndUpper);
+
+export const delay = (ms: number) =>
+  new Promise((resolve) => setTimeout(resolve, ms));

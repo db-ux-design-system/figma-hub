@@ -8,17 +8,14 @@ import {
 import { OutputTabsProps, storageKey } from "./data.ts";
 import { copyToClipboard } from "../../utils/copy.ts";
 import { useEffect, useState } from "react";
-import hljs from "highlight.js";
 import prettier from "prettier/standalone";
 import html from "prettier/plugins/html";
 import babel from "prettier/plugins/babel";
 import { BuiltInParserName, LiteralUnion } from "prettier";
-import {
-  formatCss,
-  generateCode,
-  generateStyles,
-} from "shared/code-generation.ts";
 import { OutputNode } from "shared/data.ts";
+import { generateCode } from "shared/generate/code.ts";
+import { formatCss } from "shared/generate";
+import { generateStyles } from "shared/generate/style.ts";
 
 type Tab = { key: string; label: string; code: string; language: string };
 
@@ -85,24 +82,6 @@ const OutputTabs = ({ code, selectLanguage, cssCode }: OutputTabsProps) => {
       ]);
     }
   }, [cssCode]);
-
-  useEffect(() => {
-    hljs.configure({
-      languages: [
-        "js",
-        "ts",
-        "jsx",
-        "tsx",
-        "css",
-        "scss",
-        "html",
-        "shell",
-        "json",
-      ],
-    });
-
-    hljs.highlightAll();
-  });
 
   useEffect(() => {
     if (tabs) {

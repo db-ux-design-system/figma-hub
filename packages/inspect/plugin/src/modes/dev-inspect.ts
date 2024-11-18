@@ -1,6 +1,6 @@
-import {  sendMessage } from "../utils/index.js";
-import { generateData } from "../utils/generate.js";
-import {OutputNode, UiMessage} from "shared/data.js";
+import { OutputNode, UiMessage } from "shared/data";
+import { sendMessage } from "shared/figma";
+import { generateData } from "shared/figma/generate";
 
 const handleSelectionChange = () => {
   const selection = figma.currentPage.selection;
@@ -49,7 +49,7 @@ export const handleDevInspect = () => {
       await figma.clientStorage.setAsync(msg.data.key, msg.data.value);
     } else if (msg.type === "getStorage") {
       const value = await figma.clientStorage.getAsync(msg.data.key);
-      sendMessage<string | null>({ type: "storage", data: value });
+      sendMessage<string | null>({ type: "storage", data: value ?? "json" });
     }
   };
 };

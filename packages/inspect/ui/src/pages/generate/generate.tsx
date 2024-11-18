@@ -11,6 +11,7 @@ import {
 } from "../../utils/plugin-message.ts";
 import { storageKey } from "../../components/output-tabs/data.ts";
 import { OutputNode, PluginMessage } from "shared/data.ts";
+import hljs from "highlight.js";
 
 const Generate = () => {
   const [error, setError] = useState<string | undefined>();
@@ -58,6 +59,24 @@ const Generate = () => {
       parent.postMessage({ pluginMessage: { type: "css" } }, "*");
     }
   }, [code, loading, cssCode]);
+
+  useEffect(() => {
+    hljs.configure({
+      languages: [
+        "js",
+        "ts",
+        "jsx",
+        "tsx",
+        "css",
+        "scss",
+        "html",
+        "shell",
+        "json",
+      ],
+    });
+
+    hljs.highlightAll();
+  });
 
   return (
     <>
