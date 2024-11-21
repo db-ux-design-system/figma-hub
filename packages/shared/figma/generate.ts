@@ -20,6 +20,13 @@ export const getNodesRecursive = async (
   if (node.type === "INSTANCE") {
     if (node.variantProperties) {
       result.variantProperties = node.variantProperties;
+      if (node.componentProperties) {
+        result.componentProperties = Object.entries(
+          node.componentProperties,
+        ).reduce((previousValue, [key, prop]) => {
+          return { ...previousValue, [key.split("#")[0]]: prop.value };
+        }, {});
+      }
     }
 
     const mainComponent = await node.getMainComponentAsync();

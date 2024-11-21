@@ -23,8 +23,7 @@
       "propertyName": "maxDepth",
       "label": "Max Depth (how many children should be included - performance)",
       "options": [
-        { "label": "4", "value": "4", "isDefault": true },
-        { "label": "5", "value": "5" },
+        { "label": "5", "value": "5", "isDefault": true },
         { "label": "6", "value": "6" },
         { "label": "7", "value": "7" }
       ]

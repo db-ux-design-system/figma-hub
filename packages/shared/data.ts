@@ -26,6 +26,7 @@ export type OutputNode = {
   };
   children?: OutputNode[];
   variantProperties?: { [p: string]: string } | null;
+  componentProperties?: Record<string, string | boolean>;
   mainComponentName?: string;
   componentName?: string;
 };
