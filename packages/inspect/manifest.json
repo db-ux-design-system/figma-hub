@@ -3,8 +3,9 @@
   "id": "1418157121635562346",
   "api": "1.0.0",
   "capabilities": ["inspect"],
-  "enableProposedApi": true,
   "editorType": ["dev"],
   "ui": "dist/inspect/index.html",
-  "main": "dist/inspect/index.js"
+  "main": "dist/inspect/index.js",
+  "networkAccess": { "allowedDomains": ["none"] },
+  "documentAccess": "dynamic-page"
 }

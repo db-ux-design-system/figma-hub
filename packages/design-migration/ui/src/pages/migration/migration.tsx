@@ -39,7 +39,7 @@ const Migration = () => {
     <div className="flex flex-col gap-fix-md mb-fix-lg">
       <h1>Migration Tool</h1>
       <DBButton
-        disabled={!!error}
+        disabled={!!loading}
         width="full"
         onClick={() => {
           setAnalyzeCounter(0);

@@ -69,15 +69,19 @@ export const replaceDensityAndDevice = async ({
       if (splitModeName.length === 2) {
         const device = splitModeName[0];
         const density = splitModeName[1];
-        const node = figma.getNodeById(id) as
+        const node = (await figma.getNodeByIdAsync(id)) as
           | (BaseNode & ExplicitVariableModesMixin)
           | null;
         const oldCollection =
-          figma.variables.getVariableCollectionById(collectionId);
+          await figma.variables.getVariableCollectionByIdAsync(collectionId);
         const densityCollection =
-          figma.variables.getVariableCollectionById(densityCollectionId);
+          await figma.variables.getVariableCollectionByIdAsync(
+            densityCollectionId,
+          );
         const deviceCollection =
-          figma.variables.getVariableCollectionById(deviceCollectionId);
+          await figma.variables.getVariableCollectionByIdAsync(
+            deviceCollectionId,
+          );
 
         if (
           node &&

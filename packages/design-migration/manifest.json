@@ -1,9 +1,10 @@
 {
   "name": "design-migration",
-  "id": "1498157121635562346",
+  "id": "1441699628075302748",
   "api": "1.0.0",
-  "enableProposedApi": true,
   "editorType": ["figma"],
   "ui": "dist/design-migration/index.html",
-  "main": "dist/design-migration/index.js"
+  "main": "dist/design-migration/index.js",
+  "networkAccess": { "allowedDomains": ["none"] },
+  "documentAccess": "dynamic-page"
 }

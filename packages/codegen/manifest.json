@@ -38,7 +38,8 @@
       ]
     }
   ],
-  "enableProposedApi": true,
   "editorType": ["dev"],
-  "main": "dist/index.js"
+  "main": "dist/index.js",
+  "networkAccess": { "allowedDomains": ["none"] },
+  "documentAccess": "dynamic-page"
 }
