@@ -18,9 +18,9 @@ export const handleDevInspect = () => {
   figma.ui.onmessage = async (msg: UiMessage) => {
     if (msg.type === "generate") {
       sendMessage<string>({ type: "loading", data: "Loading nodes" });
-      generateData(false).then((data) => {
+      generateData(false, false).then((data) => {
         if (data) {
-          sendMessage<OutputNode>({ type: "baseData", data });
+          sendMessage<OutputNode>({ type: "data", data });
           sendMessage<undefined>({ type: "error", data: undefined });
         } else {
           sendMessage<string>({ type: "error", data: "Failed to load" });
@@ -31,7 +31,7 @@ export const handleDevInspect = () => {
         type: "loading",
         data: "Loading css. This takes a long time.",
       });
-      generateData(true).then((cssData) => {
+      generateData(true, true).then((cssData) => {
         if (cssData) {
           sendMessage<OutputNode>({ type: "cssData", data: cssData });
           sendMessage<undefined>({ type: "loading", data: undefined });

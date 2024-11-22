@@ -1,12 +1,21 @@
 export type PluginMessage<T> = {
   type:
-    | "baseData"
+    | "update"
+    | "data"
     | "cssData"
     | "selectionchange"
     | "loading"
     | "error"
-    | "storage";
+    | "storage"
+    | "counter";
   data: T;
+};
+
+export type VariableModeType = {
+  collectionId?: string;
+  collectionName?: string;
+  modeId?: string;
+  foundModeName?: string;
 };
 
 export type OutputNode = {
@@ -24,14 +33,23 @@ export type OutputNode = {
   css?: {
     [key: string]: string;
   };
-  children?: OutputNode[];
   variantProperties?: { [p: string]: string } | null;
   componentProperties?: Record<string, string | boolean>;
   mainComponentName?: string;
   componentName?: string;
+
+  // Modes
+  modes?: VariableModeType[];
+
+  children?: OutputNode[];
 };
 
 export type UiMessage = {
   type: "generate" | "css" | "notify" | "setStorage" | "getStorage";
+  data?: any;
+};
+
+export type UiMessageDesignMigration = {
+  type: "analyze";
   data?: any;
 };

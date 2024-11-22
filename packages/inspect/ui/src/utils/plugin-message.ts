@@ -7,7 +7,7 @@ export const isSelectionChangeMessage = (
 
 export const isBaseDataMessage = (
   message: PluginMessage<any>,
-): message is PluginMessage<OutputNode> => message.type === "baseData";
+): message is PluginMessage<OutputNode> => message.type === "data";
 
 export const isCssDataMessage = (
   message: PluginMessage<any>,

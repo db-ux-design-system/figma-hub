@@ -10,9 +10,11 @@
     "build": "npm-run-all -p build:*",
     "build:codegen": "npm run build -w=@db-ui/codegen",
     "build:inspect": "npm run build -w=@db-ui/inspect",
+    "build:design-migration": "npm run build -w=@db-ui/design-migration",
     "dev": "npm-run-all -p dev:*",
     "dev:codegen": "npm run dev -w=@db-ui/codegen",
-    "dev:inspect": "npm run dev -w=@db-ui/inspect"
+    "dev:inspect": "npm run dev -w=@db-ui/inspect",
+    "dev:design-migration": "npm run dev -w=@db-ui/design-migration"
   },
   "author": "",
   "license": "MIT",

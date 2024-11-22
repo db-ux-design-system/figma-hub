@@ -13,9 +13,9 @@ import html from "prettier/plugins/html";
 import babel from "prettier/plugins/babel";
 import { BuiltInParserName, LiteralUnion } from "prettier";
 import { OutputNode } from "shared/data.ts";
-import { generateCode } from "shared/generate/code.ts";
 import { formatCss } from "shared/generate";
 import { generateStyles } from "shared/generate/style.ts";
+import {generateCode} from "shared/generate/code";
 
 type Tab = { key: string; label: string; code: string; language: string };
 

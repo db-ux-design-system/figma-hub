@@ -1,9 +1,10 @@
-import { OutputNode } from "shared/data";
+import { OutputNode, VariableModeType } from "shared/data";
 import { delay } from "shared/utils";
 
 export const getNodesRecursive = async (
   node: SceneNode,
   withCSS: boolean,
+  withModes: boolean,
   depth: number = -1,
 ): Promise<OutputNode> => {
   const result: OutputNode = {
@@ -15,6 +16,31 @@ export const getNodesRecursive = async (
   if (withCSS) {
     result.css = await node.getCSSAsync();
     await delay(40);
+  }
+
+  if (withModes) {
+    if (node.explicitVariableModes) {
+      const modes: VariableModeType[] = [];
+      for (const [collectionId, modeId] of Object.entries(
+        node.explicitVariableModes,
+      )) {
+        const collection =
+          await figma.variables.getVariableCollectionByIdAsync(collectionId);
+        await delay(40);
+        if (collection) {
+          const foundMode = collection.modes.find(
+            (mode) => mode.modeId === modeId,
+          );
+          modes.push({
+            collectionName: collection.name,
+            collectionId: collectionId,
+            modeId: modeId,
+            foundModeName: foundMode?.name,
+          });
+        }
+      }
+      result.modes = modes;
+    }
   }
 
   if (node.type === "INSTANCE") {
@@ -47,7 +73,9 @@ export const getNodesRecursive = async (
   if (anyNode.children && depth !== 0) {
     const children = [];
     for (const child of anyNode.children) {
-      children.push(await getNodesRecursive(child, withCSS, depth - 1));
+      children.push(
+        await getNodesRecursive(child, withCSS, withModes, depth - 1),
+      );
     }
     result.children = children;
   }
@@ -56,6 +84,7 @@ export const getNodesRecursive = async (
 
 export const generateData = async (
   withCss: boolean,
+  withModes: boolean,
   depth: number = -1,
   node?: SceneNode,
 ): Promise<OutputNode | undefined> => {
@@ -69,7 +98,7 @@ export const generateData = async (
   }
 
   if (currentNode) {
-    return await getNodesRecursive(currentNode, withCss, depth);
+    return await getNodesRecursive(currentNode, withCss, withModes, depth);
   }
 
   return undefined;

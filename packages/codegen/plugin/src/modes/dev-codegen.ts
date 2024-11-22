@@ -19,14 +19,17 @@ const getDisplayLanguage = (
 };
 
 export const handleDevCodegen = () => {
+  // @ts-ignore
   figma.codegen.on("generate", async (event: CodegenEvent) => {
     const { node, language } = event;
     const withCss = figma.codegen.preferences.customSettings["css"] === "yes";
+    const withModes =
+      figma.codegen.preferences.customSettings["modes"] === "yes";
     const maxDepth = Number(
       figma.codegen.preferences.customSettings["maxDepth"] ?? 5,
     );
 
-    const outputNode = await generateData(withCss, maxDepth, node);
+    const outputNode = await generateData(withCss, withModes, maxDepth, node);
 
     if (!outputNode) {
       return [

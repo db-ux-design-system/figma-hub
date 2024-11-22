@@ -20,6 +20,15 @@
     },
     {
       "itemType": "select",
+      "propertyName": "modes",
+      "label": "With Modes (takes long time)",
+      "options": [
+        { "label": "Yes", "value": "yes" },
+        { "label": "No", "value": "no", "isDefault": true }
+      ]
+    },
+    {
+      "itemType": "select",
       "propertyName": "maxDepth",
       "label": "Max Depth (how many children should be included - performance)",
       "options": [

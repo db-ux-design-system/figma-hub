@@ -28,16 +28,14 @@ const getComponentProperties = (
   const properties: Record<string, string> = {};
   if (componentProperties) {
     for (const [key, value] of Object.entries(componentProperties)) {
-
-
       let cleanKey = slugify(key);
       let cleanValue = slugify(String(value)).trim();
 
       if (componentPropertyKeyExceptions.includes(cleanKey)) {
         properties[cleanKey] = cleanValue;
       } else if (key.startsWith("↳ OR")) {
-          // We have some "OR" boolean for designers in figma, we need to map the correct value here
-          const realProp = key.replace("↳ OR ","")
+        // We have some "OR" boolean for designers in figma, we need to map the correct value here
+        //const realProp = key.replace("↳ OR ","")
       }
     }
   }
