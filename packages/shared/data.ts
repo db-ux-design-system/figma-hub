@@ -1,5 +1,6 @@
 export type PluginMessage<T> = {
   type:
+    | "config"
     | "update"
     | "data"
     | "cssData"
@@ -18,7 +19,7 @@ export type VariableModeType = {
   foundModeName?: string;
 };
 
-export type OutputNode = {
+export type Node = {
   type: "FRAME" | "TEXT" | "INSTANCE" | "GROUP" | string;
   name: string;
   id: string;
@@ -41,7 +42,7 @@ export type OutputNode = {
   // Modes
   modes?: VariableModeType[];
 
-  children?: OutputNode[];
+  children?: Node[];
 };
 
 export type UiMessage = {

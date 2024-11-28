@@ -1,5 +1,5 @@
 import slugify from "@sindresorhus/slugify";
-import { OutputNode } from "../data";
+import { Node } from "../data";
 import { css_beautify, html_beautify } from "js-beautify";
 
 export type HtmlNode = {
@@ -21,10 +21,10 @@ export type CssNode = {
 
 export type FrameworkTarget = "react" | "html";
 
-export const getId = (node: OutputNode): string =>
+export const getId = (node: Node): string =>
   slugify(`${node.type}-${node.id}`);
 
-export const getClassName = (node: OutputNode): string => slugify(node.name);
+export const getClassName = (node: Node): string => slugify(node.name);
 
 export const formatHtml = (code: string): string => {
   return html_beautify(code, {

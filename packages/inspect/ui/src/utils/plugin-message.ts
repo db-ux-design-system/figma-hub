@@ -1,4 +1,4 @@
-import {OutputNode, PluginMessage} from "shared/data.ts";
+import {Node, PluginMessage} from "shared/data.ts";
 
 
 export const isSelectionChangeMessage = (
@@ -7,11 +7,11 @@ export const isSelectionChangeMessage = (
 
 export const isBaseDataMessage = (
   message: PluginMessage<any>,
-): message is PluginMessage<OutputNode> => message.type === "data";
+): message is PluginMessage<Node> => message.type === "data";
 
 export const isCssDataMessage = (
   message: PluginMessage<any>,
-): message is PluginMessage<OutputNode> => message.type === "cssData";
+): message is PluginMessage<Node> => message.type === "cssData";
 
 export const isLoadingMessage = (
   message: PluginMessage<any>,

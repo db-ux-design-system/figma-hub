@@ -37,7 +37,6 @@ const Migration = () => {
 
   return (
     <div className="flex flex-col gap-fix-md mb-fix-lg">
-      <h1>Migration Tool</h1>
       <DBButton
         disabled={!!loading}
         width="full"

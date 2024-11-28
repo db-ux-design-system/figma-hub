@@ -1,10 +1,10 @@
-import {OutputNode} from "shared/data.ts";
+import {Node} from "shared/data.ts";
 
 
 export const storageKey: string = "language";
 
 export type OutputTabsProps = {
-  code: OutputNode;
-  cssCode?: OutputNode | null;
+  code: Node;
+  cssCode?: Node | null;
   selectLanguage?: string | null;
 };

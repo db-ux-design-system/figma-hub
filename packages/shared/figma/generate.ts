@@ -1,4 +1,4 @@
-import { OutputNode, VariableModeType } from "shared/data";
+import { Node, VariableModeType } from "shared/data";
 import { delay } from "shared/utils";
 
 export const getNodesRecursive = async (
@@ -6,8 +6,8 @@ export const getNodesRecursive = async (
   withCSS: boolean,
   withModes: boolean,
   depth: number = -1,
-): Promise<OutputNode> => {
-  const result: OutputNode = {
+): Promise<Node> => {
+  const result: Node = {
     type: node.type,
     name: node.name,
     id: node.id,
@@ -87,7 +87,7 @@ export const generateData = async (
   withModes: boolean,
   depth: number = -1,
   node?: SceneNode,
-): Promise<OutputNode | undefined> => {
+): Promise<Node | undefined> => {
   let currentNode = node;
 
   if (!currentNode) {

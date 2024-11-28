@@ -6,7 +6,7 @@ const App = () => {
   return (
     <DBPage
       variant="fixed"
-      header={<DBHeader brand={<DBBrand>DBHeader</DBBrand>}></DBHeader>}
+      header={<DBHeader brand={<DBBrand>Migration tool</DBBrand>}></DBHeader>}
     >
       <DBSection spacing="none">
         <Migration />

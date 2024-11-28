@@ -1,4 +1,4 @@
-import { OutputNode } from "../../data";
+import { Node } from "../../data";
 import {
   FrameworkTarget,
   getClassName,
@@ -14,9 +14,9 @@ import {
 } from "./properties";
 
 export const getComponent = (
-  node: OutputNode,
+  node: Node,
   target: FrameworkTarget,
-  parent?: OutputNode,
+  parent?: Node,
 ): HtmlNode => {
   let tag = "div";
   let props: { [k: string]: string } = {};
@@ -62,12 +62,12 @@ export const getComponent = (
   return { tag, props, children };
 };
 
-const isComponent = (node: OutputNode): boolean => node.type === "INSTANCE";
+const isComponent = (node: Node): boolean => node.type === "INSTANCE";
 
 export const getTag = (
-  node: OutputNode,
+  node: Node,
   target: FrameworkTarget,
-  parent?: OutputNode,
+  parent?: Node,
 ): HtmlNode => {
   const { type } = node;
 
@@ -91,7 +91,7 @@ export const getTag = (
   };
 };
 
-export const isFragment = ({ type, children }: OutputNode): boolean =>
+export const isFragment = ({ type, children }: Node): boolean =>
   (type === "FRAME" || type === "GROUP") && children?.length === 1;
 
 export const getHtmlProps = (props?: { [k: string]: string }) => {
@@ -113,7 +113,7 @@ export const getHtmlProps = (props?: { [k: string]: string }) => {
   return flatProps;
 };
 
-export const getNextInstance = (node: OutputNode): OutputNode | undefined => {
+export const getNextInstance = (node: Node): Node | undefined => {
   if (isComponent(node)) {
     return node;
   }
@@ -131,7 +131,7 @@ export const getNextInstance = (node: OutputNode): OutputNode | undefined => {
 };
 
 export const getIcons = (
-  iconChildren?: OutputNode[],
+  iconChildren?: Node[],
 ): ResolvedIcons | undefined => {
   if (!iconChildren) {
     return undefined;
@@ -164,7 +164,7 @@ export const getIcons = (
   return undefined;
 };
 
-export const isIconChild = (node: OutputNode): boolean =>
+export const isIconChild = (node: Node): boolean =>
   node.name.toLowerCase().includes("icon");
 
 const resolveNodesRecursive = <T>({
@@ -173,10 +173,10 @@ const resolveNodesRecursive = <T>({
   isFunc,
   filterFunc,
 }: {
-  node: OutputNode;
-  isFunc: (child: OutputNode) => boolean;
-  resolveFunc?: (foundChildren: OutputNode[]) => T;
-  filterFunc?: (child: OutputNode) => boolean;
+  node: Node;
+  isFunc: (child: Node) => boolean;
+  resolveFunc?: (foundChildren: Node[]) => T;
+  filterFunc?: (child: Node) => boolean;
 }): T | undefined => {
   if (node.children) {
     const foundChildren = node.children.filter((subChild) => isFunc(subChild));
@@ -206,7 +206,7 @@ const resolveNodesRecursive = <T>({
   return undefined;
 };
 
-const resolveInputNodes = (node: OutputNode) => {
+const resolveInputNodes = (node: Node) => {
   const resolvedRequired: boolean | undefined = resolveNodesRecursive<boolean>({
     node,
     isFunc: (child) => child.text === "*",
@@ -311,7 +311,7 @@ const resolveInputNodes = (node: OutputNode) => {
   }
 };
 
-const resolveNotificationNodes = (node: OutputNode) => {
+const resolveNotificationNodes = (node: Node) => {
   const resolvedHeadline: string | undefined = resolveNodesRecursive<string>({
     node,
     isFunc: (child) => slugify(child.name) === "headline",
@@ -326,7 +326,7 @@ const resolveNotificationNodes = (node: OutputNode) => {
   }
 };
 
-const resolveNodes = (node: OutputNode) => {
+const resolveNodes = (node: Node) => {
   if (isComponent(node) && node.children) {
     const resolvedIcons: ResolvedIcons | undefined = resolveNodesRecursive<
       ResolvedIcons | undefined
@@ -357,15 +357,15 @@ const resolveNodes = (node: OutputNode) => {
 };
 
 export const generateCode = (
-  node: OutputNode,
+  node: Node,
   target: FrameworkTarget,
-  parent?: OutputNode,
+  parent?: Node,
 ): string => {
   resolveNodes(node);
   const fragment = isFragment(node);
   let inner = `${
     node.children
-      ?.map((childNode: OutputNode) => {
+      ?.map((childNode: Node) => {
         return generateCode(childNode, target, fragment ? parent : node);
       })
       .join("\n") ?? ""

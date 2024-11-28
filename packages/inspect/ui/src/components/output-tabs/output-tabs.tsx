@@ -12,7 +12,7 @@ import prettier from "prettier/standalone";
 import html from "prettier/plugins/html";
 import babel from "prettier/plugins/babel";
 import { BuiltInParserName, LiteralUnion } from "prettier";
-import { OutputNode } from "shared/data.ts";
+import { Node } from "shared/data.ts";
 import { formatCss } from "shared/generate";
 import { generateStyles } from "shared/generate/style.ts";
 import {generateCode} from "shared/generate/code";
@@ -35,7 +35,7 @@ export const formatCode = async (
   }
 };
 
-const getTabs = async (code: OutputNode): Promise<Tab[]> => {
+const getTabs = async (code: Node): Promise<Tab[]> => {
   return [
     {
       key: "json",

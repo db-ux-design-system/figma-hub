@@ -10,14 +10,14 @@ import {
   isStorage,
 } from "../../utils/plugin-message.ts";
 import { storageKey } from "../../components/output-tabs/data.ts";
-import { OutputNode, PluginMessage } from "shared/data.ts";
+import { Node, PluginMessage } from "shared/data.ts";
 import hljs from "highlight.js";
 
 const Generate = () => {
   const [error, setError] = useState<string | undefined>();
   const [loading, setLoading] = useState<string | undefined>();
-  const [code, setCode] = useState<OutputNode | null>(null);
-  const [cssCode, setCssCode] = useState<OutputNode | null>(null);
+  const [code, setCode] = useState<Node | null>(null);
+  const [cssCode, setCssCode] = useState<Node | null>(null);
   const [selectLanguage, setSelectLanguage] = useState<string | null>();
 
   useEffect(() => {

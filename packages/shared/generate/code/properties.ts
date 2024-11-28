@@ -1,4 +1,4 @@
-import { OutputNode } from "../../data";
+import { Node } from "../../data";
 import { FrameworkTarget } from "../index";
 import slugify from "@sindresorhus/slugify";
 
@@ -49,7 +49,7 @@ const getComponentProperties = (
  * @param target the framework like react,angular, ...
  */
 export const getCleanedVariantProperties = (
-  { variantProperties, componentProperties }: OutputNode,
+  { variantProperties, componentProperties }: Node,
   target?: FrameworkTarget,
 ): Record<string, any> => {
   if (variantProperties) {

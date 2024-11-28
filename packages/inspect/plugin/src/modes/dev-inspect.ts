@@ -1,4 +1,4 @@
-import { OutputNode, UiMessage } from "shared/data";
+import { Node, UiMessage } from "shared/data";
 import { sendMessage } from "shared/figma";
 import { generateData } from "shared/figma/generate";
 
@@ -20,7 +20,7 @@ export const handleDevInspect = () => {
       sendMessage<string>({ type: "loading", data: "Loading nodes" });
       generateData(false, false).then((data) => {
         if (data) {
-          sendMessage<OutputNode>({ type: "data", data });
+          sendMessage<Node>({ type: "data", data });
           sendMessage<undefined>({ type: "error", data: undefined });
         } else {
           sendMessage<string>({ type: "error", data: "Failed to load" });
@@ -33,7 +33,7 @@ export const handleDevInspect = () => {
       });
       generateData(true, true).then((cssData) => {
         if (cssData) {
-          sendMessage<OutputNode>({ type: "cssData", data: cssData });
+          sendMessage<Node>({ type: "cssData", data: cssData });
           sendMessage<undefined>({ type: "loading", data: undefined });
           sendMessage<undefined>({ type: "error", data: undefined });
         } else {
