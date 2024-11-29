@@ -18,7 +18,7 @@ const release = async ({ github, context, workspace, zipName, srcDir }) => {
     github,
     context,
     release_id,
-    assetName: zipName,
+    assetName: `${zipName}.zip`,
     assetPath,
   });
 };

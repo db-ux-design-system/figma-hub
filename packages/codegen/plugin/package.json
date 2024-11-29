@@ -5,7 +5,7 @@
   "main": "code.js",
   "type": "module",
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --outfile=../dist/index.js  --target=ES6",
+    "build": "esbuild src/index.ts --bundle --outfile=../index.js  --target=ES6",
     "lint": "eslint --ext .ts,.tsx --ignore-pattern node_modules .",
     "lint:fix": "eslint --ext .ts,.tsx --ignore-pattern node_modules --fix .",
     "dev": "npm run build -- --watch"

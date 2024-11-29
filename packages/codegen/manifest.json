@@ -39,7 +39,7 @@
     }
   ],
   "editorType": ["dev"],
-  "main": "dist/index.js",
+  "main": "index.js",
   "networkAccess": { "allowedDomains": ["none"] },
   "documentAccess": "dynamic-page"
 }

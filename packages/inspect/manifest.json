@@ -4,8 +4,8 @@
   "api": "1.0.0",
   "capabilities": ["inspect"],
   "editorType": ["dev"],
-  "ui": "dist/inspect/index.html",
-  "main": "dist/inspect/index.js",
+  "ui": "index.html",
+  "main": "index.js",
   "networkAccess": { "allowedDomains": ["none"] },
   "documentAccess": "dynamic-page"
 }

@@ -3,8 +3,8 @@
   "id": "1441699628075302748",
   "api": "1.0.0",
   "editorType": ["figma"],
-  "ui": "dist/design-migration/index.html",
-  "main": "dist/design-migration/index.js",
+  "ui": "index.html",
+  "main": "index.js",
   "networkAccess": { "allowedDomains": ["none"] },
   "documentAccess": "dynamic-page"
 }
