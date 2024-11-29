@@ -1,20 +1,25 @@
 {
-  "name": "@db-ui/figma-hub",
+  "name": "@db-ux/figma-hub",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "type": "module",
   "workspaces": [
     "packages/**"
   ],
   "scripts": {
     "build": "npm-run-all -p build:*",
-    "build:codegen": "npm run build -w=@db-ui/codegen",
-    "build:inspect": "npm run build -w=@db-ui/inspect",
-    "build:design-migration": "npm run build -w=@db-ui/design-migration",
+    "build:codegen": "npm run build -w=@db-ux/codegen",
+    "build:inspect": "npm run build -w=@db-ux/inspect",
+    "build:handover": "npm run build -w=@db-ux/handover",
+    "build:auto-sync": "npm run build -w=@db-ux/auto-sync",
+    "build:design-migration": "npm run build -w=@db-ux/design-migration",
     "dev": "npm-run-all -p dev:*",
-    "dev:codegen": "npm run dev -w=@db-ui/codegen",
-    "dev:inspect": "npm run dev -w=@db-ui/inspect",
-    "dev:design-migration": "npm run dev -w=@db-ui/design-migration"
+    "dev:codegen": "npm run dev -w=@db-ux/codegen",
+    "dev:inspect": "npm run dev -w=@db-ux/inspect",
+    "dev:handover": "npm run dev -w=@db-ux/handover",
+    "dev:auto-sync": "npm run dev -w=@db-ux/auto-sync",
+    "dev:design-migration": "npm run dev -w=@db-ux/design-migration"
   },
   "author": "",
   "license": "MIT",
@@ -23,5 +28,8 @@
   },
   "overrides": {
     "cross-spawn": "~7.0.5"
+  },
+  "devDependencies": {
+    "adm-zip": "^0.5.16"
   }
 }
