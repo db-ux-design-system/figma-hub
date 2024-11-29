@@ -20,17 +20,26 @@
     },
     {
       "itemType": "select",
+      "propertyName": "modes",
+      "label": "With Modes (takes long time)",
+      "options": [
+        { "label": "Yes", "value": "yes" },
+        { "label": "No", "value": "no", "isDefault": true }
+      ]
+    },
+    {
+      "itemType": "select",
       "propertyName": "maxDepth",
       "label": "Max Depth (how many children should be included - performance)",
       "options": [
-        { "label": "4", "value": "4", "isDefault": true },
-        { "label": "5", "value": "5" },
+        { "label": "5", "value": "5", "isDefault": true },
         { "label": "6", "value": "6" },
         { "label": "7", "value": "7" }
       ]
     }
   ],
-  "enableProposedApi": true,
   "editorType": ["dev"],
-  "main": "dist/index.js"
+  "main": "dist/index.js",
+  "networkAccess": { "allowedDomains": ["none"] },
+  "documentAccess": "dynamic-page"
 }

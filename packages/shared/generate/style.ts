@@ -1,8 +1,8 @@
 import { CssNode, getClassName, getId } from "./index";
-import { OutputNode } from "../data";
+import { Node } from "../data";
 
 export const resolveCssNodeRecursive = (
-  node: OutputNode,
+  node: Node,
   cssNodes: CssNode[],
 ) => {
   cssNodes.push({
@@ -35,7 +35,7 @@ const cssSetToString = (
   return result;
 };
 
-export const generateStyles = (node: OutputNode): string => {
+export const generateStyles = (node: Node): string => {
   const cssNodes: CssNode[] = [];
   // TODO: Don't generate css for sub nodes in components
   resolveCssNodeRecursive(node, cssNodes);
