@@ -11,13 +11,13 @@
   "dependencies": {
     "@db-ui/react-components": "^0.6.2",
     "highlight.js": "^11.11.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "prettier": "3.4.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
-    "@types/react": "^18.3.12",
+    "@types/react": "^19.0.1",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
