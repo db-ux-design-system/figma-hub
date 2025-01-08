@@ -10,10 +10,6 @@ inputs:
     description: "Path for package-lock.json"
     required: false
     default: "**/package-lock.json"
-  nodeVersion:
-    description: "Node version"
-    required: false
-    default: "22"
 runs:
   using: "composite"
   steps:
@@ -22,7 +18,7 @@ runs:
       # https://github.com/actions/setup-node
       uses: actions/setup-node@v4
       with:
-        node-version: ${{ inputs.nodeVersion }}
+        node-version-file: '.nvmrc'
 
     - name: Display node and npm version
       shell: bash
