@@ -14,7 +14,7 @@
     "@figma/eslint-plugin-figma-plugins": "*",
     "@figma/plugin-typings": "*",
     "@figma/widget-typings": "*",
-    "@typescript-eslint/eslint-plugin": "^8.21.0",
+    "@typescript-eslint/eslint-plugin": "^8.22.0",
     "@typescript-eslint/parser": "^8.22.0",
     "eslint": "^8.54.0",
     "typescript": "^5.7.3"
