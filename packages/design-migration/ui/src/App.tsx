@@ -1,4 +1,4 @@
-import { DBBrand, DBHeader, DBPage, DBSection } from "@db-ui/react-components";
+import { DBBrand, DBHeader, DBPage, DBSection } from "@db-ux/react-core-components";
 import Migration from "./pages/migration";
 import "./index.css";
 

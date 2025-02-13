@@ -1,4 +1,4 @@
-import { DBButton, DBCard, DBInfotext, DBTag } from "@db-ui/react-components";
+import { DBButton, DBCard, DBInfotext, DBTag } from "@db-ux/react-core-components";
 import { useEffect, useState } from "react";
 import {
   isCounterMessage,
