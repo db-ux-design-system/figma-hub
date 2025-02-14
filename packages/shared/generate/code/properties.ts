@@ -84,7 +84,7 @@ export const getCleanedVariantProperties = (
         } else if (cleanValue === "image") {
           cleanKey = "image";
           cleanValue =
-            "https://raw.githubusercontent.com/db-ui/mono/refs/heads/main/packages/foundations/assets/images/db_logo.svg";
+            "https://raw.githubusercontent.com/db-ux-design-system/core-web/refs/heads/main/packages/foundations/assets/images/db_logo.svg";
         }
       }
 

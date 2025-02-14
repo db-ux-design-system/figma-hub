@@ -9,7 +9,7 @@ import {
   DBPage,
   DBSection,
   DBSelect,
-} from "@db-ui/react-components";
+} from "@db-ux/react-core-components";
 import { Node, PluginMessage } from "shared/data.ts";
 import { HandoverConfig } from "shared/handover/data.ts";
 

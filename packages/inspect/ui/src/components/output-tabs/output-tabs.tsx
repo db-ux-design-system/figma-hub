@@ -4,7 +4,7 @@ import {
   DBTabList,
   DBTabPanel,
   DBTabs,
-} from "@db-ui/react-components";
+} from "@db-ux/react-core-components";
 import { OutputTabsProps, storageKey } from "./data.ts";
 import { copyToClipboard } from "../../utils/copy.ts";
 import { useEffect, useState } from "react";

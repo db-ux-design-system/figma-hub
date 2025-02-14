@@ -1,4 +1,4 @@
-import { DBButton, DBInfotext } from "@db-ui/react-components";
+import { DBButton, DBInfotext } from "@db-ux/react-core-components";
 import { useEffect, useState } from "react";
 import OutputTabs from "../../components/output-tabs";
 import {
