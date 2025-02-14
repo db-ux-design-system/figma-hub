@@ -1,5 +1,6 @@
 {
   "name": "@db-ux/design-migration",
+  "private": true,
   "version": "1.0.0",
   "description": "",
   "main": "index.js",

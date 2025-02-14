@@ -1,5 +1,6 @@
 {
   "name": "shared",
+  "private": true,
   "dependencies": {
     "@sindresorhus/slugify": "^2.2.1",
     "js-beautify": "^1.15.3"
