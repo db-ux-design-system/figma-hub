@@ -7,10 +7,10 @@
     "widget/*"
   ],
   "scripts": {
-    "build": "npm-run-all -p build:*",
+    "build": "npm-run-all --parallel build:*",
     "build:code": "npm run build -w=auto-sync-widget -- --minify",
     "build:ui": "npm run build -w=auto-sync-ui -- --minify",
-    "dev": "npm-run-all -p dev:*",
+    "dev": "npm-run-all --parallel dev:*",
     "dev:code": "npm run dev -w=auto-sync-widget",
     "dev:ui": "npm run dev -w=auto-sync-ui"
   },

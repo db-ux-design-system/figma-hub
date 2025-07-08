@@ -9,9 +9,9 @@
     "ui/*"
   ],
   "scripts": {
-    "build": "npm-run-all -p build:*",
+    "build": "npm-run-all --parallel build:*",
     "build:code": "npm run build -w=code -- --minify",
-    "dev": "npm-run-all -p dev:*",
+    "dev": "npm-run-all --parallel dev:*",
     "dev:code": "npm run dev -w=code"
   },
   "author": "",

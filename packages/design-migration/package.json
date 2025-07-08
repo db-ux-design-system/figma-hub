@@ -9,10 +9,10 @@
     "ui/*"
   ],
   "scripts": {
-    "build": "npm-run-all -p build:*",
+    "build": "npm-run-all --parallel build:*",
     "build:code": "npm run build -w=design-migration-code -- --minify",
     "build:ui": "npm run build -w=design-migration-ui",
-    "dev": "npm-run-all -p dev:*",
+    "dev": "npm-run-all --parallel dev:*",
     "dev:code": "npm run dev -w=design-migration-code",
     "dev:ui": "npm run dev -w=design-migration-ui"
   },
