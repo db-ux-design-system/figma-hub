@@ -2,7 +2,7 @@
   "name": "shared",
   "private": true,
   "dependencies": {
-    "@sindresorhus/slugify": "^2.2.1",
+    "@sindresorhus/slugify": "^3.0.0",
     "js-beautify": "^1.15.4"
   },
   "devDependencies": {
