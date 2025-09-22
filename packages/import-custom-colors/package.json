@@ -1,0 +1,21 @@
+{
+  "name": "@db-ux/import-custom-colors",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Figma plugin for importing custom colors into Figma",
+  "main": "index.js",
+  "workspaces": [
+    "plugin/*",
+    "ui/*"
+  ],
+  "scripts": {
+    "build": "npm-run-all --parallel build:*",
+    "build:code": "npm run build -w=import-custom-colors-code -- --minify",
+    "build:ui": "npm run build -w=import-custom-colors-ui",
+    "dev": "npm-run-all --parallel dev:*",
+    "dev:code": "npm run dev -w=import-custom-colors-code",
+    "dev:ui": "npm run dev -w=import-custom-colors-ui"
+  },
+  "author": "",
+  "license": "MIT"
+}
