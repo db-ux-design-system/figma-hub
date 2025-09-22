@@ -1,7 +1,7 @@
 {
   "name": "@db-ux/import-custom-colors",
   "private": true,
-  "version": "1.0.0",
+  "version": "0.0.0",
   "description": "Figma plugin for importing custom colors into Figma",
   "main": "index.js",
   "workspaces": [

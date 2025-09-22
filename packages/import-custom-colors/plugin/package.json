@@ -1,6 +1,6 @@
 {
   "name": "import-custom-colors-code",
-  "version": "1.0.0",
+  "version": "0.0.0",
   "main": "import-custom-colors.js",
   "type": "module",
   "scripts": {
