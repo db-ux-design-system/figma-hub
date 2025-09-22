@@ -14,14 +14,14 @@ A Figma plugin for importing custom colors and design tokens into Figma with vis
 
 ## Usage
 
-### Design Token JSON Import (Recommended)
+### Design Token JSON Import
 1. Open the plugin in Figma
-2. Select the "Design Tokens JSON" tab
-3. Click "Select JSON File" and choose your design token JSON file
-4. The plugin will:
+2. Click "Select JSON File" and choose your design token JSON file
+3. The plugin will:
    - Parse the JSON and extract all color tokens
    - Create a "Base Colors" frame with visual swatches
-   - Generate a variable collection with light and dark modes
+   - Generate a variable collection with Base Colors (Default mode)
+   - Create a Mode collection with Light/Dark modes and semantic aliases
    - Create local paint styles in the "Base Colors/" category
 
 #### Supported JSON Format
@@ -49,22 +49,10 @@ The plugin supports the following design token JSON structure:
 }
 ```
 
-### Manual Color Entry
-1. Select the "Manual Entry" tab
-2. Add colors individually using the color picker
-3. Or paste multiple colors in the text area
-4. Supported text formats:
-   - `Color Name #FF5733`
-   - `Color Name: #FF5733`
-   - `Primary Blue #3498DB`
-   - `Secondary Green: #2ECC71`
-5. Click "Import Colors" to create the color palette
-
 ## Output
 
-The plugin creates different outputs based on the import method:
+The plugin creates:
 
-### Design Token Import
 1. **Base Colors Frame**: Visual representation of all design tokens organized by category
 2. **Base Colors Collection**: Figma variable collection containing all raw color values with Default mode
 3. **Mode Collection**: Semantic color variables with Light Mode and Dark Mode containing aliases to Base Colors
@@ -127,4 +115,4 @@ import-custom-colors/
 - Creates reusable paint styles for design work
 - Handles invalid color formats gracefully
 - Provides user feedback for all operations
-- Supports both design token workflows
+- Supports design token workflows with professional variable collections

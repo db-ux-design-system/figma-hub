@@ -20,16 +20,12 @@ interface DesignTokensSchema {
 }
 
 export const handleImportCustomColors = () => {
-  figma.showUI(__html__, { height: 700, width: 450 });
+  figma.showUI(__html__, { height: 600, width: 400 });
   
   figma.ui.onmessage = async (msg: UiMessageImportColors) => {
     try {
-      if (msg.type === "import-colors") {
-        sendMessage<string>({ type: "loading", data: "Importing custom colors..." });
-        await importColors(msg.data as CustomColor[]);
-        sendMessage<string>({ type: "success", data: "Colors imported successfully!" });
-      } else if (msg.type === "import-json") {
-        sendMessage<string>({ type: "loading", data: "Processing JSON file..." });
+      if (msg.type === "import-json") {
+        sendMessage<string>({ type: "loading", data: "Processing design token JSON file..." });
         const jsonData = (msg.data as { jsonData: string }).jsonData;
         const colors = parseDesignTokensJson(jsonData);
         await importColorsFromTokens(colors);
@@ -208,10 +204,6 @@ const createVariableCollection = async (colors: CustomColor[]) => {
       data: `Failed to create variable collections: ${error instanceof Error ? error.message : 'Unknown error'}` 
     });
   }
-};
-
-const importColors = async (colors: CustomColor[]) => {
-  await createColorFrame(colors, "Custom Color Palette", false);
 };
 
 const createColorFrame = async (colors: CustomColor[], frameName: string, isBaseColors: boolean) => {

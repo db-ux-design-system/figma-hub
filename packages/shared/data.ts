@@ -57,11 +57,8 @@ export type UiMessageDesignMigration = {
 };
 
 export type UiMessageImportColors = {
-  type: "import-colors" | "import-json";
-  data: Array<{
-    name: string;
-    hex: string;
-  }> | {
+  type: "import-json";
+  data: {
     jsonData: string;
   };
 };
