@@ -127,4 +127,4 @@ import-custom-colors/
 - Creates reusable paint styles for design work
 - Handles invalid color formats gracefully
 - Provides user feedback for all operations
-- Supports both design token workflows and manual color entry
+- Supports both design token workflows
