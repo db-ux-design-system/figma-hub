@@ -1,7 +1,7 @@
 {
   "name": "import-custom-colors",
   "id": "import-custom-colors",
-  "api": "1.0.0",
+  "api": "0.0.0",
   "main": "index.js",
   "ui": "index.html",
   "editorType": ["figma"],

@@ -6,15 +6,34 @@ interface CustomColor {
   hex: string;
 }
 
+interface DesignTokenColor {
+  $type: "color";
+  $value: string;
+}
+
+interface DesignTokensSchema {
+  colors: {
+    [category: string]: {
+      [tokenName: string]: DesignTokenColor;
+    };
+  };
+}
+
 export const handleImportCustomColors = () => {
-  figma.showUI(__html__, { height: 600, width: 400 });
+  figma.showUI(__html__, { height: 700, width: 450 });
   
   figma.ui.onmessage = async (msg: UiMessageImportColors) => {
     try {
       if (msg.type === "import-colors") {
         sendMessage<string>({ type: "loading", data: "Importing custom colors..." });
-        await importColors(msg.data);
+        await importColors(msg.data as CustomColor[]);
         sendMessage<string>({ type: "success", data: "Colors imported successfully!" });
+      } else if (msg.type === "import-json") {
+        sendMessage<string>({ type: "loading", data: "Processing JSON file..." });
+        const jsonData = (msg.data as { jsonData: string }).jsonData;
+        const colors = parseDesignTokensJson(jsonData);
+        await importColorsFromTokens(colors);
+        sendMessage<string>({ type: "success", data: `Imported ${colors.length} colors from design tokens!` });
       }
     } catch (error) {
       console.error("Error importing colors:", error);
@@ -26,18 +45,86 @@ export const handleImportCustomColors = () => {
   };
 };
 
+const parseDesignTokensJson = (jsonString: string): CustomColor[] => {
+  try {
+    const tokens: DesignTokensSchema = JSON.parse(jsonString);
+    const colors: CustomColor[] = [];
+    
+    if (!tokens.colors) {
+      throw new Error("Invalid JSON format: 'colors' property not found");
+    }
+    
+    Object.entries(tokens.colors).forEach(([category, categoryColors]) => {
+      Object.entries(categoryColors).forEach(([tokenName, token]) => {
+        if (token.$type === "color" && token.$value) {
+          colors.push({
+            name: `${category}/${tokenName}`,
+            hex: token.$value
+          });
+        }
+      });
+    });
+    
+    return colors;
+  } catch (error) {
+    throw new Error(`Failed to parse JSON: ${error instanceof Error ? error.message : 'Invalid format'}`);
+  }
+};
+
+const importColorsFromTokens = async (colors: CustomColor[]) => {
+  // Create base colors frame
+  await createColorFrame(colors, "Base Colors", true);
+  
+  // Create variable collection for light and dark modes
+  await createVariableCollection(colors);
+};
+
+const createVariableCollection = async (colors: CustomColor[]) => {
+  try {
+    // Create a new variable collection
+    const collection = figma.variables.createVariableCollection("Design Tokens");
+    
+    // Create light and dark modes
+    const lightMode = collection.modes[0]; // Default mode is light
+    lightMode.name = "Light";
+    const darkMode = collection.addMode("Dark");
+    
+    // Create variables for each color
+    colors.forEach((color) => {
+      const variable = figma.variables.createVariable(color.name, collection, "COLOR");
+      
+      // Convert hex to RGB for light mode
+      const rgb = hexToRgb(color.hex);
+      if (rgb) {
+        const figmaColor = { r: rgb.r / 255, g: rgb.g / 255, b: rgb.b / 255 };
+        variable.setValueForMode(lightMode.modeId, figmaColor);
+        variable.setValueForMode(darkMode.modeId, figmaColor); // Using same color for both modes initially
+      }
+    });
+    
+    sendMessage<string>({ type: "success", data: `Created variable collection with ${colors.length} color variables` });
+  } catch (error) {
+    console.warn("Could not create variable collection:", error);
+    // Fallback to regular paint styles
+  }
+};
+
 const importColors = async (colors: CustomColor[]) => {
+  await createColorFrame(colors, "Custom Color Palette", false);
+};
+
+const createColorFrame = async (colors: CustomColor[], frameName: string, isBaseColors: boolean) => {
   // Get the current page
   const currentPage = figma.currentPage;
   
   // Create or find a color palette frame
   let colorFrame = currentPage.findOne(node => 
-    node.type === "FRAME" && node.name === "Custom Color Palette"
+    node.type === "FRAME" && node.name === frameName
   ) as FrameNode;
   
   if (!colorFrame) {
     colorFrame = figma.createFrame();
-    colorFrame.name = "Custom Color Palette";
+    colorFrame.name = frameName;
     colorFrame.resize(800, Math.max(400, Math.ceil(colors.length / 8) * 100));
     colorFrame.x = 0;
     colorFrame.y = 0;
@@ -98,7 +185,8 @@ const importColors = async (colors: CustomColor[]) => {
     
     // Create local paint style
     const paintStyle = figma.createPaintStyle();
-    paintStyle.name = `Custom Colors/${color.name}`;
+    const styleCategory = isBaseColors ? "Base Colors" : "Custom Colors";
+    paintStyle.name = `${styleCategory}/${color.name}`;
     paintStyle.paints = [{
       type: "SOLID",
       color: { r: rgb.r / 255, g: rgb.g / 255, b: rgb.b / 255 }
