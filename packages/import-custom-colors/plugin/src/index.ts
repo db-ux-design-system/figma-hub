@@ -81,31 +81,132 @@ const importColorsFromTokens = async (colors: CustomColor[]) => {
 
 const createVariableCollection = async (colors: CustomColor[]) => {
   try {
-    // Create a new variable collection
-    const collection = figma.variables.createVariableCollection("Design Tokens");
-    
-    // Create light and dark modes
-    const lightMode = collection.modes[0]; // Default mode is light
-    lightMode.name = "Light";
-    const darkMode = collection.addMode("Dark");
-    
-    // Create variables for each color
+    // Group colors by category
+    const colorsByCategory = new Map<string, CustomColor[]>();
     colors.forEach((color) => {
-      const variable = figma.variables.createVariable(color.name, collection, "COLOR");
-      
-      // Convert hex to RGB for light mode
-      const rgb = hexToRgb(color.hex);
-      if (rgb) {
-        const figmaColor = { r: rgb.r / 255, g: rgb.g / 255, b: rgb.b / 255 };
-        variable.setValueForMode(lightMode.modeId, figmaColor);
-        variable.setValueForMode(darkMode.modeId, figmaColor); // Using same color for both modes initially
+      const parts = color.name.split('/');
+      const category = parts[0];
+      if (!colorsByCategory.has(category)) {
+        colorsByCategory.set(category, []);
+      }
+      colorsByCategory.get(category)!.push({
+        name: parts[1] || parts[0],
+        hex: color.hex
+      });
+    });
+
+    // Create Base Colors collection
+    const baseColorsCollection = figma.variables.createVariableCollection("Base Colors");
+    const defaultMode = baseColorsCollection.modes[0];
+    defaultMode.name = "Default";
+
+    // Create variables for each category in Base Colors collection
+    const baseColorVariables = new Map<string, Variable>();
+    
+    colorsByCategory.forEach((categoryColors, category) => {
+      categoryColors.forEach((color) => {
+        const variableName = `${category}/${color.name}`;
+        const variable = figma.variables.createVariable(variableName, baseColorsCollection, "COLOR");
+        
+        const rgb = hexToRgb(color.hex);
+        if (rgb) {
+          const figmaColor = { r: rgb.r / 255, g: rgb.g / 255, b: rgb.b / 255 };
+          variable.setValueForMode(defaultMode.modeId, figmaColor);
+          baseColorVariables.set(variableName, variable);
+        }
+      });
+    });
+
+    // Create Mode collection with Light and Dark modes
+    const modeCollection = figma.variables.createVariableCollection("Mode");
+    const lightMode = modeCollection.modes[0];
+    lightMode.name = "Light Mode";
+    const darkMode = modeCollection.addMode("Dark Mode");
+
+    // Create semantic color variables with aliases
+    colorsByCategory.forEach((categoryColors, category) => {
+      // Create bg semantic variables
+      const bgBasicLevel1Variable = figma.variables.createVariable(`${category}/bg/basic/level-1`, modeCollection, "COLOR");
+      const bgBasicLevel1HoveredVariable = figma.variables.createVariable(`${category}/bg/basic/level-1/hovered`, modeCollection, "COLOR");
+      const bgBasicLevel1PressedVariable = figma.variables.createVariable(`${category}/bg/basic/level-1/pressed`, modeCollection, "COLOR");
+
+      // Set up aliases for light mode (using high numbers for light backgrounds)
+      const lightBaseVariable = baseColorVariables.get(`${category}/14`) || baseColorVariables.get(`${category}/origin-light-default`);
+      const lightHoveredVariable = baseColorVariables.get(`${category}/13`) || baseColorVariables.get(`${category}/origin-light-hovered`);
+      const lightPressedVariable = baseColorVariables.get(`${category}/12`) || baseColorVariables.get(`${category}/origin-light-pressed`);
+
+      // Set up aliases for dark mode (using low numbers for dark backgrounds)  
+      const darkBaseVariable = baseColorVariables.get(`${category}/1`) || baseColorVariables.get(`${category}/origin-dark-default`);
+      const darkHoveredVariable = baseColorVariables.get(`${category}/3`) || baseColorVariables.get(`${category}/origin-dark-hovered`);
+      const darkPressedVariable = baseColorVariables.get(`${category}/2`) || baseColorVariables.get(`${category}/origin-dark-pressed`);
+
+      if (lightBaseVariable && darkBaseVariable) {
+        // Create aliases to Base Colors collection variables
+        bgBasicLevel1Variable.setValueForMode(lightMode.modeId, figma.variables.createVariableAlias(lightBaseVariable));
+        bgBasicLevel1Variable.setValueForMode(darkMode.modeId, figma.variables.createVariableAlias(darkBaseVariable));
+      }
+
+      if (lightHoveredVariable && darkHoveredVariable) {
+        bgBasicLevel1HoveredVariable.setValueForMode(lightMode.modeId, figma.variables.createVariableAlias(lightHoveredVariable));
+        bgBasicLevel1HoveredVariable.setValueForMode(darkMode.modeId, figma.variables.createVariableAlias(darkHoveredVariable));
+      }
+
+      if (lightPressedVariable && darkPressedVariable) {
+        bgBasicLevel1PressedVariable.setValueForMode(lightMode.modeId, figma.variables.createVariableAlias(lightPressedVariable));
+        bgBasicLevel1PressedVariable.setValueForMode(darkMode.modeId, figma.variables.createVariableAlias(darkPressedVariable));
+      }
+
+      // Create text color variables  
+      const textBasicDefaultVariable = figma.variables.createVariable(`${category}/text/basic/default`, modeCollection, "COLOR");
+      const textBasicHoveredVariable = figma.variables.createVariable(`${category}/text/basic/hovered`, modeCollection, "COLOR");
+      const textBasicPressedVariable = figma.variables.createVariable(`${category}/text/basic/pressed`, modeCollection, "COLOR");
+
+      // Text colors use opposite logic - dark text on light backgrounds, light text on dark backgrounds
+      const lightTextVariable = baseColorVariables.get(`${category}/1`) || baseColorVariables.get(`${category}/on-origin-light-default`);
+      const darkTextVariable = baseColorVariables.get(`${category}/14`) || baseColorVariables.get(`${category}/on-origin-dark-default`);
+
+      if (lightTextVariable && darkTextVariable) {
+        textBasicDefaultVariable.setValueForMode(lightMode.modeId, figma.variables.createVariableAlias(lightTextVariable));
+        textBasicDefaultVariable.setValueForMode(darkMode.modeId, figma.variables.createVariableAlias(darkTextVariable));
+        
+        textBasicHoveredVariable.setValueForMode(lightMode.modeId, figma.variables.createVariableAlias(lightTextVariable));
+        textBasicHoveredVariable.setValueForMode(darkMode.modeId, figma.variables.createVariableAlias(darkTextVariable));
+        
+        textBasicPressedVariable.setValueForMode(lightMode.modeId, figma.variables.createVariableAlias(lightTextVariable));
+        textBasicPressedVariable.setValueForMode(darkMode.modeId, figma.variables.createVariableAlias(darkTextVariable));
+      }
+
+      // Create border color variables
+      const borderBasicDefaultVariable = figma.variables.createVariable(`${category}/border/basic/default`, modeCollection, "COLOR");
+      const borderBasicHoveredVariable = figma.variables.createVariable(`${category}/border/basic/hovered`, modeCollection, "COLOR");
+      const borderBasicPressedVariable = figma.variables.createVariable(`${category}/border/basic/pressed`, modeCollection, "COLOR");
+
+      // Border colors use mid-range values
+      const lightBorderVariable = baseColorVariables.get(`${category}/7`) || baseColorVariables.get(`${category}/origin-light-default`);
+      const darkBorderVariable = baseColorVariables.get(`${category}/7`) || baseColorVariables.get(`${category}/origin-dark-default`);
+
+      if (lightBorderVariable && darkBorderVariable) {
+        borderBasicDefaultVariable.setValueForMode(lightMode.modeId, figma.variables.createVariableAlias(lightBorderVariable));
+        borderBasicDefaultVariable.setValueForMode(darkMode.modeId, figma.variables.createVariableAlias(darkBorderVariable));
+        
+        borderBasicHoveredVariable.setValueForMode(lightMode.modeId, figma.variables.createVariableAlias(lightBorderVariable));
+        borderBasicHoveredVariable.setValueForMode(darkMode.modeId, figma.variables.createVariableAlias(darkBorderVariable));
+        
+        borderBasicPressedVariable.setValueForMode(lightMode.modeId, figma.variables.createVariableAlias(lightBorderVariable));
+        borderBasicPressedVariable.setValueForMode(darkMode.modeId, figma.variables.createVariableAlias(darkBorderVariable));
       }
     });
-    
-    sendMessage<string>({ type: "success", data: `Created variable collection with ${colors.length} color variables` });
+
+    sendMessage<string>({ 
+      type: "success", 
+      data: `Created Base Colors collection with ${baseColorVariables.size} variables and Mode collection with semantic color aliases for ${colorsByCategory.size} categories` 
+    });
   } catch (error) {
-    console.warn("Could not create variable collection:", error);
-    // Fallback to regular paint styles
+    console.warn("Could not create variable collections:", error);
+    sendMessage<string>({ 
+      type: "error", 
+      data: `Failed to create variable collections: ${error instanceof Error ? error.message : 'Unknown error'}` 
+    });
   }
 };
 

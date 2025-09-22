@@ -65,9 +65,27 @@ The plugin supports the following design token JSON structure:
 The plugin creates different outputs based on the import method:
 
 ### Design Token Import
-1. **Base Colors Frame**: Visual representation of all design tokens
-2. **Variable Collection**: Figma variables with light/dark modes for token-based design
-3. **Paint Styles**: Local paint styles in the "Base Colors/" category
+1. **Base Colors Frame**: Visual representation of all design tokens organized by category
+2. **Base Colors Collection**: Figma variable collection containing all raw color values with Default mode
+3. **Mode Collection**: Semantic color variables with Light Mode and Dark Mode containing aliases to Base Colors
+4. **Semantic Variables**: Automatically creates variables for:
+   - Background colors (`category/bg/basic/level-1`, `category/bg/basic/level-1/hovered`, etc.)
+   - Text colors (`category/text/basic/default`, `category/text/basic/hovered`, etc.) 
+   - Border colors (`category/border/basic/default`, `category/border/basic/hovered`, etc.)
+5. **Paint Styles**: Local paint styles in the "Base Colors/" category
+
+#### Variable Collection Structure
+The plugin creates two collections following professional design system patterns:
+
+**Base Colors Collection (Default mode):**
+- Contains raw color values from JSON (0-14, origin-*, transparent-*, etc.)
+- Organized by category (e.g., `dibe-category1/0`, `dibe-category1/origin-light-default`)
+
+**Mode Collection (Light Mode / Dark Mode):**
+- Semantic variables that alias to Base Colors
+- Light mode uses high numbers (14, 13, 12) for backgrounds and low numbers (1, 2, 3) for text
+- Dark mode uses low numbers (1, 2, 3) for backgrounds and high numbers (14, 13, 12) for text
+- Enables automatic theme switching in Figma
 
 ### Manual Import
 1. **Custom Color Palette Frame**: Visual color swatches in a grid layout
