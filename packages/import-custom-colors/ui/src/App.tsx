@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DBButton, DBInfotext } from '@db-ux/react-core-components';
+import { DBButton, DBInfotext, DBBrand, DBHeader, DBPage, DBSection } from '@db-ux/react-core-components';
 
 interface CustomColor {
   name: string;
@@ -11,7 +11,7 @@ interface PluginMessage {
   data?: any;
 }
 
-const App: React.FC = () => {
+const ImportColorsPage: React.FC = () => {
   const [colors, setColors] = useState<CustomColor[]>([]);
   const [newColorName, setNewColorName] = useState('');
   const [newColorHex, setNewColorHex] = useState('#000000');
@@ -69,6 +69,7 @@ const App: React.FC = () => {
       return;
     }
 
+    setMessage('');
     parent.postMessage({
       pluginMessage: {
         type: 'import-colors',
@@ -219,6 +220,19 @@ const App: React.FC = () => {
         </DBButton>
       </div>
     </div>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <DBPage
+      variant="fixed"
+      header={<DBHeader brand={<DBBrand>Import Custom Colors</DBBrand>}></DBHeader>}
+    >
+      <DBSection spacing="none">
+        <ImportColorsPage />
+      </DBSection>
+    </DBPage>
   );
 };
 
