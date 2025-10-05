@@ -28,5 +28,8 @@
     "@types/node": "^24.6.1",
     "npm-run-all2": "8.0.4",
     "adm-zip": "^0.5.16"
+  },
+  "engines": {
+    "node": ">= 22"
   }
 }
