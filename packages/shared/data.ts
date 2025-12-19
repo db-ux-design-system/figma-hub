@@ -8,7 +8,8 @@ export type PluginMessage<T> = {
     | "loading"
     | "error"
     | "storage"
-    | "counter";
+    | "counter"
+    | "success";
   data: T;
 };
 
@@ -53,4 +54,11 @@ export type UiMessage = {
 export type UiMessageDesignMigration = {
   type: "analyze";
   data?: any;
+};
+
+export type UiMessageImportColors = {
+  type: "import-json";
+  data: {
+    jsonData: string;
+  };
 };
