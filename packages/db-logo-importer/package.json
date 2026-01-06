@@ -1,0 +1,12 @@
+{
+  "name": "svg-to-component",
+  "version": "0.1.0",
+  "description": "Figma plugin to create components from SVGs, assign color variables, and scale.",
+  "main": "code.js",
+  "scripts": {
+    "build": "echo No build step yet",
+    "start": "echo Open in Figma"
+  },
+  "author": "",
+  "license": "MIT"
+}

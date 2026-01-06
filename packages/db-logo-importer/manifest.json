@@ -1,0 +1,11 @@
+{
+  "name": "🚅 DB Logo Importer",
+  "id": "db-logo-importer",
+  "api": "1.0.0",
+  "main": "code.js",
+  "editorType": ["figma"],
+  "ui": "ui.html",
+  "capabilities": [],
+  "enableProposedApi": false,
+  "permissions": ["teamlibrary"]
+}

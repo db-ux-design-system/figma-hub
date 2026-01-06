@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>DB Logo Importer</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        margin: 24px;
+      }
+      input,
+      button {
+        margin: 8px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>DB Logo Importer</h2>
+    <input
+      type="file"
+      id="svgFile"
+      name="Select SVG file"
+      accept="image/svg+xml"
+    />
+    <br />
+    <button id="importBtn">Import SVG</button>
+    <div id="feedback" style="color: #b00; margin-top: 8px"></div>
+    <script>
+      const feedback = document.getElementById("feedback");
+      document.getElementById("importBtn").onclick = () => {
+        feedback.textContent = "";
+        const fileInput = document.getElementById("svgFile");
+        // Removed reference to non-existent 'targetSize' element
+        if (fileInput.files.length === 0) {
+          feedback.textContent = "Please select an SVG file.";
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (!reader.result || !reader.result.includes("<svg")) {
+            feedback.textContent =
+              "The selected file does not appear to be a valid SVG.";
+            return;
+          }
+          parent.postMessage(
+            {
+              pluginMessage: {
+                type: "import-svg",
+                svg: reader.result,
+                filename: fileInput.files[0].name,
+              },
+            },
+            "*"
+          );
+        };
+        reader.onerror = () => {
+          feedback.textContent = "Error reading the SVG file.";
+        };
+        reader.readAsText(fileInput.files[0]);
+      };
+
+      // Listen for feedback from the plugin code
+      window.onmessage = (event) => {
+        const { pluginMessage } = event.data;
+        if (pluginMessage && pluginMessage.feedback) {
+          feedback.textContent = pluginMessage.feedback;
+        }
+      };
+    </script>
+  </body>
+</html>
