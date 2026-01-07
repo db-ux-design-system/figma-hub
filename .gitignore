@@ -4,3 +4,4 @@ dist
 /packages/**/index.html
 /packages/**/index.js
 .env
+.DS_Store
