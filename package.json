@@ -26,8 +26,8 @@
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^24.6.2",
-    "npm-run-all2": "8.0.4",
-    "adm-zip": "^0.5.16"
+    "adm-zip": "^0.5.16",
+    "npm-run-all2": "8.0.4"
   },
   "engines": {
     "node": ">= 22"
