@@ -27,4 +27,7 @@ jobs:
         uses: ./.github/actions/npm-cache
 
       - name: 🔨 Build Packages
-        run: npm run build
+        run: |          
+          node node_modules/@db-ux/db-theme-fonts/build/scripts/index.js
+          node node_modules/@db-ux/db-theme-icons/build/scripts/index.js
+          npm run build

@@ -99,7 +99,7 @@ const App = () => {
           className="w-full"
         />
 
-        <DBButton variant="brand" onClick={handleImport} disabled={isLoading}>
+        <DBButton icon="upload" variant="brand" onClick={handleImport} disabled={isLoading}>
           {isLoading ? "Importing..." : "Import SVG"}
         </DBButton>
       </DBStack>
