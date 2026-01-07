@@ -76,7 +76,7 @@ figma.ui.onmessage = async (msg) => {
 
       // 6. Variable Assignment (Fills & Height)
       try {
-        console.log("Fetching library variables...");
+        // console.log("Fetching library variables...");
 
         const [varDB, varAdd, varHeight] = await Promise.all([
           figma.variables.importVariableByKeyAsync(CONFIG.keys.dbLogo),
@@ -93,7 +93,7 @@ figma.ui.onmessage = async (msg) => {
               variable
             );
             target.fills = [paint];
-            console.log(`Variable bound to fill of: "${layerName}"`);
+            // console.log(`Variable bound to fill of: "${layerName}"`);
           }
         };
 
@@ -101,7 +101,7 @@ figma.ui.onmessage = async (msg) => {
         bindFill("Logo Addition", varAdd);
 
         // Bind Height variable and Lock Aspect Ratio
-        component.setBoundVariable("height", varHeight.id);
+        component.setBoundVariable("height", varHeight);
         component.constrainProportions = true;
       } catch (varError) {
         console.error("Variable assignment failed:", varError);
