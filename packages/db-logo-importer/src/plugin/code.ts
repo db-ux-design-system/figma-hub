@@ -1,4 +1,4 @@
-figma.showUI(__html__, { width: 400, height: 250 });
+figma.showUI(__html__, { width: 500, height: 350 });
 
 /**
  * CONFIGURATION: Centralized IDs and Constants
@@ -17,7 +17,7 @@ figma.ui.onmessage = async (msg) => {
     const { svg: svgText, filename } = msg;
 
     if (!svgText || !svgText.includes("<svg")) {
-      figma.notify("❌ Error: Invalid SVG data received.");
+      figma.notify("Error: Invalid SVG data received.");
       return;
     }
 
@@ -25,9 +25,6 @@ figma.ui.onmessage = async (msg) => {
       // 1. Initial SVG creation
       const svgNode = figma.createNodeFromSvg(svgText);
       const cleanName = (filename || "Imported Logo").replace(/\.[^/.]+$/, "");
-
-      svgNode.x = figma.viewport.center.x;
-      svgNode.y = figma.viewport.center.y;
 
       // 2. Layer Processing (Flattening & Renaming)
       if (svgNode.type === "FRAME") {
@@ -51,29 +48,33 @@ figma.ui.onmessage = async (msg) => {
       component.name = cleanName;
       svgNode.name = "SVG Container";
 
-      // IMPORTANT: Append child before defining Auto Layout behavior
+      // Append child before defining Auto Layout
       component.appendChild(svgNode);
       figma.currentPage.appendChild(component);
 
       // 4. Scaling and Auto Layout Setup
-      // We resize the SVG first so the parent knows the dimensions to "Hug"
       const scale = CONFIG.targetHeight / svgNode.height;
       const newWidth = svgNode.width * scale;
       svgNode.resize(newWidth, CONFIG.targetHeight);
 
-      // Now set Auto Layout
+      // Configure Auto Layout
       component.layoutMode = "HORIZONTAL";
-      component.primaryAxisSizingMode = "AUTO"; // This is "Hug" (Width)
-      component.counterAxisSizingMode = "FIXED"; // This is "Fixed" (Height)
+      component.primaryAxisSizingMode = "AUTO"; // Hug Width
+      component.counterAxisSizingMode = "FIXED"; // Fixed Height
 
-      // Reset paddings and gaps to ensure a tight hug
       component.paddingLeft = 0;
       component.paddingRight = 0;
       component.paddingTop = 0;
       component.paddingBottom = 0;
       component.itemSpacing = 0;
 
-      // 5. Variable Assignment (Fills & Height)
+      // 5. Positioning in Center of Viewport
+      // We do this after resizing so we can offset by the actual width/height
+      const viewCenter = figma.viewport.center;
+      component.x = viewCenter.x - component.width / 2;
+      component.y = viewCenter.y - component.height / 2;
+
+      // 6. Variable Assignment (Fills & Height)
       try {
         console.log("Fetching library variables...");
 
@@ -96,25 +97,22 @@ figma.ui.onmessage = async (msg) => {
           }
         };
 
-        // Apply fills
         bindFill("DB Logo", varDB);
         bindFill("Logo Addition", varAdd);
 
         // Bind Height variable and Lock Aspect Ratio
         component.setBoundVariable("height", varHeight.id);
         component.constrainProportions = true;
-
-        console.log("Height variable and Proportions locked.");
       } catch (varError) {
         console.error("Variable assignment failed:", varError);
-        figma.notify("⚠️ Variables could not be linked. Check Library.");
+        figma.notify("Variables could not be linked. Check Library.");
       }
 
-      figma.notify("✅ Component created successfully");
-      figma.ui.postMessage({ feedback: "✅ Success: Logo imported." });
+      figma.notify("Component created in viewport center");
+      figma.ui.postMessage({ feedback: "Success: Logo imported." });
     } catch (e) {
       console.error("Critical Plugin Error:", e);
-      figma.notify("👀 Error: SVG import failed.");
+      figma.notify("Error: SVG import failed.");
       figma.ui.postMessage({ feedback: "Error: " + e.message });
     }
   }

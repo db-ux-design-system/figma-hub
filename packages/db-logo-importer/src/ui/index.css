@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+/* Teste, ob CSS überhaupt geht, indem du den Body einfärbst */
+body {
+  background-color: var(--db-neutral-bg-basic-level-1-default);
+  color: var(--db-neutral-on-bg-emphasis-100-default);
+}
+
+h1,
+p {
+  color: var(--db-neutral-on-bg-emphasis-100-default);
+}

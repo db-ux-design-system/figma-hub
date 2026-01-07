@@ -26,7 +26,11 @@
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^22.15.30",
-    "npm-run-all2": "8.0.4",
-    "adm-zip": "^0.5.16"
+    "adm-zip": "^0.5.16",
+    "npm-run-all2": "8.0.4"
+  },
+  "dependencies": {
+    "@db-ux-inner-source/db-theme": "^5.3.0",
+    "@db-ux/react-core-components": "^4.2.6"
   }
 }

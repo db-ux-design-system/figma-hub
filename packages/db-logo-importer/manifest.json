@@ -1,11 +1,13 @@
 {
   "name": "🚅 DB Logo Importer",
-  "id": "db-logo-importer",
+  "id": "1590462040996560100",
   "api": "1.0.0",
-  "main": "code.js",
+  "main": "dist/code.js",
+  "ui": "dist/index.html",
   "editorType": ["figma"],
-  "ui": "ui.html",
   "capabilities": [],
   "enableProposedApi": false,
-  "permissions": ["teamlibrary"]
+  "permissions": ["teamlibrary"],
+  "documentAccess": "dynamic-page",
+  "networkAccess": { "allowedDomains": ["none"] }
 }
