@@ -1,5 +1,5 @@
 {
-  "name": "inspect-ui",
+  "name": "db-logo-importer-ui",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -9,12 +9,10 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@db-ux/react-core-components": "1.2.1",
-    "@db-ux/db-theme": "1.0.2",
-    "highlight.js": "^11.11.1",
+    "@db-ux/db-theme": "5.3.0",
+    "@db-ux/react-core-components": "4.2.6",
     "react": "19.2.3",
-    "react-dom": "19.2.3",
-    "prettier": "3.6.2"
+    "react-dom": "19.2.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.31.0",

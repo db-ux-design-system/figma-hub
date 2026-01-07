@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from "react";
-import "./index.css";
-import { DBButton, DBInput, DBInfotext } from "@db-ux/react-core-components";
+import {
+  DBButton,
+  DBInput,
+  DBInfotext,
+  DBStack,
+} from "@db-ux/react-core-components";
 
 const App = () => {
   const [feedback, setFeedback] = useState<string>("");
@@ -53,7 +57,7 @@ const App = () => {
             filename: file.name,
           },
         },
-        "*"
+        "*",
       );
     };
 
@@ -66,7 +70,7 @@ const App = () => {
   };
 
   return (
-    <div className="p-3 flex flex-col gap-6">
+    <div className="p-fix-md flex flex-col gap-fix-md">
       {/* Header Bereich */}
       <header>
         <h1>DB Logo Importer</h1>
@@ -85,7 +89,7 @@ const App = () => {
       </header>
 
       {/* Input Sektion */}
-      <div className="flex flex-col gap-5">
+      <DBStack>
         <DBInput
           label="Logo SVG auswählen"
           showLabel={false}
@@ -95,20 +99,18 @@ const App = () => {
           className="w-full"
         />
 
-        <DBButton variant="brand" onClick={handleImport}>
+        <DBButton variant="brand" onClick={handleImport} disabled={isLoading}>
           {isLoading ? "Importing..." : "Import SVG"}
         </DBButton>
-      </div>
+      </DBStack>
 
       {/* Feedback / Status */}
       {feedback && (
-        <div>
-          <DBInfotext
-            semantic={feedback.includes("Success") ? "successful" : "critical"}
-          >
-            {feedback}
-          </DBInfotext>
-        </div>
+        <DBInfotext
+          semantic={feedback.includes("Success") ? "successful" : "critical"}
+        >
+          {feedback}
+        </DBInfotext>
       )}
     </div>
   );

@@ -29,7 +29,7 @@ figma.ui.onmessage = async (msg) => {
       // 2. Layer Processing (Flattening & Renaming)
       if (svgNode.type === "FRAME") {
         const vectors = svgNode.children.filter(
-          (c) => c.type === "VECTOR" && c.name === "Vector"
+          (c) => c.type === "VECTOR" && c.name === "Vector",
         );
         if (vectors.length > 0) {
           const flattened = figma.flatten(vectors, svgNode);
@@ -84,13 +84,13 @@ figma.ui.onmessage = async (msg) => {
           figma.variables.importVariableByKeyAsync(CONFIG.keys.componentHeight),
         ]);
 
-        const bindFill = (layerName, variable) => {
+        const bindFill = (layerName: string, variable: Variable) => {
           const target = component.findOne((n) => n.name === layerName);
           if (target && "fills" in target) {
             const paint = figma.variables.setBoundVariableForPaint(
               { type: "SOLID", color: { r: 0, g: 0, b: 0 } },
               "color",
-              variable
+              variable,
             );
             target.fills = [paint];
             console.log(`Variable bound to fill of: "${layerName}"`);
@@ -101,7 +101,7 @@ figma.ui.onmessage = async (msg) => {
         bindFill("Logo Addition", varAdd);
 
         // Bind Height variable and Lock Aspect Ratio
-        component.setBoundVariable("height", varHeight.id);
+        component.setBoundVariable("height", await figma.variables.getVariableByIdAsync(varHeight.id));
         component.constrainProportions = true;
       } catch (varError) {
         console.error("Variable assignment failed:", varError);
@@ -113,7 +113,7 @@ figma.ui.onmessage = async (msg) => {
     } catch (e) {
       console.error("Critical Plugin Error:", e);
       figma.notify("Error: SVG import failed.");
-      figma.ui.postMessage({ feedback: "Error: " + e.message });
+      figma.ui.postMessage({ feedback: "Error: " + e });
     }
   }
 };
