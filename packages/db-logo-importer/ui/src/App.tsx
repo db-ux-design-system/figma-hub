@@ -32,7 +32,7 @@ const App = () => {
 
   const handleImport = () => {
     if (!file) {
-      setFeedback("Please select an SVG file.");
+      setFeedback("Please select a SVG file.");
       return;
     }
 
@@ -57,7 +57,7 @@ const App = () => {
             filename: file.name,
           },
         },
-        "*",
+        "*"
       );
     };
 
@@ -83,8 +83,17 @@ const App = () => {
             className="underline"
           >
             Marketingportal
-          </a>
-          .
+          </a>{" "}
+          and read the{" "}
+          <a
+            href="https://www.figma.com/design/WXIWe7Cj9bKUAanFfMZlUK/feat--initial-design-logo---pulse--1430--1575?node-id=13920-21204"
+            rel="noopener noreferrer"
+            target="_blank"
+            className="underline"
+          >
+            documentation
+          </a>{" "}
+          on implementing it in the logo component.
         </p>
       </header>
 
@@ -99,7 +108,12 @@ const App = () => {
           className="w-full"
         />
 
-        <DBButton icon="upload" variant="brand" onClick={handleImport} disabled={isLoading}>
+        <DBButton
+          icon="upload"
+          variant="brand"
+          onClick={handleImport}
+          disabled={isLoading}
+        >
           {isLoading ? "Importing..." : "Import SVG"}
         </DBButton>
       </DBStack>

@@ -7,7 +7,7 @@ const CONFIG = {
   keys: {
     dbLogo: "998998d67d3ebef6f2692db932bce69431b3d0cc",
     logoAddition: "497497bca9694f6004d1667de59f1a903b3cd3ef",
-    componentHeight: "1395b959268f9a53cbbacbf9619b871914c8a9d6",
+    componentHeight: "a86f4bd0e008abb3435ff1dcbe25042ae9fef2d6",
   },
   targetHeight: 24,
 };
@@ -29,7 +29,7 @@ figma.ui.onmessage = async (msg) => {
       // 2. Layer Processing (Flattening & Renaming)
       if (svgNode.type === "FRAME") {
         const vectors = svgNode.children.filter(
-          (c) => c.type === "VECTOR" && c.name === "Vector",
+          (c) => c.type === "VECTOR" && c.name === "Vector"
         );
         if (vectors.length > 0) {
           const flattened = figma.flatten(vectors, svgNode);
@@ -68,6 +68,10 @@ figma.ui.onmessage = async (msg) => {
       component.paddingBottom = 0;
       component.itemSpacing = 0;
 
+      // Configure Layout Setup Container
+      component.children[0].lockAspectRatio();
+      component.children[0].layoutGrow = 1;
+
       // 5. Positioning in Center of Viewport
       // We do this after resizing so we can offset by the actual width/height
       const viewCenter = figma.viewport.center;
@@ -84,13 +88,15 @@ figma.ui.onmessage = async (msg) => {
           figma.variables.importVariableByKeyAsync(CONFIG.keys.componentHeight),
         ]);
 
+        console.log("Variables fetched:", { varDB, varAdd, varHeight });
+
         const bindFill = (layerName: string, variable: Variable) => {
           const target = component.findOne((n) => n.name === layerName);
           if (target && "fills" in target) {
             const paint = figma.variables.setBoundVariableForPaint(
               { type: "SOLID", color: { r: 0, g: 0, b: 0 } },
               "color",
-              variable,
+              variable
             );
             target.fills = [paint];
             // console.log(`Variable bound to fill of: "${layerName}"`);
@@ -101,8 +107,15 @@ figma.ui.onmessage = async (msg) => {
         bindFill("Logo Addition", varAdd);
 
         // Bind Height variable and Lock Aspect Ratio
-        component.setBoundVariable("height", await figma.variables.getVariableByIdAsync(varHeight));
-        component.constrainProportions = true;
+        console.log("Binding height variable..." + varHeight);
+        console.log("Variable Scopes:", varHeight.scopes);
+        component.setBoundVariable("height", varHeight);
+        // component.setBoundVariable(
+        //   "height",
+        //   await figma.variables.getVariableByIdAsync(varHeight)
+        // );
+        component.lockAspectRatio();
+        component.children.primaryAxisSizingMode = "AUTO"; // Hug Width
       } catch (varError) {
         console.error("Variable assignment failed:", varError);
         figma.notify("Variables could not be linked. Check Library.");
