@@ -88,7 +88,7 @@ figma.ui.onmessage = async (msg) => {
           figma.variables.importVariableByKeyAsync(CONFIG.keys.componentHeight),
         ]);
 
-        console.log("Variables fetched:", { varDB, varAdd, varHeight });
+        // console.log("Variables fetched:", { varDB, varAdd, varHeight });
 
         const bindFill = (layerName: string, variable: Variable) => {
           const target = component.findOne((n) => n.name === layerName);
@@ -107,8 +107,6 @@ figma.ui.onmessage = async (msg) => {
         bindFill("Logo Addition", varAdd);
 
         // Bind Height variable and Lock Aspect Ratio
-        console.log("Binding height variable..." + varHeight);
-        console.log("Variable Scopes:", varHeight.scopes);
         component.setBoundVariable("height", varHeight);
         // component.setBoundVariable(
         //   "height",
@@ -117,14 +115,14 @@ figma.ui.onmessage = async (msg) => {
         component.lockAspectRatio();
         component.children.primaryAxisSizingMode = "AUTO"; // Hug Width
       } catch (varError) {
-        console.error("Variable assignment failed:", varError);
+        // console.error("Variable assignment failed:", varError);
         figma.notify("Variables could not be linked. Check Library.");
       }
 
       figma.notify("Component created in viewport center");
       figma.ui.postMessage({ feedback: "Success: Logo imported." });
     } catch (e) {
-      console.error("Critical Plugin Error:", e);
+      // console.error("Critical Plugin Error:", e);
       figma.notify("Error: SVG import failed.");
       figma.ui.postMessage({ feedback: "Error: " + e });
     }
