@@ -11,13 +11,13 @@ const App = () => {
   const [file, setFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Listener für Nachrichten vom Plugin-Backend (code.ts)
+  // Listener for messages from the plugin backend (code.ts)
   useEffect(() => {
     window.onmessage = (event) => {
       const { pluginMessage } = event.data;
       if (pluginMessage && pluginMessage.feedback) {
         setFeedback(pluginMessage.feedback);
-        setIsLoading(false); // Laden beenden, wenn Feedback kommt
+        setIsLoading(false); // Loading ends when feedback is received
       }
     };
   }, []);
@@ -26,7 +26,7 @@ const App = () => {
     const selectedFile = event.target.files?.[0];
     if (selectedFile) {
       setFile(selectedFile);
-      setFeedback(""); // Altes Feedback löschen
+      setFeedback(""); // Clear old feedback
     }
   };
 
@@ -48,7 +48,7 @@ const App = () => {
         return;
       }
 
-      // Sende Daten an Figma
+      // Send data to Figma
       parent.postMessage(
         {
           pluginMessage: {
@@ -75,7 +75,7 @@ const App = () => {
       <header>
         <h1>DB Logo Importer</h1>
         <p className="text-sm">
-          Please download the logo svg from the{" "}
+          Please download the custom logo SVG from the{" "}
           <a
             href="https://marketingportal.extranet.deutschebahn.com/marketingportal/Marke-und-Design/Basiselemente/Logo/Logozusatz-mit-Tool"
             target="_blank"
@@ -93,14 +93,23 @@ const App = () => {
           >
             documentation
           </a>{" "}
-          on implementing it in the logo component.
+          on implementing it in the{" "}
+          <a
+            href="https://www.figma.com/design/WXIWe7Cj9bKUAanFfMZlUK/feat--initial-design-logo---pulse--1430--1575?node-id=13656-3564"
+            rel="noopener noreferrer"
+            target="_blank"
+            className="underline"
+          >
+            logo component
+          </a>
+          .
         </p>
       </header>
 
       {/* Input Sektion */}
       <DBStack>
         <DBInput
-          label="Logo SVG auswählen"
+          label="Choose SVG File"
           showLabel={false}
           type="file"
           accept="image/svg+xml"
