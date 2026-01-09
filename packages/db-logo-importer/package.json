@@ -1,5 +1,6 @@
 {
-  "name": "@db-ux/db-logo-importer",
+  "name": "db-logo-importer",
+  "private": true,
   "version": "0.1.0",
   "description": "Figma plugin to create components from SVGs, assign color variables, and scale.",
   "main": "index.js",

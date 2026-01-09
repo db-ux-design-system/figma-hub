@@ -1,5 +1,6 @@
 {
   "name": "db-logo-importer-code",
+  "private": true,
   "version": "1.0.0",
   "main": "design-migration.js",
   "type": "module",

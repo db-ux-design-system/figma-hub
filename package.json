@@ -15,14 +15,14 @@
     "build:handover": "npm run build -w=@db-ux/handover",
     "build:auto-sync": "npm run build -w=@db-ux/auto-sync",
     "build:design-migration": "npm run build -w=@db-ux/design-migration",
-    "build:db-logo-importer": "npm run build -w=@db-ux/db-logo-importer",
+    "build:db-logo-importer": "npm run build -w=db-logo-importer",
     "dev": "npm-run-all --parallel dev:*",
     "dev:codegen": "npm run dev -w=@db-ux/codegen",
     "dev:inspect": "npm run dev -w=@db-ux/inspect",
     "dev:handover": "npm run dev -w=@db-ux/handover",
     "dev:auto-sync": "npm run dev -w=@db-ux/auto-sync",
     "dev:design-migration": "npm run dev -w=@db-ux/design-migration",
-    "dev:db-logo-importer": "npm run dev -w=@db-ux/db-logo-importer"
+    "dev:db-logo-importer": "npm run dev -w=db-logo-importer"
   },
   "author": "",
   "license": "MIT",
