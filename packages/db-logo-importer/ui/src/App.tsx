@@ -109,7 +109,7 @@ const App = () => {
         </p>
       </header>
 
-      {/* Input Sektion */}
+      {/* Input Section */}
       <DBStack>
         <DBInput
           label="Choose SVG File"
