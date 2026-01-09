@@ -2,7 +2,7 @@
   "name": "db-logo-importer-code",
   "private": true,
   "version": "1.0.0",
-  "main": "design-migration.js",
+  "main": "index.js",
   "type": "module",
   "scripts": {
     "build": "esbuild code.ts --bundle --outfile=../dist/index.js  --target=ES6",
