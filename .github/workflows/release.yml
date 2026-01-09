@@ -31,7 +31,7 @@ jobs:
         env:
           ASSET_INIT_VECTOR: ${{ secrets.ASSET_INIT_VECTOR }}
           ASSET_PASSWORD: ${{ secrets.ASSET_PASSWORD }}
-        run: |          
+        run: |
           node node_modules/@db-ux/db-theme-fonts/build/scripts/index.js
           node node_modules/@db-ux/db-theme-icons/build/scripts/index.js
           npm run build:${{ matrix.package }}

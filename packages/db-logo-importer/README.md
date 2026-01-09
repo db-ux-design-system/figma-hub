@@ -1,4 +1,4 @@
-# SVG to Component Figma Plugin
+# DB Logo Importer
 
 This plugin creates a Figma component from an SVG, assigns color variables to shapes, and scales it to a defined size.
 
