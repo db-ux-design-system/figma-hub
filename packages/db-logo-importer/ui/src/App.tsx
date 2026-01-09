@@ -71,7 +71,7 @@ const App = () => {
 
   return (
     <div className="p-fix-md flex flex-col gap-fix-md">
-      {/* Header Bereich */}
+      {/* Header area */}
       <header>
         <h2>DB Logo Importer</h2>
         <p className="text-sm">
