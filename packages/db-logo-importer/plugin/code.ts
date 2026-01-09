@@ -48,7 +48,6 @@ figma.ui.onmessage = async (msg) => {
       component.name = cleanName;
       svgNode.name = "SVG Container";
 
-      // Append child before defining Auto Layout
       component.appendChild(svgNode);
       figma.currentPage.appendChild(component);
 
@@ -57,7 +56,6 @@ figma.ui.onmessage = async (msg) => {
       const newWidth = svgNode.width * scale;
       svgNode.resize(newWidth, CONFIG.targetHeight);
 
-      // Configure Auto Layout
       component.layoutMode = "HORIZONTAL";
       component.primaryAxisSizingMode = "AUTO"; // Hug Width
       component.counterAxisSizingMode = "FIXED"; // Fixed Height
@@ -73,22 +71,16 @@ figma.ui.onmessage = async (msg) => {
       component.children[0].layoutGrow = 1;
 
       // 5. Positioning in Center of Viewport
-      // We do this after resizing so we can offset by the actual width/height
       const viewCenter = figma.viewport.center;
       component.x = viewCenter.x - component.width / 2;
       component.y = viewCenter.y - component.height / 2;
 
-      // 6. Variable Assignment (Fills & Height)
       try {
-        // console.log("Fetching library variables...");
-
         const [varDB, varAdd, varHeight] = await Promise.all([
           figma.variables.importVariableByKeyAsync(CONFIG.keys.dbLogo),
           figma.variables.importVariableByKeyAsync(CONFIG.keys.logoAddition),
           figma.variables.importVariableByKeyAsync(CONFIG.keys.componentHeight),
         ]);
-
-        // console.log("Variables fetched:", { varDB, varAdd, varHeight });
 
         const bindFill = (layerName: string, variable: Variable) => {
           const target = component.findOne((n) => n.name === layerName);
@@ -99,30 +91,21 @@ figma.ui.onmessage = async (msg) => {
               variable
             );
             target.fills = [paint];
-            // console.log(`Variable bound to fill of: "${layerName}"`);
           }
         };
 
         bindFill("DB Logo", varDB);
         bindFill("Logo Addition", varAdd);
 
-        // Bind Height variable and Lock Aspect Ratio
         component.setBoundVariable("height", varHeight);
-        // component.setBoundVariable(
-        //   "height",
-        //   await figma.variables.getVariableByIdAsync(varHeight)
-        // );
         component.lockAspectRatio();
-        component.children.primaryAxisSizingMode = "AUTO"; // Hug Width
       } catch (varError) {
-        // console.error("Variable assignment failed:", varError);
         figma.notify("Variables could not be linked. Check Library.");
       }
 
       figma.notify("Component created in viewport center");
       figma.ui.postMessage({ feedback: "Success: Logo imported." });
     } catch (e) {
-      // console.error("Critical Plugin Error:", e);
       figma.notify("Error: SVG import failed.");
       figma.ui.postMessage({ feedback: "Error: " + e });
     }
