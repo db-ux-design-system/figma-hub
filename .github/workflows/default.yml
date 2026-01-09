@@ -31,6 +31,7 @@ jobs:
           ASSET_INIT_VECTOR: ${{ secrets.ASSET_INIT_VECTOR }}
           ASSET_PASSWORD: ${{ secrets.ASSET_PASSWORD }}
         run: |
+          # TODO: as soon as we've migrated this repository to pnpm, we could put this package on the allow-list and  remove these two lines again.
           node node_modules/@db-ux/db-theme-fonts/build/scripts/index.js
           node node_modules/@db-ux/db-theme-icons/build/scripts/index.js
           npm run build
