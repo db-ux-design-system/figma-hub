@@ -1,4 +1,4 @@
-figma.showUI(__html__, { width: 500, height: 350 });
+figma.showUI(__html__, { width: 500, height: 380 });
 
 /**
  * CONFIGURATION: Centralized IDs and Constants

@@ -73,18 +73,21 @@ const App = () => {
     <div className="p-fix-md flex flex-col gap-fix-md">
       {/* Header Bereich */}
       <header>
-        <h1>DB Logo Importer</h1>
+        <h2>DB Logo Importer</h2>
         <p className="text-sm">
-          Please download the custom logo SVG from the{" "}
+          Please use the{" "}
           <a
             href="https://marketingportal.extranet.deutschebahn.com/marketingportal/Marke-und-Design/Basiselemente/Logo/Logozusatz-mit-Tool"
             target="_blank"
             rel="noopener noreferrer"
             className="underline"
           >
-            Marketingportal
+            DB brand logo generator
           </a>{" "}
-          and read the{" "}
+          to create a custom logo for your project or product.
+        </p>
+        <p className="text-sm">
+          Please also read the{" "}
           <a
             href="https://www.figma.com/design/WXIWe7Cj9bKUAanFfMZlUK/feat--initial-design-logo---pulse--1430--1575?node-id=13920-21204"
             rel="noopener noreferrer"
@@ -93,7 +96,7 @@ const App = () => {
           >
             documentation
           </a>{" "}
-          on implementing it in the{" "}
+          on how to integrate the created SVG into the{" "}
           <a
             href="https://www.figma.com/design/WXIWe7Cj9bKUAanFfMZlUK/feat--initial-design-logo---pulse--1430--1575?node-id=13656-3564"
             rel="noopener noreferrer"
