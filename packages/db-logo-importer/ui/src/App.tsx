@@ -32,7 +32,7 @@ const App = () => {
 
   const handleImport = () => {
     if (!file) {
-      setFeedback("Please select a SVG file.");
+      setFeedback("Please select a SVG file to import.");
       return;
     }
 
