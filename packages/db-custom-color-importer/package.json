@@ -1,0 +1,19 @@
+{
+  "name": "db-custom-color-importer",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Figma plugin to import custom colors from the DB UX Theme Builder",
+  "main": "index.js",
+  "workspaces": [
+    "plugin/*",
+    "ui/*"
+  ],
+  "scripts": {
+    "build": "npm-run-all --parallel build:*",
+    "build:code": "npm run build -w=db-custom-color-importer-code -- --minify",
+    "build:ui": "npm run build -w=db-custom-color-importer-ui",
+    "dev": "npm-run-all --parallel dev:*",
+    "dev:code": "npm run dev -w=db-custom-color-importer-code",
+    "dev:ui": "npm run dev -w=db-custom-color-importer-ui"
+  }
+}
