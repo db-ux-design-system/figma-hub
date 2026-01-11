@@ -7,8 +7,7 @@
     "allowSyntheticDefaultImports": true,
     "typeRoots": [
       "../../../node_modules/@types",
-      "../../../node_modules/@figma",
-      "../../shared"
+      "../../../node_modules/@figma"
     ],
     "paths": {
       "shared": ["../../shared"]

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   DBButton,
   DBInput,
@@ -8,7 +8,6 @@ import {
 } from "@db-ux/react-core-components";
 
 function App() {
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [jsonInput, setJsonInput] = useState("");
   const [deleteMissing, setDeleteMissing] = useState(false);
   const [feedback, setFeedback] = useState<string>("");
@@ -102,7 +101,6 @@ function App() {
           onChange={handleFileChange}
           label="select file"
           showLabel={false}
-          inputRef={fileInputRef}
         />
 
         <DBCheckbox
