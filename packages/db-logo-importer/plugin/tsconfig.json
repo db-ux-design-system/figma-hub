@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "lib": ["esnext"],
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "allowSyntheticDefaultImports": true,
+    "typeRoots": [
+      "../../../node_modules/@types",
+      "../../../node_modules/@figma",
+      "../../shared"
+    ],
+    "paths": {
+      "shared": ["../../shared"]
+    }
+  }
+}
