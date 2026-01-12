@@ -56,20 +56,6 @@ figma.ui.onmessage = async (msg) => {
       const newWidth = svgNode.width * scale;
       svgNode.resize(newWidth, CONFIG.targetHeight);
 
-      component.layoutMode = "HORIZONTAL";
-      component.primaryAxisSizingMode = "AUTO"; // Hug Width
-      component.counterAxisSizingMode = "FIXED"; // Fixed Height
-
-      component.paddingLeft = 0;
-      component.paddingRight = 0;
-      component.paddingTop = 0;
-      component.paddingBottom = 0;
-      component.itemSpacing = 0;
-
-      // Configure Layout Setup Container
-      component.children[0].lockAspectRatio();
-      component.children[0].layoutGrow = 1;
-
       // 5. Positioning in Center of Viewport
       const viewCenter = figma.viewport.center;
       component.x = viewCenter.x - component.width / 2;
@@ -81,6 +67,22 @@ figma.ui.onmessage = async (msg) => {
           figma.variables.importVariableByKeyAsync(CONFIG.keys.logoAddition),
           figma.variables.importVariableByKeyAsync(CONFIG.keys.componentHeight),
         ]);
+
+        component.children[0].layoutGrow = 0;
+        component.children[0].lockAspectRatio();
+        component.children[0].setBoundVariable("height", varHeight);
+
+        component.lockAspectRatio();
+        component.setBoundVariable("height", varHeight);
+        component.layoutMode = "HORIZONTAL";
+        component.primaryAxisSizingMode = "AUTO"; // Hug Width
+        component.counterAxisSizingMode = "FIXED"; // Fixed Height
+
+        component.paddingLeft = 0;
+        component.paddingRight = 0;
+        component.paddingTop = 0;
+        component.paddingBottom = 0;
+        component.itemSpacing = 0;
 
         const bindFill = (layerName: string, variable: Variable) => {
           const target = component.findOne((n) => n.name === layerName);
@@ -96,9 +98,6 @@ figma.ui.onmessage = async (msg) => {
 
         bindFill("DB Logo", varDB);
         bindFill("Logo Addition", varAdd);
-
-        component.setBoundVariable("height", varHeight);
-        component.lockAspectRatio();
       } catch (varError) {
         figma.notify("Variables could not be linked. Check Library.");
       }
