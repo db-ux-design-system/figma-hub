@@ -52,6 +52,10 @@ export async function exportFullWithAssets(
 
   const exportPage = figma.createPage();
   exportPage.name = "🚀 Icon Export";
+  exportPage.backgrounds = [{
+    type: "SOLID",
+    color: { r: 0.894, g: 0.949, b: 0.992 }
+  }];
 
   const pageCount = figma.root.children.length;
   figma.root.insertChild(pageCount - 1, exportPage);
@@ -79,7 +83,7 @@ export async function exportFullWithAssets(
           .filter(Boolean);
         
         console.log(`📋 Aktualisiere Overview mit ${addedIcons.length} neuen Icons...`);
-        await updateOverviewPage(addedIcons, globalIconData);
+        await updateOverviewPage(addedIcons, globalIconData, iconType);
       }
     }
 

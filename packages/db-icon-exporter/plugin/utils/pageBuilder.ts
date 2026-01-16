@@ -60,6 +60,15 @@ export async function buildGitLabFrame(
           if (node && node.type === "COMPONENT") {
             const instance = node.createInstance();
             instance.name = `${category}/${iconName}/outlined/${size}.svg`;
+            
+            // Unbind and set color
+            const fills = JSON.parse(JSON.stringify(instance.fills)) as Paint[];
+            if (fills.length > 0 && fills[0].type === "SOLID") {
+              fills[0].color = { r: 0.086, g: 0.094, b: 0.106 };
+              delete (fills[0] as any).boundVariables;
+              instance.fills = fills;
+            }
+            
             frame.appendChild(instance);
           }
         }
@@ -72,6 +81,15 @@ export async function buildGitLabFrame(
           if (node && node.type === "COMPONENT") {
             const instance = node.createInstance();
             instance.name = `${category}/${iconName}/filled/${size}.svg`;
+            
+            // Unbind and set color
+            const fills = JSON.parse(JSON.stringify(instance.fills)) as Paint[];
+            if (fills.length > 0 && fills[0].type === "SOLID") {
+              fills[0].color = { r: 0.086, g: 0.094, b: 0.106 };
+              delete (fills[0] as any).boundVariables;
+              instance.fills = fills;
+            }
+            
             frame.appendChild(instance);
           }
         }
@@ -81,6 +99,28 @@ export async function buildGitLabFrame(
         if (node && node.type === "COMPONENT") {
           const instance = node.createInstance();
           instance.name = `db_ic_il_${category}_${iconName}.svg`;
+          
+          // Unbind and set colors for Base and Pulse layers
+          const baseLayer = instance.findOne((n) => n.name === "Base");
+          if (baseLayer && "fills" in baseLayer) {
+            const fills = JSON.parse(JSON.stringify(baseLayer.fills)) as Paint[];
+            if (fills.length > 0 && fills[0].type === "SOLID") {
+              fills[0].color = { r: 0.086, g: 0.094, b: 0.106 };
+              delete (fills[0] as any).boundVariables;
+              baseLayer.fills = fills;
+            }
+          }
+          
+          const pulseLayer = instance.findOne((n) => n.name === "Pulse");
+          if (pulseLayer && "fills" in pulseLayer) {
+            const fills = JSON.parse(JSON.stringify(pulseLayer.fills)) as Paint[];
+            if (fills.length > 0 && fills[0].type === "SOLID") {
+              fills[0].color = { r: 0.925, g: 0, b: 0.086 };
+              delete (fills[0] as any).boundVariables;
+              pulseLayer.fills = fills;
+            }
+          }
+          
           frame.appendChild(instance);
         }
       }
@@ -137,6 +177,15 @@ export async function buildMarketingFrame(
             const instance = node.createInstance();
             let filename = `db_ic_${category}_${iconName}_${size}.svg`;
             instance.name = cleanFilename(filename);
+            
+            // Unbind and set color
+            const fills = JSON.parse(JSON.stringify(instance.fills)) as Paint[];
+            if (fills.length > 0 && fills[0].type === "SOLID") {
+              fills[0].color = { r: 0.157, g: 0.176, b: 0.216 };
+              delete (fills[0] as any).boundVariables;
+              instance.fills = fills;
+            }
+            
             frame.appendChild(instance);
           }
         }
@@ -150,6 +199,15 @@ export async function buildMarketingFrame(
             const instance = node.createInstance();
             let filename = `db_ic_${category}_${iconName}_${size}_filled.svg`;
             instance.name = cleanFilename(filename);
+            
+            // Unbind and set color
+            const fills = JSON.parse(JSON.stringify(instance.fills)) as Paint[];
+            if (fills.length > 0 && fills[0].type === "SOLID") {
+              fills[0].color = { r: 0.157, g: 0.176, b: 0.216 };
+              delete (fills[0] as any).boundVariables;
+              instance.fills = fills;
+            }
+            
             frame.appendChild(instance);
           }
         }
@@ -160,6 +218,28 @@ export async function buildMarketingFrame(
           const instance = node.createInstance();
           let filename = `db_ic_il_${category}_${iconName}.svg`;
           instance.name = cleanFilename(filename);
+          
+          // Unbind and set colors for Base and Pulse layers
+          const baseLayer = instance.findOne((n) => n.name === "Base");
+          if (baseLayer && "fills" in baseLayer) {
+            const fills = JSON.parse(JSON.stringify(baseLayer.fills)) as Paint[];
+            if (fills.length > 0 && fills[0].type === "SOLID") {
+              fills[0].color = { r: 0.157, g: 0.176, b: 0.216 };
+              delete (fills[0] as any).boundVariables;
+              baseLayer.fills = fills;
+            }
+          }
+          
+          const pulseLayer = instance.findOne((n) => n.name === "Pulse");
+          if (pulseLayer && "fills" in pulseLayer) {
+            const fills = JSON.parse(JSON.stringify(pulseLayer.fills)) as Paint[];
+            if (fills.length > 0 && fills[0].type === "SOLID") {
+              fills[0].color = { r: 0.925, g: 0, b: 0.086 };
+              delete (fills[0] as any).boundVariables;
+              pulseLayer.fills = fills;
+            }
+          }
+          
           frame.appendChild(instance);
         }
       }
@@ -169,7 +249,7 @@ export async function buildMarketingFrame(
   return frame;
 }
 
-export async function updateOverviewPage(addedIcons: IconData[], allIcons: IconData[]) {
+export async function updateOverviewPage(addedIcons: IconData[], allIcons: IconData[], iconType: string) {
   const overviewPage = figma.root.children.find((page) =>
     page.name.includes("Overview")
   );
@@ -213,18 +293,27 @@ export async function updateOverviewPage(addedIcons: IconData[], allIcons: IconD
     );
 
     for (const icon of sortedIcons) {
-      // Finde die 24px outlined Variante in allen Icons
       const baseName = extractIconBaseName(icon.name);
-      const size24Icon = allIcons.find(
-        (i) =>
-          extractIconBaseName(i.name) === baseName &&
-          extractIconSize(i.name) === 24 &&
-          !isFilledVariant(i.name)
-      );
-
-      if (!size24Icon) {
-        console.warn(`   ⚠️ Keine 24px Variante gefunden für: ${baseName}`);
-        continue;
+      
+      // Für funktionale Icons: Finde 24px outlined Variante
+      // Für illustrative Icons: Nimm das Icon direkt (keine Varianten)
+      let iconToAdd: IconData | null = null;
+      
+      if (iconType === "functional") {
+        iconToAdd = allIcons.find(
+          (i) =>
+            extractIconBaseName(i.name) === baseName &&
+            extractIconSize(i.name) === 24 &&
+            !isFilledVariant(i.name)
+        ) || null;
+        
+        if (!iconToAdd) {
+          console.warn(`   ⚠️ Keine 24px Variante gefunden für: ${baseName}`);
+          continue;
+        }
+      } else {
+        // Illustrative: Nimm das Icon direkt
+        iconToAdd = icon;
       }
 
       // Prüfe ob Icon bereits vorhanden ist
@@ -235,7 +324,7 @@ export async function updateOverviewPage(addedIcons: IconData[], allIcons: IconD
       let alreadyExists = false;
       for (const inst of existingInstances) {
         const mainComp = await inst.getMainComponentAsync();
-        if (mainComp?.id === size24Icon.id) {
+        if (mainComp?.id === iconToAdd.id) {
           alreadyExists = true;
           break;
         }
@@ -246,7 +335,7 @@ export async function updateOverviewPage(addedIcons: IconData[], allIcons: IconD
         continue;
       }
 
-      const node = await figma.getNodeByIdAsync(size24Icon.id);
+      const node = await figma.getNodeByIdAsync(iconToAdd.id);
       if (node && node.type === "COMPONENT") {
         const instance = node.createInstance();
         categoryFrame.appendChild(instance);
@@ -321,24 +410,16 @@ export async function createChangelogFrame(
   versionFrame.layoutMode = "VERTICAL";
   versionFrame.primaryAxisSizingMode = "AUTO";
   versionFrame.counterAxisSizingMode = "AUTO";
-  versionFrame.itemSpacing = 32;
-  versionFrame.paddingTop = 48;
-  versionFrame.paddingBottom = 48;
-  versionFrame.paddingLeft = 48;
-  versionFrame.paddingRight = 48;
   versionFrame.cornerRadius = 8;
+  versionFrame.strokes = [{ type: "SOLID", color: { r: 0, g: 0, b: 0 } }];
   versionFrame.fills = [{ type: "SOLID", color: { r: 1, g: 1, b: 1 } }];
-  versionFrame.strokes = [
-    { type: "SOLID", color: { r: 0.76, g: 0.78, b: 0.81 } },
-  ];
-  versionFrame.strokeWeight = 1;
 
   await bindChangelogFrameVariables(versionFrame);
 
   const headline = figma.createText();
   await figma.loadFontAsync({ family: "Inter", style: "Regular" });
+  headline.name = "Changelog Version";
   headline.characters = `v${version}`;
-  headline.fontSize = 24;
   await bindChangelogHeadlineVariables(headline);
   versionFrame.appendChild(headline);
 

@@ -20,14 +20,60 @@ export async function scanIcons() {
 
   let iconType = "unknown";
 
-  if (fileName.includes("DB Theme Icons")) {
-    iconType = "functional";
-    console.log("✅ Library-Type erkannt: FUNCTIONAL");
-  } else if (fileName.includes("DB Theme Illustrative Icons")) {
+  // Sammle alle Seitennamen für Debugging
+  const pageNames = figma.root.children.map(p => p.name);
+  console.log(`📚 Gefundene Seiten (${pageNames.length}):`, pageNames);
+
+  // Prüfe Dateinamen
+  if (fileName.toLowerCase().includes("illustrative")) {
     iconType = "illustrative";
-    console.log("✅ Library-Type erkannt: ILLUSTRATIVE");
+    console.log("✅ Library-Type aus Dateinamen erkannt: ILLUSTRATIVE");
+  } else if (fileName.toLowerCase().includes("db theme icons") || fileName.toLowerCase().includes("functional")) {
+    iconType = "functional";
+    console.log("✅ Library-Type aus Dateinamen erkannt: FUNCTIONAL");
   } else {
-    console.warn("⚠️ Library-Type konnte nicht erkannt werden!");
+    // Fallback: Analysiere erste Komponente
+    console.log("⚠️ Library-Type nicht aus Dateinamen erkennbar, analysiere Komponenten...");
+    
+    for (const page of figma.root.children) {
+      await page.loadAsync();
+      const components = page.findAll(
+        (node) => node.type === "COMPONENT_SET" || node.type === "COMPONENT"
+      );
+      
+      if (components.length > 0) {
+        const firstComp = components[0];
+        let testNode: ComponentNode | null = null;
+        
+        if (firstComp.type === "COMPONENT_SET") {
+          testNode = (firstComp as ComponentSetNode).children.find(
+            (child) => child.type === "COMPONENT"
+          ) as ComponentNode;
+        } else {
+          testNode = firstComp as ComponentNode;
+        }
+        
+        if (testNode) {
+          // Prüfe auf "Base" und "Pulse" Ebenen (typisch für Illustrative)
+          const hasBaseLayer = testNode.findOne((n) => n.name === "Base") !== null;
+          const hasPulseLayer = testNode.findOne((n) => n.name === "Pulse") !== null;
+          
+          if (hasBaseLayer && hasPulseLayer) {
+            iconType = "illustrative";
+            console.log("✅ Library-Type aus Komponenten-Struktur erkannt: ILLUSTRATIVE (Base + Pulse Ebenen gefunden)");
+          } else {
+            iconType = "functional";
+            console.log("✅ Library-Type aus Komponenten-Struktur erkannt: FUNCTIONAL");
+          }
+          break;
+        }
+      }
+    }
+    
+    if (iconType === "unknown") {
+      iconType = "functional";
+      console.log("⚠️ Library-Type konnte nicht erkannt werden - Fallback: FUNCTIONAL");
+    }
   }
 
   globalIconType = iconType;
@@ -62,43 +108,64 @@ export async function scanIcons() {
     console.log(`   ✅ Seite geladen!`);
 
     const components = page.findAll(
-      (node) => node.type === "COMPONENT_SET"
+      (node) => node.type === "COMPONENT_SET" || node.type === "COMPONENT"
     );
 
     console.log(`   ↳ ${components.length} Komponenten gefunden`);
 
     for (const comp of components) {
-      const componentSet = comp as ComponentSetNode;
-      const setName = componentSet.name;
+      if (comp.type === "COMPONENT_SET") {
+        const componentSet = comp as ComponentSetNode;
+        const setName = componentSet.name;
 
-      console.log(`      📦 Component Set: "${setName}"`);
+        console.log(`      📦 Component Set: "${setName}"`);
 
-      const rawDescription = componentSet.description || "";
-      const parsedDescription = parseDescription(rawDescription, iconType);
+        const rawDescription = componentSet.description || "";
+        const parsedDescription = parseDescription(rawDescription, iconType);
 
-      const variantComponents = componentSet.children.filter(
-        (child) => child.type === "COMPONENT"
-      ) as ComponentNode[];
+        const variantComponents = componentSet.children.filter(
+          (child) => child.type === "COMPONENT"
+        ) as ComponentNode[];
 
-      console.log(
-        `         ↳ ${variantComponents.length} Varianten gefunden`
-      );
+        console.log(
+          `         ↳ ${variantComponents.length} Varianten gefunden`
+        );
 
-      variantComponents.forEach((variant) => {
-        const fullName = `${setName}/${variant.name}`;
+        variantComponents.forEach((variant) => {
+          const fullName = `${setName}/${variant.name}`;
 
-        console.log(`            • ${fullName}`);
+          console.log(`            • ${fullName}`);
+
+          const iconEntry: IconData = {
+            name: fullName,
+            id: variant.id,
+            category: pageName,
+            description: rawDescription,
+            parsedDescription: parsedDescription,
+          };
+
+          iconData.push(iconEntry);
+        });
+      } else if (comp.type === "COMPONENT") {
+        // Einzelne Komponente ohne Set
+        const component = comp as ComponentNode;
+        const componentName = component.name;
+
+        console.log(`      📦 Component: "${componentName}"`);
+
+        const rawDescription = component.description || "";
+        const parsedDescription = parseDescription(rawDescription, iconType);
 
         const iconEntry: IconData = {
-          name: fullName,
-          id: variant.id,
+          name: componentName,
+          id: component.id,
           category: pageName,
           description: rawDescription,
           parsedDescription: parsedDescription,
         };
 
         iconData.push(iconEntry);
-      });
+      }
     }
 
     console.log(`   🧹 Entlade Seite "${pageName}"...`);

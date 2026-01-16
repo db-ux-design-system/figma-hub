@@ -387,30 +387,7 @@ const App = () => {
     setSelectedCategories([]);
   };
 
-  // Logge ausgewählte Icons mit Details
-  const logSelectedIcons = () => {
-    console.log("📋 App.tsx: Bereite Logging vor...");
 
-    const selectedWithDetails = selectedIcons.map(({ icon, status }) => ({
-      name: icon.name,
-      category: icon.category,
-      status: status,
-      description: icon.description,
-      parsedDescription: icon.parsedDescription,
-    }));
-
-    parent.postMessage(
-      {
-        pluginMessage: {
-          type: "LOG_SELECTED_ICONS",
-          selectedIcons: selectedWithDetails,
-        },
-      },
-      "*"
-    );
-
-    console.log("✅ App.tsx: Log-Request an Backend gesendet");
-  };
 
   // Export: Full mit Assets
   const handleExportFull = () => {

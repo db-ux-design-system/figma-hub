@@ -24,6 +24,9 @@ export const VARIABLE_KEYS = {
   changelog: {
     gap: "e78d8e26882571f30187cbf2ba64506c139f5c8a",
     padding: "71b85a42d436c917ac405692ef86ed99597d789a",
+    strokeWeight: "66832c3b7274994cd407781d49d031b9fc588f4d",
+    fillColor: "539324f386b2150504d789cfbad9126c14cbdad1",
+    strokeColor: "47a78b18c953cec8622180b54e0ab9c1ab5b30ca",
   },
   changelogStatus: {
     gap: "783a93db6d2cc787ac709aadc1062ad083568515",
@@ -34,5 +37,6 @@ export const VARIABLE_KEYS = {
     fontSize: "b34837529a41479a0c478026efa5323aff4ff3ea",
     lineHeight: "f7b780f8287fd461c6a7e2c29e0e522fe100ebe9",
     paragraphSpacing: "b6250a42d6752165dea917f5a990a54b54f68f4a",
+    textColor: "497497bca9694f6004d1667de59f1a903b3cd3ef",
   },
 };

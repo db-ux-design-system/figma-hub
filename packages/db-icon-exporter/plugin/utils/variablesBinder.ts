@@ -5,13 +5,19 @@ import { VARIABLE_KEYS } from "../config";
 async function importChangelogVariables(): Promise<{
   gap: Variable;
   padding: Variable;
+  strokeWeight: Variable;
+  fillColor: Variable;
+  strokeColor: Variable;
 }> {
-  const [gap, padding] = await Promise.all([
+  const [gap, padding, strokeWeight, fillColor, strokeColor] = await Promise.all([
     figma.variables.importVariableByKeyAsync(VARIABLE_KEYS.changelog.gap),
     figma.variables.importVariableByKeyAsync(VARIABLE_KEYS.changelog.padding),
+    figma.variables.importVariableByKeyAsync(VARIABLE_KEYS.changelog.strokeWeight),
+    figma.variables.importVariableByKeyAsync(VARIABLE_KEYS.changelog.fillColor),
+    figma.variables.importVariableByKeyAsync(VARIABLE_KEYS.changelog.strokeColor),
   ]);
 
-  return { gap, padding };
+  return { gap, padding, strokeWeight, fillColor, strokeColor };
 }
 
 async function importChangelogHeadlineVariables(): Promise<{
@@ -20,16 +26,18 @@ async function importChangelogHeadlineVariables(): Promise<{
   fontSize: Variable;
   lineHeight: Variable;
   paragraphSpacing: Variable;
+  textColor: Variable;
 }> {
-  const [fontFamily, fontStyle, fontSize, lineHeight, paragraphSpacing] = await Promise.all([
+  const [fontFamily, fontStyle, fontSize, lineHeight, paragraphSpacing, textColor] = await Promise.all([
     figma.variables.importVariableByKeyAsync(VARIABLE_KEYS.changelogHeadline.fontFamily),
     figma.variables.importVariableByKeyAsync(VARIABLE_KEYS.changelogHeadline.fontStyle),
     figma.variables.importVariableByKeyAsync(VARIABLE_KEYS.changelogHeadline.fontSize),
     figma.variables.importVariableByKeyAsync(VARIABLE_KEYS.changelogHeadline.lineHeight),
     figma.variables.importVariableByKeyAsync(VARIABLE_KEYS.changelogHeadline.paragraphSpacing),
+    figma.variables.importVariableByKeyAsync(VARIABLE_KEYS.changelogHeadline.textColor),
   ]);
 
-  return { fontFamily, fontStyle, fontSize, lineHeight, paragraphSpacing };
+  return { fontFamily, fontStyle, fontSize, lineHeight, paragraphSpacing, textColor };
 }
 
 async function importChangelogStatusVariables(): Promise<{
@@ -53,6 +61,20 @@ export async function bindChangelogFrameVariables(
     frame.setBoundVariable("paddingBottom", variables.padding);
     frame.setBoundVariable("paddingLeft", variables.padding);
     frame.setBoundVariable("paddingRight", variables.padding);
+    frame.setBoundVariable("strokeWeight", variables.strokeWeight);
+    
+    // Bind fills and strokes on paint objects
+    const fills = JSON.parse(JSON.stringify(frame.fills)) as Paint[];
+    if (fills.length > 0 && fills[0].type === "SOLID") {
+      (fills[0] as any).boundVariables = { color: { type: "VARIABLE_ALIAS", id: variables.fillColor.id } };
+      frame.fills = fills;
+    }
+    
+    const strokes = JSON.parse(JSON.stringify(frame.strokes)) as Paint[];
+    if (strokes.length > 0 && strokes[0].type === "SOLID") {
+      (strokes[0] as any).boundVariables = { color: { type: "VARIABLE_ALIAS", id: variables.strokeColor.id } };
+      frame.strokes = strokes;
+    }
   } catch (error) {
     console.warn("⚠️ Changelog Frame Variablen konnten nicht verknüpft werden:", error);
   }
@@ -70,6 +92,7 @@ export async function bindChangelogHeadlineVariables(
     text.setBoundVariable("fontSize", variables.fontSize);
     text.setBoundVariable("lineHeight", variables.lineHeight);
     text.setBoundVariable("paragraphSpacing", variables.paragraphSpacing);
+    text.setBoundVariable("fills", variables.textColor);
   } catch (error) {
     console.warn("⚠️ Changelog Headline Variablen konnten nicht verknüpft werden:", error);
   }
