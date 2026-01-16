@@ -1,0 +1,12 @@
+{
+  "name": "🚅 DB Renamer",
+  "id": "1590462040996560101",
+  "api": "1.0.0",
+  "main": "dist/index.js",
+  "ui": "dist/index.html",
+  "editorType": ["figma"],
+  "capabilities": [],
+  "enableProposedApi": false,
+  "documentAccess": "dynamic-page",
+  "networkAccess": { "allowedDomains": ["none"] }
+}

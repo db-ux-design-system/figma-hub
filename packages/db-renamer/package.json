@@ -1,0 +1,19 @@
+{
+  "name": "db-renamer",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Figma plugin to rename layers with find & replace, case transformation, and cleaning",
+  "main": "index.js",
+  "workspaces": [
+    "plugin",
+    "ui"
+  ],
+  "scripts": {
+    "build": "npm-run-all --parallel build:plugin build:ui",
+    "build:plugin": "cd plugin && npm run build",
+    "build:ui": "cd ui && npm run build",
+    "dev": "npm-run-all --parallel dev:plugin dev:ui",
+    "dev:plugin": "cd plugin && npm run dev",
+    "dev:ui": "cd ui && npm run dev"
+  }
+}
