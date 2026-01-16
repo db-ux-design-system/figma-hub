@@ -122,30 +122,30 @@ const App = () => {
 
         console.log(`🗂 App.tsx: ${categoryList.length} Kategorien gefunden`);
         setCategories(categoryList);
+      } else if (msg.type === "select-export-page-icons") {
+        console.log(
+          `📄 App.tsx: ${msg.icons.length} Icons von Export-Seite erhalten`
+        );
+
+        // Gruppiere nach Icon-Set und nimm nur einen Vertreter pro Set
+        const iconSetMap = new Map<string, IconEntry>();
+        msg.icons.forEach((icon: IconEntry) => {
+          const setName = icon.name.split("/")[0].split("=")[0].trim();
+          if (!iconSetMap.has(setName)) {
+            iconSetMap.set(setName, icon);
+          }
+        });
+
+        const iconsToSelect: SelectedIcon[] = Array.from(iconSetMap.values()).map((icon) => ({
+          icon,
+          status: "added" as ChangelogStatus
+        }));
+
+        setSelectedIcons(iconsToSelect);
+        console.log(`✅ ${iconsToSelect.length} Icon-Sets ausgewählt`);
       } else if (msg.type === "error") {
         console.error("❌ App.tsx: Fehler vom Backend:", msg.message);
         setIsLoading(false);
-      } else if (msg.type === "export-page-exists") {
-        console.warn("⚠️ App.tsx: Export-Seite existiert bereits");
-
-        const shouldOverwrite = window.confirm(
-          "Eine Export-Seite existiert bereits. Möchten Sie diese löschen und neu erstellen?"
-        );
-
-        if (shouldOverwrite) {
-          console.log("✅ App.tsx: User bestätigt - lösche alte Seite");
-          // Sende Signal zum Löschen der alten Seite und erneuten Export
-          parent.postMessage(
-            {
-              pluginMessage: {
-                type: "DELETE_EXPORT_PAGE_AND_RETRY",
-              },
-            },
-            "*"
-          );
-        } else {
-          console.log("❌ App.tsx: User abgebrochen");
-        }
       } else if (msg.type === "export-error") {
         console.error("❌ App.tsx: Export-Fehler:", msg.message);
         alert(msg.message);
@@ -353,6 +353,15 @@ const App = () => {
     }
   };
 
+  // Alle Icon-Sets von Export-Seite auswählen
+  const selectFromExportPage = () => {
+    console.log("📄 App.tsx: Lade Icons von Export-Seite");
+    parent.postMessage(
+      { pluginMessage: { type: "SELECT_FROM_EXPORT_PAGE" } },
+      "*"
+    );
+  };
+
   // Alle Icon-Sets auswählen
   const selectAllIconSets = () => {
     console.log(`✅ App.tsx: Wähle alle ${iconSets.size} Icon-Sets aus`);
@@ -424,8 +433,12 @@ const App = () => {
       `📊 Overview generieren: ${hasAddedIcons ? "Ja (added Icons vorhanden)" : "Nein (keine added Icons)"}`
     );
 
-    // Sende nur die Icon-IDs
+    // Sende nur die Icon-IDs und Status-Mapping
     const selectedIconIds = selectedIcons.map(({ icon }) => icon.id);
+    const iconStatuses: Record<string, ChangelogStatus> = {};
+    selectedIcons.forEach(({ icon, status }) => {
+      iconStatuses[icon.id] = status;
+    });
 
     console.log(`📤 Sende ${selectedIconIds.length} Icon-IDs zum Full Export`);
 
@@ -436,6 +449,7 @@ const App = () => {
           selectedIconIds: selectedIconIds,
           version: hasVersion ? versionNumber : null,
           generateOverview: hasAddedIcons,
+          iconStatuses: iconStatuses,
         },
       },
       "*"
@@ -701,7 +715,6 @@ const App = () => {
           />
         </div>
 
-        {/* Select All Tags und Log Button */}
         <div className="flex gap-fix-md">
           {selectedIcons.length === iconSets.size ? (
             <DBTag>
@@ -713,25 +726,23 @@ const App = () => {
                 <button onClick={selectAllIconSets}>Select all</button>
               </DBTag>
               <DBTag>
+                <button onClick={selectFromExportPage}>Select Export-Page</button>
+              </DBTag>
+              <DBTag>
                 <button onClick={clearSelection}>Clear selection</button>
               </DBTag>
             </>
           ) : (
-            <DBTag>
-              <button onClick={selectAllIconSets}>
-                Select all icon sets ({totalFilteredSets})
-              </button>
-            </DBTag>
-          )}
-
-          {/* Log Button - nur wenn Icons ausgewählt sind */}
-          {selectedIcons.length > 0 && (
-            <DBTag emphasis="strong" semantic="informational">
-              <button onClick={logSelectedIcons}>
-                📋 Log {selectedIcons.length} Icon
-                {selectedIcons.length !== 1 ? "s" : ""}
-              </button>
-            </DBTag>
+            <>
+              <DBTag>
+                <button onClick={selectAllIconSets}>
+                  Select all icon sets ({totalFilteredSets})
+                </button>
+              </DBTag>
+              <DBTag>
+                <button onClick={selectFromExportPage}>Select Export-Page</button>
+              </DBTag>
+            </>
           )}
         </div>
       </header>

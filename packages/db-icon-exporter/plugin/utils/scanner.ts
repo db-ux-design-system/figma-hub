@@ -1,0 +1,138 @@
+// utils/scanner.ts
+
+import { IconData, ExportRequest } from "../types";
+import { EXCLUDED_PAGES } from "../config";
+import { parseDescription } from "./parser";
+
+export let globalIconType = "unknown";
+export let globalIconData: IconData[] = [];
+export let lastExportRequest: ExportRequest | null = null;
+
+export function setLastExportRequest(request: ExportRequest | null) {
+  lastExportRequest = request;
+}
+
+export async function scanIcons() {
+  console.log("🔍 Starte Icon-Scan-Vorgang...");
+
+  const fileName = figma.root.name;
+  console.log(`📄 Dateiname: "${fileName}"`);
+
+  let iconType = "unknown";
+
+  if (fileName.includes("DB Theme Icons")) {
+    iconType = "functional";
+    console.log("✅ Library-Type erkannt: FUNCTIONAL");
+  } else if (fileName.includes("DB Theme Illustrative Icons")) {
+    iconType = "illustrative";
+    console.log("✅ Library-Type erkannt: ILLUSTRATIVE");
+  } else {
+    console.warn("⚠️ Library-Type konnte nicht erkannt werden!");
+  }
+
+  globalIconType = iconType;
+
+  console.log(`🚫 Ausgeschlossene Seiten-Begriffe:`, EXCLUDED_PAGES);
+
+  const iconData: IconData[] = [];
+  const totalPages = figma.root.children.length;
+  console.log(`📚 Gesamtanzahl Seiten im Dokument: ${totalPages}`);
+
+  let scannedPages = 0;
+  let skippedPages = 0;
+
+  for (const page of figma.root.children) {
+    const pageName = page.name;
+
+    const shouldExclude = EXCLUDED_PAGES.some((term) =>
+      pageName.toLowerCase().includes(term.toLowerCase())
+    );
+
+    if (shouldExclude) {
+      console.log(`⏭️ Seite übersprungen: "${pageName}"`);
+      skippedPages++;
+      continue;
+    }
+
+    console.log(`📄 Scanne Seite: "${pageName}"...`);
+    scannedPages++;
+
+    console.log(`   ⏳ Lade Seite "${pageName}"...`);
+    await page.loadAsync();
+    console.log(`   ✅ Seite geladen!`);
+
+    const components = page.findAll(
+      (node) => node.type === "COMPONENT_SET"
+    );
+
+    console.log(`   ↳ ${components.length} Komponenten gefunden`);
+
+    for (const comp of components) {
+      const componentSet = comp as ComponentSetNode;
+      const setName = componentSet.name;
+
+      console.log(`      📦 Component Set: "${setName}"`);
+
+      const rawDescription = componentSet.description || "";
+      const parsedDescription = parseDescription(rawDescription, iconType);
+
+      const variantComponents = componentSet.children.filter(
+        (child) => child.type === "COMPONENT"
+      ) as ComponentNode[];
+
+      console.log(
+        `         ↳ ${variantComponents.length} Varianten gefunden`
+      );
+
+      variantComponents.forEach((variant) => {
+        const fullName = `${setName}/${variant.name}`;
+
+        console.log(`            • ${fullName}`);
+
+        const iconEntry: IconData = {
+          name: fullName,
+          id: variant.id,
+          category: pageName,
+          description: rawDescription,
+          parsedDescription: parsedDescription,
+        };
+
+        iconData.push(iconEntry);
+      });
+    }
+
+    console.log(`   🧹 Entlade Seite "${pageName}"...`);
+  }
+
+  console.log("📊 ========== SCAN ABGESCHLOSSEN ==========");
+  console.log(`   Gesamt Seiten: ${totalPages}`);
+  console.log(`   Gescannte Seiten: ${scannedPages}`);
+  console.log(`   Übersprungene Seiten: ${skippedPages}`);
+  console.log(`   Gefundene Icons: ${iconData.length}`);
+  console.log("==========================================");
+
+  const categoryMap = new Map<string, number>();
+  iconData.forEach((icon) => {
+    categoryMap.set(icon.category, (categoryMap.get(icon.category) || 0) + 1);
+  });
+
+  console.log(`🗂 Kategorien (${categoryMap.size}):`);
+  categoryMap.forEach((count, category) => {
+    console.log(`   • ${category}: ${count} Icons`);
+  });
+
+  console.log(`📤 Sende Scan-Ergebnis an UI...`);
+
+  globalIconData = iconData;
+  console.log(
+    `💾 Gespeichert: ${globalIconData.length} Icons global verfügbar`
+  );
+
+  figma.ui.postMessage({
+    type: "scan-result",
+    icons: iconData,
+    iconType: iconType,
+  });
+
+  console.log("✅ Daten erfolgreich an UI gesendet!");
+}
