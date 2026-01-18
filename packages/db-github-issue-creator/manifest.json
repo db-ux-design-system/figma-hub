@@ -1,0 +1,14 @@
+{
+  "name": "🚅 DB GitHub Issue Creator",
+  "id": "db-github-issue-creator",
+  "api": "1.0.0",
+  "main": "dist/index.js",
+  "ui": "dist/index.html",
+  "editorType": ["figma"],
+  "capabilities": [],
+  "enableProposedApi": false,
+  "documentAccess": "dynamic-page",
+  "networkAccess": {
+    "allowedDomains": ["https://api.github.com"]
+  }
+}

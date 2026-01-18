@@ -18,6 +18,7 @@
     "build:db-logo-importer": "npm run build -w=db-logo-importer",
     "build:db-custom-color-importer": "npm run build -w=db-custom-color-importer",
     "build:db-renamer": "npm run build -w=db-renamer",
+    "build:db-github-issue-creator": "npm run build -w=db-github-issue-creator",
     "dev": "npm-run-all --parallel dev:*",
     "dev:codegen": "npm run dev -w=@db-ux/codegen",
     "dev:inspect": "npm run dev -w=@db-ux/inspect",
@@ -26,7 +27,8 @@
     "dev:design-migration": "npm run dev -w=@db-ux/design-migration",
     "dev:db-logo-importer": "npm run dev -w=db-logo-importer",
     "dev:db-custom-color-importer": "npm run dev -w=db-custom-color-importer",
-    "dev:db-renamer": "npm run dev -w=db-renamer"
+    "dev:db-renamer": "npm run dev -w=db-renamer",
+    "dev:db-github-issue-creator": "npm run dev -w=db-github-issue-creator"
   },
   "author": "",
   "license": "MIT",

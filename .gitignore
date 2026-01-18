@@ -5,3 +5,5 @@ dist
 /packages/**/index.js
 .env
 .DS_Store
+.kiro
+.vscode
