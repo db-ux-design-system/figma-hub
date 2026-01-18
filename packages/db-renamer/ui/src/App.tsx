@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import {
   DBButton,
   DBInput,
@@ -75,13 +75,13 @@ const App = () => {
 
   // Common
   const [selectedNodeTypes, setSelectedNodeTypes] = useState<NodeType[]>(
-    nodeTypeOptions.map((opt) => opt.value)
+    nodeTypeOptions.map((opt) => opt.value),
   );
   const [onlyParents, setOnlyParents] = useState(true);
 
   const toggleNodeType = (type: NodeType) => {
     setSelectedNodeTypes((prev) =>
-      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
+      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type],
     );
   };
 
@@ -105,7 +105,7 @@ const App = () => {
           onlyParents,
         },
       },
-      "*"
+      "*",
     );
   };
 
@@ -119,7 +119,7 @@ const App = () => {
           onlyParents,
         },
       },
-      "*"
+      "*",
     );
   };
 
@@ -135,14 +135,16 @@ const App = () => {
           onlyParents,
         },
       },
-      "*"
+      "*",
     );
   };
 
+  const [activeTab, setActiveTab] = useState(0);
+
   const handleAction = () => {
-    if (activeTab === 1) {
+    if (activeTab === 0) {
       handleRename();
-    } else if (activeTab === 2) {
+    } else if (activeTab === 1) {
       handleTransform();
     } else {
       handleClean();
@@ -153,7 +155,11 @@ const App = () => {
     <div className="flex flex-col h-screen">
       <div className="flex-1 overflow-y-auto p-fix-md">
         {/* Tabs */}
-        <DBTabs width="full" alignment="center">
+        <DBTabs
+          width="full"
+          alignment="center"
+          onChange={(e: any) => setActiveTab(e.target.value)}
+        >
           <DBTabList>
             <DBTabItem>Rename</DBTabItem>
             <DBTabItem>Transform</DBTabItem>
@@ -162,7 +168,7 @@ const App = () => {
 
           {/* Tab Panel 1: Rename */}
           <DBTabPanel className="mt-fix-lg">
-            <div className="flex flex-col  gap-fix-sm">
+            <div className="flex flex-col gap-fix-sm">
               <div className="flex items-end items-center gap-fix-sm">
                 <DBInput
                   label="Find"
@@ -190,11 +196,6 @@ const App = () => {
                 size="small"
               />
             </div>
-            <div className="mt-fix-lg">
-              <DBButton variant="brand" width="full" onClick={handleRename}>
-                Rename
-              </DBButton>
-            </div>
           </DBTabPanel>
 
           {/* Tab Panel 2: Transform */}
@@ -212,11 +213,6 @@ const App = () => {
                 </option>
               ))}
             </DBSelect>
-            <div className="mt-fix-lg">
-              <DBButton variant="brand" width="full" onClick={handleTransform}>
-                Transform
-              </DBButton>
-            </div>
           </DBTabPanel>
 
           {/* Tab Panel 3: Clean */}
@@ -244,16 +240,11 @@ const App = () => {
                 size="small"
               />
             </div>
-            <div className="mt-fix-lg">
-              <DBButton variant="brand" width="full" onClick={handleClean}>
-                Clean
-              </DBButton>
-            </div>
           </DBTabPanel>
         </DBTabs>
       </div>
 
-      {/* Common Options - Sticky at bottom */}
+      {/* Common Options & Action Button - Sticky at bottom */}
       <div className="flex-shrink-0 border-t p-fix-md bg-white">
         <p className="text-sm font-bold mb-fix-sm">Apply to:</p>
         <div className="flex justify-between mb-fix-sm">
@@ -287,7 +278,7 @@ const App = () => {
             />
           ))}
         </div>
-        <div className="mb-fix-xl">
+        <div className="mb-fix-md">
           <DBCheckbox
             label="Only apply to parent layers"
             checked={onlyParents}
@@ -296,6 +287,14 @@ const App = () => {
             size="small"
           />
         </div>
+        <DBButton
+          variant="brand"
+          width="full"
+          onClick={handleAction}
+          className="mt-fix-md"
+        >
+          {activeTab === 0 ? "Rename" : activeTab === 1 ? "Transform" : "Clean"}
+        </DBButton>
       </div>
     </div>
   );
