@@ -53,11 +53,11 @@ export class DescriptionEditor {
    * Format:
    * EN:
    * Default: [text]
-   * Contextual: [text]
+   * Contextual: [text or empty]
    * DE:
    * Default: [text]
-   * Contextual: [text]
-   * Keywords: [text]
+   * Contextual: [text or empty]
+   * Keywords: [text or empty]
    * #functionalicon #fi #coreicon (or #illustrativeicon #illu)
    *
    * @param data - The description data
@@ -69,16 +69,27 @@ export class DescriptionEditor {
         ? "#functionalicon #fi #coreicon"
         : "#illustrativeicon #ii";
 
+    const enContextual =
+      data.enContextual && data.enContextual.trim().length > 0
+        ? data.enContextual
+        : "";
+    const deContextual =
+      data.deContextual && data.deContextual.trim().length > 0
+        ? data.deContextual
+        : "";
+    const keywords =
+      data.keywords && data.keywords.trim().length > 0 ? data.keywords : "";
+
     return (
       `EN:\n` +
       `Default: ${data.enDefault}\n` +
-      `Contextual: ${data.enContextual}\n` +
+      `Contextual: ${enContextual}\n` +
       `\n` +
       `DE:\n` +
       `Default: ${data.deDefault}\n` +
-      `Contextual: ${data.deContextual}\n` +
+      `Contextual: ${deContextual}\n` +
       `\n` +
-      `Keywords: ${data.keywords}\n` +
+      `Keywords: ${keywords}\n` +
       `${hashtags}`
     );
   }
@@ -123,15 +134,15 @@ export class DescriptionEditor {
       }
     }
 
-    // Validate required fields
-    if (
-      data.enDefault &&
-      data.enContextual &&
-      data.deDefault &&
-      data.deContextual &&
-      data.keywords
-    ) {
-      return data as DescriptionData;
+    // Validate required fields (only Default fields are required)
+    if (data.enDefault && data.deDefault) {
+      return {
+        enDefault: data.enDefault,
+        enContextual: data.enContextual || "",
+        deDefault: data.deDefault,
+        deContextual: data.deContextual || "",
+        keywords: data.keywords || "",
+      } as DescriptionData;
     }
 
     return null;
@@ -141,6 +152,7 @@ export class DescriptionEditor {
    * Validate description data
    *
    * Requirement 8.6: Validate that all required description fields are provided
+   * Only Default fields are required, Contextual and Keywords are optional
    *
    * @param data - The description data to validate
    * @throws ProcessingError if validation fails
@@ -152,21 +164,11 @@ export class DescriptionEditor {
       errors.push("EN Default is required");
     }
 
-    if (!data.enContextual || data.enContextual.trim().length === 0) {
-      errors.push("EN Contextual is required");
-    }
-
     if (!data.deDefault || data.deDefault.trim().length === 0) {
       errors.push("DE Default is required");
     }
 
-    if (!data.deContextual || data.deContextual.trim().length === 0) {
-      errors.push("DE Contextual is required");
-    }
-
-    if (!data.keywords || data.keywords.trim().length === 0) {
-      errors.push("Keywords are required");
-    }
+    // Contextual and Keywords are optional - no validation needed
 
     if (errors.length > 0) {
       throw new ProcessingError(

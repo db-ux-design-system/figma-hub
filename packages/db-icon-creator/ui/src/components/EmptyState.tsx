@@ -3,7 +3,7 @@
  * Displays a message when no Component Set is selected
  */
 
-import { DBInfotext } from "@db-ui/react-components";
+import { DBInfotext } from "@db-ux/react-core-components";
 
 interface EmptyStateProps {
   message: string;

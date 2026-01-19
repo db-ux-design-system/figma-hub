@@ -3,7 +3,7 @@
  * Displays the icon type (functional or illustrative) with appropriate styling
  */
 
-import { DBBadge } from "@db-ui/react-components";
+import {} from "@db-ux/react-core-components";
 
 interface IconTypeIndicatorProps {
   type: "functional" | "illustrative" | null;
@@ -15,12 +15,7 @@ export function IconTypeIndicator({ type }: IconTypeIndicatorProps) {
   return (
     <div className="icon-type">
       <span className="label">Icon Type:</span>
-      <DBBadge
-        semantic={type === "functional" ? "informational" : "successful"}
-        emphasis="strong"
-      >
-        {type === "functional" ? "Functional" : "Illustrative"}
-      </DBBadge>
+      {type === "functional" ? "Functional" : "Illustrative"}
     </div>
   );
 }

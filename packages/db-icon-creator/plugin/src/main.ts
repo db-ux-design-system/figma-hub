@@ -15,6 +15,7 @@ import { ErrorHandler } from "./utils/error-handler.js";
 import { WorkflowOrchestrator } from "./utils/workflow-orchestrator.js";
 import { VectorValidator } from "./validators/vector-validator.js";
 import { NameValidator } from "./validators/name-validator.js";
+import { SizeValidator } from "./validators/size-validator.js";
 import { OutlineConverter } from "./processors/outline-converter.js";
 import { FlattenProcessor } from "./processors/flatten-processor.js";
 import { ColorApplicator } from "./processors/color-applicator.js";
@@ -23,14 +24,19 @@ import { DescriptionEditor } from "./processors/description-editor.js";
 
 // Show the plugin UI
 figma.showUI(__html__, {
-  width: 400,
+  width: 500,
   height: 600,
   themeColors: true,
 });
 
+// Track if we're in the middle of processing to avoid re-validation
+let isProcessing = false;
+
 // Listen for selection changes and update UI
 figma.on("selectionchange", () => {
-  handleGetSelection();
+  if (!isProcessing) {
+    handleGetSelection();
+  }
 });
 
 // Handle messages from UI
@@ -61,6 +67,15 @@ figma.ui.onmessage = async (msg: UIMessage) => {
       case "validate-name":
         await handleNameValidation();
         break;
+      case "validate-size":
+        await handleSizeValidation();
+        break;
+      case "update-name":
+        await handleNameUpdate(msg.payload);
+        break;
+      case "create-icon-set":
+        await handleCreateIconSet();
+        break;
       case "run-all":
         await handleRunAll();
         break;
@@ -83,6 +98,47 @@ async function handleGetSelection(): Promise<void> {
   try {
     const info = getSelectionInfo();
 
+    // Check if all 7 sizes exist for Outlined variant
+    let isComplete = false;
+    let hasOutlined = false;
+    let hasFilled = false;
+    let uniqueSizes = 0;
+
+    if (info.isComponentSet && info.componentSet) {
+      const requiredSizes = [32, 28, 24, 20, 16, 14, 12];
+      const outlinedVariantName = "(Def) Outlined";
+      const filledVariantName = "Filled";
+
+      const hasAllSizes = requiredSizes.every((size) => {
+        const variantName = `Size=${size}, Variant=${outlinedVariantName}`;
+        return (info.componentSet!.children as ComponentNode[]).some(
+          (v) => v.name === variantName,
+        );
+      });
+
+      isComplete = hasAllSizes;
+
+      // Check if Outlined variants exist
+      hasOutlined = (info.componentSet.children as ComponentNode[]).some((v) =>
+        v.name.includes(`Variant=${outlinedVariantName}`),
+      );
+
+      // Check if Filled variants exist
+      hasFilled = (info.componentSet.children as ComponentNode[]).some((v) =>
+        v.name.includes(`Variant=${filledVariantName}`),
+      );
+
+      // Count unique sizes
+      const sizes = new Set<number>();
+      for (const variant of info.componentSet.children as ComponentNode[]) {
+        const sizeMatch = variant.name.match(/Size=(\d+)/);
+        if (sizeMatch) {
+          sizes.add(parseInt(sizeMatch[1]));
+        }
+      }
+      uniqueSizes = sizes.size;
+    }
+
     // Convert to serializable format for UI
     const selectionInfo: SelectionInfo = {
       isComponentSet: info.isComponentSet,
@@ -94,6 +150,10 @@ async function handleGetSelection(): Promise<void> {
           }
         : null,
       variantCount: info.variants.length,
+      isComplete,
+      hasOutlined,
+      hasFilled,
+      uniqueSizes,
     };
 
     sendMessage({
@@ -103,18 +163,6 @@ async function handleGetSelection(): Promise<void> {
 
     // Automatically run validations in background if a component set is selected
     if (info.isComponentSet && info.componentSet && info.iconType) {
-      // Run vector validation
-      try {
-        const vectorValidator = new VectorValidator(info.iconType);
-        const vectorResult = vectorValidator.validate(info.componentSet);
-        sendMessage({
-          type: "validation-result",
-          data: vectorResult,
-        });
-      } catch (error) {
-        console.warn("Vector validation failed:", error);
-      }
-
       // Run name validation
       try {
         const nameValidator = new NameValidator(info.iconType);
@@ -125,6 +173,18 @@ async function handleGetSelection(): Promise<void> {
         });
       } catch (error) {
         console.warn("Name validation failed:", error);
+      }
+
+      // Run size validation
+      try {
+        const sizeValidator = new SizeValidator();
+        const sizeResult = sizeValidator.validate(info.componentSet);
+        sendMessage({
+          type: "size-validation-result",
+          data: sizeResult,
+        });
+      } catch (error) {
+        console.warn("Size validation failed:", error);
       }
     }
   } catch (error) {
@@ -209,11 +269,10 @@ async function handleColorApplication(): Promise<void> {
     // Requirement 6.1: Apply color variables to the component set
     const info = requireComponentSet();
 
-    // TODO: These should be configurable or loaded from Figma variables
-    // For now, using placeholder IDs
+    // Color variable configuration (using variable keys from library)
     const config = {
-      functional: "VariableID:functional-icon-color",
-      illustrative: "VariableID:illustrative-icon-color",
+      functional: "497497bca9694f6004d1667de59f1a903b3cd3ef",
+      illustrative: "497497bca9694f6004d1667de59f1a903b3cd3ef",
     };
 
     const applicator = new ColorApplicator(info.iconType!, config);
@@ -294,6 +353,119 @@ async function handleNameValidation(): Promise<void> {
       ErrorHandler.handle(
         error instanceof Error ? error : new Error(String(error)),
         "handleNameValidation",
+      ),
+    );
+  }
+}
+
+async function handleSizeValidation(): Promise<void> {
+  try {
+    const info = requireComponentSet();
+
+    const validator = new SizeValidator();
+    const result = validator.validate(info.componentSet!);
+
+    sendMessage({
+      type: "size-validation-result",
+      data: result,
+    });
+  } catch (error) {
+    sendMessage(
+      ErrorHandler.handle(
+        error instanceof Error ? error : new Error(String(error)),
+        "handleSizeValidation",
+      ),
+    );
+  }
+}
+
+async function handleNameUpdate(newName: string): Promise<void> {
+  try {
+    const info = requireComponentSet();
+
+    info.componentSet!.name = newName;
+
+    // Re-validate after name change
+    const validator = new NameValidator(info.iconType!);
+    const result = validator.validate(newName);
+
+    sendMessage({
+      type: "name-validation-result",
+      data: result,
+    });
+
+    // Update selection info to reflect the new name
+    await handleGetSelection();
+
+    sendMessage({
+      type: "success",
+      data: { message: "Name updated successfully" },
+    });
+  } catch (error) {
+    sendMessage(
+      ErrorHandler.handle(
+        error instanceof Error ? error : new Error(String(error)),
+        "handleNameUpdate",
+      ),
+    );
+  }
+}
+
+async function handleCreateIconSet(): Promise<void> {
+  try {
+    isProcessing = true;
+    const info = requireComponentSet();
+
+    // Step 1: Outline Conversion
+    sendMessage({
+      type: "progress",
+      data: "Step 1/4: Converting outlines...",
+    });
+    const converter = new OutlineConverter(info.iconType!);
+    await converter.convert(info.componentSet!);
+
+    // Step 2: Color Application
+    sendMessage({
+      type: "progress",
+      data: "Step 2/4: Applying colors...",
+    });
+    const config = {
+      functional: "497497bca9694f6004d1667de59f1a903b3cd3ef",
+      illustrative: "497497bca9694f6004d1667de59f1a903b3cd3ef",
+    };
+    const applicator = new ColorApplicator(info.iconType!, config);
+    await applicator.apply(info.componentSet!);
+
+    // Step 3: Scaling
+    sendMessage({
+      type: "progress",
+      data: "Step 3/4: Creating scaled variants...",
+    });
+    const processor = new ScaleProcessor();
+    await processor.scale(info.componentSet!);
+
+    // Step 4: Open Description Dialog
+    sendMessage({
+      type: "progress",
+      data: "Step 4/4: Opening description editor...",
+    });
+
+    // After workflow completes, allow selection changes again
+    isProcessing = false;
+
+    // Refresh selection info to update isComplete status
+    await handleGetSelection();
+
+    sendMessage({
+      type: "open-description-dialog",
+      data: null,
+    });
+  } catch (error) {
+    isProcessing = false;
+    sendMessage(
+      ErrorHandler.handle(
+        error instanceof Error ? error : new Error(String(error)),
+        "handleCreateIconSet",
       ),
     );
   }

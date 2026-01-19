@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from "react";
-import { DBButton, DBInput } from "@db-ui/react-components";
+import { DBButton, DBInput } from "@db-ux/react-core-components";
 import type { DescriptionData } from "../types";
 
 interface DescriptionDialogProps {
@@ -44,88 +44,111 @@ export function DescriptionDialog({
   };
 
   return (
-    <div className="dialog-overlay">
-      <div className="dialog">
-        <h3>Edit Icon Description</h3>
+    <div className="flex flex-col h-full">
+      <div className="flex-shrink-0 mb-fix-md">
+        <h3 className="text-lg mb-0">Edit Icon Description</h3>
+      </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="form-section">
-            <h4>EN:</h4>
-            <div className="form-group">
-              <DBInput
-                label="Default"
-                value={formData.enDefault}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setFormData({ ...formData, enDefault: e.target.value })
-                }
-                required
-                placeholder="e.g., Bell disabled"
-              />
+      <div className="flex-1 overflow-y-auto px-fix-xs">
+        <form
+          onSubmit={handleSubmit}
+          id="description-form"
+          className="space-y-4"
+        >
+          <div className="flex flex-row gap-fix-sm">
+            <div className="form-section w-1/2">
+              <h4 className="text-sm mb-fix-sm">EN:</h4>
+              <div className="form-group mb-fix-sm">
+                <DBInput
+                  label="Default"
+                  variant="floating"
+                  value={formData.enDefault}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setFormData({ ...formData, enDefault: e.target.value })
+                  }
+                  required
+                  placeholder="e.g., Bell disabled"
+                />
+              </div>
+
+              <div className="form-group mb-fix-sm">
+                <DBInput
+                  label="Contextual"
+                  variant="floating"
+                  value={formData.enContextual}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setFormData({ ...formData, enContextual: e.target.value })
+                  }
+                  placeholder="e.g., Notification off, Alert off"
+                />
+              </div>
             </div>
 
-            <div className="form-group">
-              <DBInput
-                label="Contextual"
-                value={formData.enContextual}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setFormData({ ...formData, enContextual: e.target.value })
-                }
-                required
-                placeholder="e.g., Notification off, Alert off"
-              />
+            <div className="form-section w-1/2">
+              <h4 className="text-sm mb-fix-sm">DE:</h4>
+              <div className="form-group mb-fix-sm">
+                <DBInput
+                  label="Default"
+                  variant="floating"
+                  value={formData.deDefault}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setFormData({ ...formData, deDefault: e.target.value })
+                  }
+                  required
+                  placeholder="e.g., Alarmglocke inaktiv"
+                />
+              </div>
+
+              <div className="form-group mb-fix-sm">
+                <DBInput
+                  label="Contextual"
+                  variant="floating"
+                  value={formData.deContextual}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setFormData({ ...formData, deContextual: e.target.value })
+                  }
+                  placeholder="e.g., Benachrichtigung aus, Alarm aus"
+                />
+              </div>
             </div>
           </div>
 
           <div className="form-section">
-            <h4>DE:</h4>
             <div className="form-group">
-              <DBInput
-                label="Default"
-                value={formData.deDefault}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setFormData({ ...formData, deDefault: e.target.value })
-                }
-                required
-                placeholder="e.g., Alarmglocke inaktiv"
-              />
-            </div>
-
-            <div className="form-group">
-              <DBInput
-                label="Contextual"
-                value={formData.deContextual}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setFormData({ ...formData, deContextual: e.target.value })
-                }
-                required
-                placeholder="e.g., Benachrichtigung aus, Alarm aus"
-              />
-            </div>
-          </div>
-
-          <div className="form-section">
-            <div className="form-group">
+              <h4 className="text-sm mb-fix-sm">General:</h4>
               <DBInput
                 label="Keywords"
+                variant="floating"
                 value={formData.keywords}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                   setFormData({ ...formData, keywords: e.target.value })
                 }
-                required
                 placeholder="e.g., durchgestrichen"
               />
             </div>
           </div>
-
-          <div className="dialog-actions">
-            <DBButton type="button" onClick={onCancel} variant="secondary">
-              Cancel
-            </DBButton>
-            <DBButton type="submit" variant="primary">
-              Save
-            </DBButton>
-          </div>
         </form>
+      </div>
+
+      <div className="flex-shrink-0 pt-fix-md mt-fix-md">
+        <div className="flex flex-row gap-fix-sm">
+          <DBButton
+            type="button"
+            onClick={onCancel}
+            variant="ghost"
+            width="full"
+          >
+            Cancel
+          </DBButton>
+          <DBButton
+            type="submit"
+            form="description-form"
+            variant="brand"
+            width="full"
+          >
+            Save
+          </DBButton>
+        </div>
       </div>
     </div>
   );

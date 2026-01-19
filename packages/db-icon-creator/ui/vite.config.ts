@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import * as path from "node:path";
 import { viteSingleFile } from "vite-plugin-singlefile";
 
 // https://vite.dev/config/
@@ -13,6 +14,11 @@ export default defineConfig({
     outDir: "../dist",
     rollupOptions: {
       output: {},
+    },
+  },
+  resolve: {
+    alias: {
+      "@db-ux": path.resolve("../../../node_modules/@db-ux"),
     },
   },
 });

@@ -53,11 +53,14 @@ export class FlattenProcessor {
   /**
    * Flatten all vectors in a variant
    *
+   * NOTE: With the new outline converter strategy, all children are already
+   * flattened into a single "Vector" layer during outline conversion.
+   * This method now just ensures the layer is named correctly.
+   *
    * Strategy:
    * 1. Find the Container (first child)
-   * 2. Select all direct child layers within the Container
-   * 3. Flatten them into a single vector layer
-   * 4. Rename the result to "Vector"
+   * 2. Check if there's already a single "Vector" layer
+   * 3. If not, rename the single layer to "Vector"
    *
    * Final structure: Component -> Container -> Vector
    *
@@ -83,7 +86,7 @@ export class FlattenProcessor {
         return;
       }
 
-      // If there's only one child and it's already named "Vector", skip
+      // If there's only one child, ensure it's named "Vector"
       if (children.length === 1) {
         if (children[0].name !== "Vector") {
           children[0].name = "Vector";
@@ -96,15 +99,17 @@ export class FlattenProcessor {
         return;
       }
 
-      // Flatten all direct children into a single layer
+      // If there are multiple children, flatten them
+      // (This should not happen if outline conversion ran first, but handle it anyway)
       try {
+        console.log(
+          `Warning: Found ${children.length} children in ${variant.name} - flattening them`,
+        );
+
         // Select all children
         figma.currentPage.selection = children;
 
         // Flatten them
-        // Requirement 5.1: Combine all vectors into a single layer
-        // Requirement 5.3: Maintain visual integrity
-        // Requirement 5.4: Preserve all vector paths
         const flattened = await figma.flatten(children);
 
         if (flattened) {

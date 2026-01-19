@@ -3,7 +3,7 @@
  * Provides buttons for all plugin operations
  */
 
-import { DBButton } from "@db-ui/react-components";
+import { DBButton } from "@db-ux/react-core-components";
 
 interface OperationButtonsProps {
   onConvertOutline: () => void;

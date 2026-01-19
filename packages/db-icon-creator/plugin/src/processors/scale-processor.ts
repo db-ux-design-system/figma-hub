@@ -5,63 +5,90 @@
  * Implements Requirements 7.1, 7.2, 7.3, 7.4, 7.5, 7.6
  */
 
-import { findVectorNodes } from "../utils/selection.js";
 import { ProcessingError } from "../utils/error-handler.js";
-
-/**
- * Scale mapping definition
- */
-interface ScaleMapping {
-  source: number;
-  targets: number[];
-}
 
 /**
  * Scale Processor class
  *
- * Creates scaled variants from base size variants.
+ * Creates all missing size variants from existing ones.
  */
 export class ScaleProcessor {
-  private scaleMappings: ScaleMapping[] = [
-    { source: 32, targets: [28] }, // Requirement 7.1
-    { source: 20, targets: [16, 14, 12] }, // Requirement 7.2
-  ];
+  private readonly targetSizes = [32, 28, 24, 20, 16, 14, 12];
+  private readonly variantOrder = ["(Def) Outlined", "Filled"];
 
   /**
    * Create scaled variants for a component set
    *
    * Requirements:
-   * - 7.1: Create 28px variant from 32px base
-   * - 7.2: Create 16px, 14px, 12px variants from 20px base
-   * - 7.3: Preserve all existing base size variants
+   * - 7.1: Create all missing size variants
+   * - 7.2: Scale proportionally from nearest larger size
+   * - 7.3: Set Size property correctly
    * - 7.4: Maintain proper scaling ratios
    * - 7.5: Apply same properties as source variant
-   * - 7.6: Handle both functional and illustrative icons
+   * - 7.6: Order variants correctly
    *
    * @param componentSet - The component set to process
    */
   async scale(componentSet: ComponentSetNode): Promise<void> {
     try {
-      const variants = componentSet.children as ComponentNode[];
+      console.log(`\n=== Scaling Component Set ===`);
 
-      // Requirement 7.3: Preserve all existing base size variants
-      // We only create new variants, never modify existing ones
+      const variants = Array.from(componentSet.children as ComponentNode[]);
 
-      for (const mapping of this.scaleMappings) {
-        const sourceVariants = variants.filter(
-          (v) => this.getVariantSize(v) === mapping.source,
+      // Remove fill from all existing container frames
+      this.removeContainerFills(variants);
+
+      // Group existing variants by their variant type (Outlined/Filled)
+      const variantsByType = this.groupVariantsByType(variants);
+
+      // For each variant type, create missing sizes
+      for (const variantType of this.variantOrder) {
+        const existingVariants = variantsByType.get(variantType) || [];
+
+        if (existingVariants.length === 0) {
+          console.log(`No ${variantType} variants found, skipping`);
+          continue;
+        }
+
+        console.log(`\nProcessing ${variantType} variants:`);
+        console.log(
+          `  Existing sizes: ${existingVariants.map((v) => this.getVariantSize(v)).join(", ")}`,
         );
 
-        for (const sourceVariant of sourceVariants) {
-          for (const targetSize of mapping.targets) {
+        // Create missing sizes
+        for (const targetSize of this.targetSizes) {
+          const existing = existingVariants.find(
+            (v) => this.getVariantSize(v) === targetSize,
+          );
+
+          if (existing) {
+            console.log(`  ${targetSize}px already exists`);
+            continue;
+          }
+
+          // Find nearest larger size to scale from
+          const sourceVariant = this.findNearestLargerVariant(
+            existingVariants,
+            targetSize,
+          );
+
+          if (sourceVariant) {
             await this.createScaledVariant(
               sourceVariant,
               targetSize,
+              variantType,
               componentSet,
             );
+          } else {
+            console.warn(`  No source variant found for ${targetSize}px`);
           }
         }
       }
+
+      // Reorder variants
+      await this.reorderVariants(componentSet);
+
+      console.log(`\n✓ Scaling complete\n`);
     } catch (error) {
       throw new ProcessingError(
         `Failed to scale variants: ${error instanceof Error ? error.message : String(error)}`,
@@ -70,65 +97,67 @@ export class ScaleProcessor {
   }
 
   /**
-   * Create a scaled variant from a source variant
-   *
-   * @param source - The source variant to scale from
-   * @param targetSize - The target size for the new variant
-   * @param componentSet - The parent component set
+   * Remove fill from all container frames in variants
    */
-  private async createScaledVariant(
-    source: ComponentNode,
-    targetSize: number,
-    componentSet: ComponentSetNode,
-  ): Promise<void> {
-    // Check if variant already exists
-    const existingVariant = this.findVariantBySize(componentSet, targetSize);
-    if (existingVariant) {
-      console.log(`Variant with size ${targetSize}px already exists, skipping`);
-      return;
-    }
+  private removeContainerFills(variants: ComponentNode[]): void {
+    console.log(`\nRemoving container fills from all variants...`);
 
-    try {
-      // Clone source variant
-      const clone = source.clone();
+    for (const variant of variants) {
+      if (variant.children && variant.children.length > 0) {
+        const container = variant.children[0];
 
-      // Calculate scaling factor
-      const sourceSize = this.getVariantSize(source);
-      const scaleFactor = targetSize / sourceSize;
-
-      // Requirement 7.4: Maintain proper scaling ratios
-      // Resize the clone
-      clone.resize(targetSize, targetSize);
-
-      // Scale all vectors within
-      const vectors = findVectorNodes(clone);
-      for (const vector of vectors) {
-        this.scaleVector(vector, scaleFactor);
+        // Remove fill from container
+        if ("fills" in container && Array.isArray(container.fills)) {
+          container.fills = [];
+          console.log(`  Removed fill from ${variant.name}`);
+        }
       }
-
-      // Requirement 7.5: Apply same properties as source variant
-      // Update size property
-      this.updateSizeProperty(clone, targetSize);
-
-      // Add to component set
-      componentSet.appendChild(clone);
-    } catch (error) {
-      console.warn(
-        `Could not create scaled variant ${targetSize}px from ${source.name}:`,
-        error,
-      );
     }
+
+    console.log(`✓ Container fills removed`);
+  }
+
+  /**
+   * Group variants by their variant type (Outlined/Filled)
+   */
+  private groupVariantsByType(
+    variants: ComponentNode[],
+  ): Map<string, ComponentNode[]> {
+    const grouped = new Map<string, ComponentNode[]>();
+
+    for (const variant of variants) {
+      const variantType = this.getVariantType(variant);
+      if (!grouped.has(variantType)) {
+        grouped.set(variantType, []);
+      }
+      grouped.get(variantType)!.push(variant);
+    }
+
+    return grouped;
+  }
+
+  /**
+   * Get the variant type (Outlined/Filled) from a variant
+   */
+  private getVariantType(variant: ComponentNode): string {
+    const variantProp = variant.variantProperties?.["Variant"];
+    if (variantProp) {
+      return variantProp;
+    }
+
+    // Fallback: check name
+    if (variant.name.includes("Filled")) {
+      return "Filled";
+    }
+    return "(Def) Outlined";
   }
 
   /**
    * Get the size of a variant
-   *
-   * @param variant - The variant to check
-   * @returns The size in pixels
    */
   private getVariantSize(variant: ComponentNode): number {
     // Try to get size from variant properties
-    const sizeProperty = variant.variantProperties?.["size"];
+    const sizeProperty = variant.variantProperties?.["Size"];
     if (sizeProperty) {
       const parsed = parseInt(sizeProperty);
       if (!isNaN(parsed)) {
@@ -141,54 +170,120 @@ export class ScaleProcessor {
   }
 
   /**
-   * Find a variant by size
-   *
-   * @param componentSet - The component set to search
-   * @param size - The size to find
-   * @returns The variant if found, null otherwise
+   * Find the nearest larger variant to scale from
    */
-  private findVariantBySize(
-    componentSet: ComponentSetNode,
-    size: number,
+  private findNearestLargerVariant(
+    variants: ComponentNode[],
+    targetSize: number,
   ): ComponentNode | null {
-    for (const variant of componentSet.children as ComponentNode[]) {
-      if (this.getVariantSize(variant) === size) {
-        return variant;
+    const largerVariants = variants
+      .filter((v) => this.getVariantSize(v) > targetSize)
+      .sort((a, b) => this.getVariantSize(a) - this.getVariantSize(b));
+
+    return largerVariants[0] || null;
+  }
+
+  /**
+   * Create a scaled variant from a source variant
+   */
+  private async createScaledVariant(
+    source: ComponentNode,
+    targetSize: number,
+    variantType: string,
+    componentSet: ComponentSetNode,
+  ): Promise<void> {
+    try {
+      const sourceSize = this.getVariantSize(source);
+      const scaleFactor = targetSize / sourceSize;
+
+      console.log(
+        `  Creating ${targetSize}px from ${sourceSize}px (scale: ${scaleFactor.toFixed(2)})`,
+      );
+
+      // Clone source variant
+      const clone = source.clone();
+
+      // Resize the clone component
+      clone.resize(targetSize, targetSize);
+
+      // Also resize the container (Frame) inside the component
+      if (clone.children && clone.children.length > 0) {
+        const container = clone.children[0];
+        if ("resize" in container && typeof container.resize === "function") {
+          container.resize(targetSize, targetSize);
+          console.log(`    Resized container to ${targetSize}x${targetSize}`);
+        }
+
+        // Remove fill from container
+        if ("fills" in container && Array.isArray(container.fills)) {
+          container.fills = [];
+          console.log(`    Removed fill from container`);
+        }
+
+        // Scale the vector inside the container
+        if ("children" in container && container.children.length > 0) {
+          for (const child of container.children) {
+            if ("resize" in child && typeof child.resize === "function") {
+              const childWidth = child.width * scaleFactor;
+              const childHeight = child.height * scaleFactor;
+              child.resize(childWidth, childHeight);
+              console.log(
+                `    Scaled child to ${childWidth.toFixed(1)}x${childHeight.toFixed(1)}`,
+              );
+            }
+          }
+        }
       }
+
+      // Update name to reflect new size and variant
+      clone.name = `Size=${targetSize}, Variant=${variantType}`;
+
+      // Add to component set
+      componentSet.appendChild(clone);
+
+      console.log(`  ✓ Created ${targetSize}px ${variantType}`);
+    } catch (error) {
+      console.warn(
+        `Could not create scaled variant ${targetSize}px from ${source.name}:`,
+        error,
+      );
     }
-    return null;
   }
 
   /**
-   * Scale vector properties
+   * Reorder variants in the component set
    *
-   * Requirement 7.4: Maintain proper scaling ratios
-   *
-   * @param vector - The vector to scale
-   * @param factor - The scaling factor
+   * Order: Outlined (32→12), then Filled (32→12)
    */
-  private scaleVector(vector: VectorNode, factor: number): void {
-    // Scale stroke weight
-    if (typeof vector.strokeWeight === "number") {
-      vector.strokeWeight = vector.strokeWeight * factor;
+  private async reorderVariants(componentSet: ComponentSetNode): Promise<void> {
+    console.log(`\nReordering variants...`);
+
+    const variants = Array.from(componentSet.children as ComponentNode[]);
+
+    // Sort variants
+    const sorted = variants.sort((a, b) => {
+      const aType = this.getVariantType(a);
+      const bType = this.getVariantType(b);
+      const aSize = this.getVariantSize(a);
+      const bSize = this.getVariantSize(b);
+
+      // First by variant type (Outlined before Filled)
+      const aTypeIndex = this.variantOrder.indexOf(aType);
+      const bTypeIndex = this.variantOrder.indexOf(bType);
+
+      if (aTypeIndex !== bTypeIndex) {
+        return aTypeIndex - bTypeIndex;
+      }
+
+      // Then by size (descending: 32, 28, 24, ...)
+      return bSize - aSize;
+    });
+
+    // Reorder in component set
+    for (let i = 0; i < sorted.length; i++) {
+      componentSet.insertChild(i, sorted[i]);
     }
 
-    // Note: Vector dimensions are already scaled by the resize operation
-    // We only need to scale properties like stroke weight
-  }
-
-  /**
-   * Update the size property of a variant
-   *
-   * @param variant - The variant to update
-   * @param size - The new size
-   */
-  private updateSizeProperty(variant: ComponentNode, size: number): void {
-    if (variant.variantProperties) {
-      variant.variantProperties = {
-        ...variant.variantProperties,
-        size: size.toString(),
-      };
-    }
+    console.log(`  ✓ Variants reordered`);
   }
 }

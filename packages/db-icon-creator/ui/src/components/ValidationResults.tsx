@@ -1,64 +1,76 @@
 /**
  * ValidationResults Component
- * Displays validation results with semantic styling
+ * Displays validation errors for name and size together
  */
 
-import { DBInfotext } from "@db-ui/react-components";
-import type { ValidationResult, NameValidationResult } from "../types";
+import { DBNotification } from "@db-ux/react-core-components";
+import type { NameValidationResult, ValidationResult } from "../types";
 
 interface ValidationResultsProps {
-  result: ValidationResult | NameValidationResult | null;
-  type?: "vector" | "name";
+  nameValidation: NameValidationResult | null;
+  sizeValidation: ValidationResult | null;
 }
 
 export function ValidationResults({
-  result,
-  type = "vector",
+  nameValidation,
+  sizeValidation,
 }: ValidationResultsProps) {
-  if (!result) return null;
+  const hasNameErrors = nameValidation && !nameValidation.isValid;
+  const hasSizeErrors = sizeValidation && !sizeValidation.isValid;
 
-  if (result.isValid) {
-    return (
-      <DBInfotext semantic="successful" icon="check">
-        {type === "vector"
-          ? "All vectors meet the requirements."
-          : "Icon name follows naming conventions."}
-      </DBInfotext>
-    );
+  if (!hasNameErrors && !hasSizeErrors) {
+    return null;
   }
 
-  // Handle name validation results
-  if ("suggestion" in result) {
-    return (
-      <DBInfotext semantic="critical" icon="error">
-        <strong>Name Validation Failed</strong>
-        <ul>
-          {result.errors.map((error, index) => (
-            <li key={index}>{error}</li>
-          ))}
-        </ul>
-        {result.suggestion && (
-          <p>
-            <strong>Suggested name:</strong> {result.suggestion}
-          </p>
-        )}
-      </DBInfotext>
-    );
-  }
+  // Helper function to format error messages with bold variant names
+  const formatErrorMessage = (message: string) => {
+    // Match patterns like "(Def) Outlined, 24px" or "Filled, 32px"
+    const variantPattern = /(\(Def\) Outlined|Filled),\s*(\d+px)/g;
 
-  // Handle vector validation results
+    // Replace with bold formatting
+    const formatted = message.replace(
+      variantPattern,
+      "<strong>$1, $2</strong>",
+    );
+
+    return formatted;
+  };
+
   return (
-    <DBInfotext semantic="critical" icon="error">
-      <strong>Validation Failed</strong>
-      <ul>
-        {(result as ValidationResult).errors.map((error, index) => (
-          <li key={index}>
-            <strong>{error.rule}:</strong> {error.message}
-            <br />
-            <small>Node: {error.nodeName}</small>
-          </li>
-        ))}
-      </ul>
-    </DBInfotext>
+    <div className="space-y-4 flex flex-col gap-fix-sm">
+      <h4 className="text-lg">Please remove the following bugs to continue.</h4>
+      {hasNameErrors && nameValidation && (
+        <DBNotification
+          headline="Name validation failed"
+          semantic="critical"
+          variant="standalone"
+        >
+          <ul className="list-disc pl-fix-md">
+            {nameValidation.errors.map((error, index) => (
+              <li key={index}>{error}</li>
+            ))}
+          </ul>
+        </DBNotification>
+      )}
+
+      {hasSizeErrors && sizeValidation && (
+        <DBNotification
+          headline="Size validation failed"
+          semantic="critical"
+          variant="standalone"
+        >
+          <ul className="list-disc pl-fix-md">
+            {sizeValidation.errors.map((error, index) => (
+              <li
+                key={index}
+                dangerouslySetInnerHTML={{
+                  __html: formatErrorMessage(error.message),
+                }}
+              />
+            ))}
+          </ul>
+        </DBNotification>
+      )}
+    </div>
   );
 }

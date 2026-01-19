@@ -1,19 +1,13 @@
-/**
- * DB Icon Creator - Main App Component
- *
- * Main application component that orchestrates the plugin UI
- */
-
 import { useEffect, useState } from "react";
-import { DBDivider, DBInfotext } from "@db-ui/react-components";
+import { DBInfotext, DBButton } from "@db-ux/react-core-components";
 import {
   SelectionStatus,
-  IconTypeIndicator,
-  OperationButtons,
-  ValidationResults,
   DescriptionDialog,
   ProgressIndicator,
-  EmptyState,
+  NameEditor,
+  ValidationResults,
+  WorkflowInfo,
+  CompleteState,
 } from "./components";
 import type {
   SelectionInfo,
@@ -26,33 +20,32 @@ import type {
 
 interface AppState {
   selectionInfo: SelectionInfo | null;
-  validationResult: ValidationResult | null;
   nameValidationResult: NameValidationResult | null;
+  sizeValidationResult: ValidationResult | null;
   isProcessing: boolean;
   currentOperation: string | null;
   error: string | null;
   showDescriptionDialog: boolean;
+  canCreateIconSet: boolean;
 }
 
 function App() {
   const [state, setState] = useState<AppState>({
     selectionInfo: null,
-    validationResult: null,
     nameValidationResult: null,
+    sizeValidationResult: null,
     isProcessing: false,
     currentOperation: null,
     error: null,
     showDescriptionDialog: false,
+    canCreateIconSet: false,
   });
 
   useEffect(() => {
-    // Listen to messages from plugin
     window.onmessage = (event) => {
       const msg = event.data.pluginMessage as PluginMessage;
       handlePluginMessage(msg);
     };
-
-    // Request initial selection info
     sendMessage({ type: "get-selection" }, false);
   }, []);
 
@@ -62,27 +55,45 @@ function App() {
         setState((prev) => ({
           ...prev,
           selectionInfo: msg.data,
-          // Clear validation results when selection changes
-          validationResult: null,
           nameValidationResult: null,
-        }));
-        break;
-      case "validation-result":
-        setState((prev) => ({
-          ...prev,
-          validationResult: msg.data,
-          isProcessing: false,
+          sizeValidationResult: null,
+          canCreateIconSet: false,
         }));
         break;
       case "name-validation-result":
-        setState((prev) => ({
-          ...prev,
-          nameValidationResult: msg.data,
-          isProcessing: false,
-        }));
+        setState((prev) => {
+          const canCreate =
+            msg.data.isValid && (prev.sizeValidationResult?.isValid ?? false);
+          return {
+            ...prev,
+            nameValidationResult: msg.data,
+            canCreateIconSet: canCreate,
+            isProcessing: false,
+          };
+        });
+        break;
+      case "size-validation-result":
+        setState((prev) => {
+          const canCreate =
+            (prev.nameValidationResult?.isValid ?? false) && msg.data.isValid;
+          return {
+            ...prev,
+            sizeValidationResult: msg.data,
+            canCreateIconSet: canCreate,
+            isProcessing: false,
+          };
+        });
         break;
       case "progress":
         setState((prev) => ({ ...prev, currentOperation: msg.data }));
+        break;
+      case "open-description-dialog":
+        setState((prev) => ({
+          ...prev,
+          isProcessing: false,
+          currentOperation: null,
+          showDescriptionDialog: true,
+        }));
         break;
       case "success":
         setState((prev) => ({
@@ -90,7 +101,6 @@ function App() {
           isProcessing: false,
           currentOperation: null,
           error: null,
-          showDescriptionDialog: false,
         }));
         break;
       case "error":
@@ -111,71 +121,128 @@ function App() {
     parent.postMessage({ pluginMessage: msg }, "*");
   };
 
-  const handleEditDescription = () => {
-    setState((prev) => ({ ...prev, showDescriptionDialog: true }));
+  const handleUpdateName = (newName: string) => {
+    sendMessage({ type: "update-name", payload: newName });
+  };
+
+  const handleCreateIconSet = () => {
+    sendMessage({ type: "create-icon-set" });
   };
 
   const handleSaveDescription = (data: DescriptionData) => {
     sendMessage({ type: "edit-description", payload: data });
+    setState((prev) => ({ ...prev, showDescriptionDialog: false }));
   };
 
   const handleCancelDescription = () => {
     setState((prev) => ({ ...prev, showDescriptionDialog: false }));
   };
 
+  const hasNameErrors =
+    state.nameValidationResult && !state.nameValidationResult.isValid;
+
   return (
-    <div className="app">
-      <h2>DB Icon Creator</h2>
+    <div className="flex flex-col h-screen db-bg-color-basic-level-1 overflow-hidden">
+      <header className="flex-shrink-0 gap-fix-md p-fix-md">
+        <h1 className="text-2xl my-fix-sm">DB Icon Creator</h1>
+        <SelectionStatus
+          info={state.selectionInfo}
+          nameValidation={state.nameValidationResult}
+          sizeValidation={state.sizeValidationResult}
+        />
+      </header>
 
-      <SelectionStatus info={state.selectionInfo} />
+      <div className="flex-1 overflow-y-auto gap-fix-md px-fix-md">
+        {state.selectionInfo?.isComponentSet ? (
+          state.selectionInfo.isComplete && state.showDescriptionDialog ? (
+            <div className="h-full py-fix-md">
+              <DescriptionDialog
+                isOpen={state.showDescriptionDialog}
+                onSave={handleSaveDescription}
+                onCancel={handleCancelDescription}
+              />
+            </div>
+          ) : (
+            <div className="py-fix-md space-y-4">
+              {state.selectionInfo.isComplete &&
+              !state.showDescriptionDialog ? (
+                <CompleteState />
+              ) : (
+                <>
+                  {!state.selectionInfo.isComplete && (
+                    <>
+                      <ValidationResults
+                        nameValidation={state.nameValidationResult}
+                        sizeValidation={state.sizeValidationResult}
+                      />
 
-      {state.selectionInfo?.isComponentSet && (
-        <>
-          <IconTypeIndicator type={state.selectionInfo.iconType} />
+                      {state.canCreateIconSet && <WorkflowInfo />}
 
-          <DBDivider />
+                      {hasNameErrors && state.nameValidationResult && (
+                        <>
+                          <NameEditor
+                            currentName={
+                              state.selectionInfo.componentSet?.name || ""
+                            }
+                            suggestion={state.nameValidationResult.suggestion}
+                            errors={state.nameValidationResult.errors}
+                            onUpdate={handleUpdateName}
+                          />
+                        </>
+                      )}
+                    </>
+                  )}
 
-          <OperationButtons
-            onConvertOutline={() => sendMessage({ type: "convert-outline" })}
-            onApplyColors={() => sendMessage({ type: "apply-colors" })}
-            onScale={() => sendMessage({ type: "scale" })}
-            onEditDescription={handleEditDescription}
-            onRunAll={() => sendMessage({ type: "run-all" })}
-            disabled={state.isProcessing}
-          />
+                  {state.isProcessing && (
+                    <ProgressIndicator operation={state.currentOperation} />
+                  )}
 
-          {state.validationResult && (
-            <ValidationResults result={state.validationResult} type="vector" />
-          )}
+                  {state.error && (
+                    <DBInfotext semantic="critical" icon="error">
+                      {state.error}
+                    </DBInfotext>
+                  )}
+                </>
+              )}
+            </div>
+          )
+        ) : (
+          <div className="py-fix-md"></div>
+        )}
+      </div>
 
-          {state.nameValidationResult && (
-            <ValidationResults
-              result={state.nameValidationResult}
-              type="name"
-            />
-          )}
+      {state.selectionInfo?.isComponentSet &&
+        state.selectionInfo.isComplete &&
+        !state.showDescriptionDialog &&
+        (!state.nameValidationResult || state.nameValidationResult.isValid) &&
+        (!state.sizeValidationResult || state.sizeValidationResult.isValid) && (
+          <footer className="flex-shrink-0 p-fix-md">
+            <DBButton
+              onClick={() =>
+                setState((prev) => ({ ...prev, showDescriptionDialog: true }))
+              }
+              variant="brand"
+              width="full"
+            >
+              Edit Description
+            </DBButton>
+          </footer>
+        )}
 
-          {state.isProcessing && (
-            <ProgressIndicator operation={state.currentOperation} />
-          )}
-
-          {state.error && (
-            <DBInfotext semantic="critical" icon="error">
-              {state.error}
-            </DBInfotext>
-          )}
-
-          <DescriptionDialog
-            isOpen={state.showDescriptionDialog}
-            onSave={handleSaveDescription}
-            onCancel={handleCancelDescription}
-          />
-        </>
-      )}
-
-      {!state.selectionInfo?.isComponentSet && (
-        <EmptyState message="Please select a Component Set to begin" />
-      )}
+      {state.selectionInfo?.isComponentSet &&
+        !state.selectionInfo.isComplete &&
+        state.canCreateIconSet && (
+          <footer className="flex-shrink-0 p-fix-md">
+            <DBButton
+              onClick={handleCreateIconSet}
+              disabled={state.isProcessing}
+              variant="brand"
+              width="full"
+            >
+              Create Icon Set
+            </DBButton>
+          </footer>
+        )}
     </div>
   );
 }

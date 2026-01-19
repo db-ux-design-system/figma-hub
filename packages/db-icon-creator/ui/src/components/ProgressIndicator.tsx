@@ -3,7 +3,7 @@
  * Displays current operation progress
  */
 
-import { DBInfotext } from "@db-ui/react-components";
+import { DBInfotext } from "@db-ux/react-core-components";
 
 interface ProgressIndicatorProps {
   operation: string | null;

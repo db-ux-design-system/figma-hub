@@ -40,23 +40,24 @@ export class ColorApplicator {
    */
   async apply(componentSet: ComponentSetNode): Promise<void> {
     // Requirement 6.3 & 6.4: Select appropriate variable based on icon type
-    const variableId =
+    const variableKey =
       this.iconType === "functional"
         ? this.config.functional
         : this.config.illustrative;
 
     // Requirement 6.5: Report error when color variables are not available
-    if (!variableId) {
+    if (!variableKey) {
       throw new ProcessingError(
         `Color variable not configured for ${this.iconType} icons`,
       );
     }
 
-    let variable: Variable;
+    let variable: Variable | null;
     try {
-      variable = await figma.variables.getVariableByIdAsync(variableId);
+      // Import variable from library using key
+      variable = await figma.variables.importVariableByKeyAsync(variableKey);
       if (!variable) {
-        throw new ProcessingError(`Color variable not found: ${variableId}`);
+        throw new ProcessingError(`Color variable not found: ${variableKey}`);
       }
     } catch (error) {
       throw new ProcessingError(
