@@ -1,0 +1,31 @@
+{
+  "name": "db-icon-creator-ui",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "npm run build -- --watch",
+    "build": "tsc -b && vite build --minify esbuild --emptyOutDir=false --target=ES6",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@db-ui/react-components": "^0.7.4",
+    "@db-ui/foundations": "^0.7.4",
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.31.0",
+    "@types/react": "19.2.3",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "^4.6.0",
+    "eslint": "^9.13.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.20",
+    "globals": "^15.15.0",
+    "typescript": "~5.8.3",
+    "typescript-eslint": "^8.36.0",
+    "vite": "^6.3.5",
+    "vite-plugin-singlefile": "2.3.0"
+  }
+}
