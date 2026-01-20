@@ -1,6 +1,6 @@
 import { Mapping } from "./types";
 
-export const BASE_COLLECTION_NAME = "❌ Base Variables ❌";
+export const BASE_COLLECTION_NAME = "Theme";
 export const DISPLAY_MODE_COLLECTION_NAME = "Mode";
 export const COLORS_COLLECTION_NAME = "Colors";
 

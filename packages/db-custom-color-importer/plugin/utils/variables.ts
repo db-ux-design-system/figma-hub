@@ -2,7 +2,11 @@ import { ColorData } from "../types";
 import { MAPPINGS } from "../config";
 import { hexToRgba, areColorsEqual } from "./color";
 import { deleteCollections } from "./cleanup";
-import { getOrCreateCollections, setupDisplayModes, setupColorModes } from "./collections";
+import {
+  getOrCreateCollections,
+  setupDisplayModes,
+  setupColorModes,
+} from "./collections";
 
 export async function getExistingVariablesMap() {
   const existingVars = await figma.variables.getLocalVariablesAsync();
@@ -16,16 +20,17 @@ export async function createBaseVariables(
   colorFamilies: string[],
   baseCol: VariableCollection,
   baseModeId: string,
-  varMap: Map<string, Variable>
+  varMap: Map<string, Variable>,
+  prefix: string,
 ) {
   const baseMap: Record<string, string> = {};
-  
+
   for (const family of colorFamilies) {
     const tokens = data.colors[family];
     for (const tokenKey in tokens) {
       const token = tokens[tokenKey];
       if (token && token.$value) {
-        const varPath = `colors/${family}/${tokenKey}`;
+        const varPath = `${prefix}-colors/${prefix}-${family}/${tokenKey}`;
         let v = varMap.get(varPath);
         const newVal = hexToRgba(token.$value);
 
@@ -42,7 +47,7 @@ export async function createBaseVariables(
       }
     }
   }
-  
+
   return baseMap;
 }
 
@@ -52,15 +57,16 @@ export async function createDisplayModeVariables(
   lightModeId: string,
   darkModeId: string,
   baseMap: Record<string, string>,
-  varMap: Map<string, Variable>
+  varMap: Map<string, Variable>,
+  prefix: string,
 ) {
   const displayVarMap: Record<string, string> = {};
-  
+
   for (const family of colorFamilies) {
     for (const m of MAPPINGS) {
-      const varPath = `${family}/${m.name}`;
-      const lId = baseMap[`colors/${family}/${m.light}`];
-      const dId = baseMap[`colors/${family}/${m.dark}`];
+      const varPath = `${prefix}-${family}/${m.name}`;
+      const lId = baseMap[`${prefix}-colors/${prefix}-${family}/${m.light}`];
+      const dId = baseMap[`${prefix}-colors/${prefix}-${family}/${m.dark}`];
 
       if (!lId && !dId) continue;
 
@@ -78,7 +84,7 @@ export async function createDisplayModeVariables(
       displayVarMap[varPath] = v.id;
     }
   }
-  
+
   return displayVarMap;
 }
 
@@ -88,10 +94,11 @@ export async function createAdaptiveColorVariables(
   dbAdaptiveModeId: string,
   colorFamilyModeIds: Record<string, string>,
   displayVarMap: Record<string, string>,
-  varMap: Map<string, Variable>
+  varMap: Map<string, Variable>,
+  prefix: string,
 ) {
   for (const m of MAPPINGS) {
-    const colorVarPath = `custom-adaptive/${m.name}`;
+    const colorVarPath = `${prefix}-adaptive/${m.name}`;
     let v = varMap.get(colorVarPath);
 
     if (!v) {
@@ -120,7 +127,7 @@ export async function createAdaptiveColorVariables(
     }
 
     for (const family of colorFamilies) {
-      const sourceId = displayVarMap[`${family}/${m.name}`];
+      const sourceId = displayVarMap[`${prefix}-${family}/${m.name}`];
       if (sourceId) {
         v.setValueForMode(colorFamilyModeIds[family], {
           type: "VARIABLE_ALIAS",
@@ -136,32 +143,112 @@ export async function handleImportJson(msg: any) {
     const data = msg.data;
     const colorFamilies = Object.keys(data.colors);
     const deleteMissing = msg.deleteMissing;
+    const fileName = msg.fileName || "";
+
+    // Extract prefix from filename
+    // Examples:
+    // "DB Theme-figma.json" -> "db"
+    // "DB-Theme-figma.json" -> "db"
+    // "Whitelabel Theme-figma.json" -> "whitelabel"
+    // "S-Bahn Theme-figma.json" -> "sbahn"
+    // "DB-DiBeTheme-figma.json" -> "dibe"
+    // "DB DiBeTheme-figma.json" -> "dibe"
+    // "Whitelabel NemoTheme-figma.json" -> "nemo"
+    let prefix = "custom";
+    let prefixOriginal = "custom"; // Keep original casing for collection names
+    if (fileName) {
+      // Remove .json extension
+      const nameWithoutExt = fileName.replace(/\.json$/i, "");
+
+      // Known prefixes at the start
+      const knownPrefixes = ["DB", "Whitelabel", "S-Bahn", "sab"];
+
+      // Try to match pattern: [KnownPrefix][-\s][Something]Theme-figma
+      // or: [KnownPrefix][-\s]Theme-figma
+      const regexWithMiddle = new RegExp(
+        `^(${knownPrefixes.join("|")})[-\\s]+(.+?)Theme-figma`,
+        "i",
+      );
+      const regexDirect = new RegExp(
+        `^(${knownPrefixes.join("|")})[-\\s]+Theme-figma`,
+        "i",
+      );
+
+      const matchWithMiddle = nameWithoutExt.match(regexWithMiddle);
+      const matchDirect = nameWithoutExt.match(regexDirect);
+
+      if (matchWithMiddle && matchWithMiddle[2]) {
+        // There's something between the known prefix and "Theme"
+        // Use that middle part
+        prefixOriginal = matchWithMiddle[2].trim();
+      } else if (matchDirect && matchDirect[1]) {
+        // Direct match: use the known prefix itself
+        prefixOriginal = matchDirect[1];
+      }
+
+      // Remove special characters for variable names (keep original for collections)
+      prefix = prefixOriginal.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+
+      // Fallback to "custom" if empty
+      if (!prefix) {
+        prefix = "custom";
+        prefixOriginal = "custom";
+      }
+    }
 
     if (deleteMissing) {
       await deleteCollections();
     }
 
-    const { baseCol, displayCol, colorCol } = await getOrCreateCollections();
+    const { baseCol, displayCol, colorCol } =
+      await getOrCreateCollections(prefixOriginal);
     const baseModeId = baseCol.modes[0].modeId;
     const { lightModeId, darkModeId } = setupDisplayModes(displayCol);
-    const { dbAdaptiveModeId, colorFamilyModeIds } = setupColorModes(colorCol, colorFamilies);
+    const { dbAdaptiveModeId, colorFamilyModeIds } = setupColorModes(
+      colorCol,
+      colorFamilies,
+      prefix,
+    );
 
     const varMap = await getExistingVariablesMap();
 
-    const baseMap = await createBaseVariables(data, colorFamilies, baseCol, baseModeId, varMap);
-    const displayVarMap = await createDisplayModeVariables(colorFamilies, displayCol, lightModeId, darkModeId, baseMap, varMap);
-    await createAdaptiveColorVariables(colorFamilies, colorCol, dbAdaptiveModeId, colorFamilyModeIds, displayVarMap, varMap);
+    const baseMap = await createBaseVariables(
+      data,
+      colorFamilies,
+      baseCol,
+      baseModeId,
+      varMap,
+      prefix,
+    );
+    const displayVarMap = await createDisplayModeVariables(
+      colorFamilies,
+      displayCol,
+      lightModeId,
+      darkModeId,
+      baseMap,
+      varMap,
+      prefix,
+    );
+    await createAdaptiveColorVariables(
+      colorFamilies,
+      colorCol,
+      dbAdaptiveModeId,
+      colorFamilyModeIds,
+      displayVarMap,
+      varMap,
+      prefix,
+    );
 
     figma.notify(
       deleteMissing
         ? "All collections newly created"
-        : "Variables synchronized"
+        : "Variables synchronized",
     );
 
     figma.ui.postMessage(
       deleteMissing
         ? { feedback: "Success: All collections newly created" }
-        : { feedback: "Success: Variables synchronized" }
+        : { feedback: "Success: Variables synchronized" },
     );
   } catch (e) {
     console.error(e);

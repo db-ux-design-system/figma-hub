@@ -30,14 +30,19 @@ function App() {
     return () => window.removeEventListener("message", handleMessage);
   }, []);
 
+  const [fileName, setFileName] = useState("");
+
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
     setFeedback("");
 
     if (!selectedFile) {
       setJsonInput("");
+      setFileName("");
       return;
     }
+
+    setFileName(selectedFile.name);
 
     const reader = new FileReader();
     reader.onload = (e) => setJsonInput(e.target?.result as string);
@@ -61,9 +66,10 @@ function App() {
             type: "import-json",
             data: parsed,
             deleteMissing,
+            fileName,
           },
         },
-        "*"
+        "*",
       );
     } catch (e) {
       setFeedback("The selected file does not appear to be a valid JSON.");
