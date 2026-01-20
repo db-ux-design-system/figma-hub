@@ -26,14 +26,55 @@ export async function getOrCreateCollections(prefix: string) {
   return { baseCol, displayCol, colorCol };
 }
 
-export function setupDisplayModes(displayCol: VariableCollection) {
-  if (displayCol.modes[0].name !== "Light")
-    displayCol.renameMode(displayCol.modes[0].modeId, "Light");
-  if (!displayCol.modes.find((m) => m.name === "Dark"))
-    displayCol.addMode("Dark");
+export function setupDisplayModes(
+  displayCol: VariableCollection,
+  baseCol: VariableCollection,
+) {
+  console.log("=== setupDisplayModes START ===");
+  console.log("displayCol name:", displayCol.name);
+  console.log(
+    "displayCol modes before:",
+    displayCol.modes.map((m) => ({ name: m.name, id: m.modeId })),
+  );
+  console.log("baseCol name:", baseCol.name);
+  console.log(
+    "baseCol modes before:",
+    baseCol.modes.map((m) => ({ name: m.name, id: m.modeId })),
+  );
 
-  const lightModeId = displayCol.modes.find((m) => m.name === "Light")!.modeId;
-  const darkModeId = displayCol.modes.find((m) => m.name === "Dark")!.modeId;
+  if (displayCol.modes[0].name !== "Light Mode")
+    displayCol.renameMode(displayCol.modes[0].modeId, "Light Mode");
+  if (!displayCol.modes.find((m) => m.name === "Dark Mode"))
+    displayCol.addMode("Dark Mode");
+
+  const lightModeId = displayCol.modes.find(
+    (m) => m.name === "Light Mode",
+  )!.modeId;
+  const darkModeId = displayCol.modes.find(
+    (m) => m.name === "Dark Mode",
+  )!.modeId;
+
+  console.log(
+    "displayCol modes after setup:",
+    displayCol.modes.map((m) => ({ name: m.name, id: m.modeId })),
+  );
+
+  // Sync modes with Theme collection (baseCol)
+  // Ensure Theme collection has the same modes
+  if (baseCol.modes[0].name !== "Light Mode") {
+    console.log("Renaming baseCol mode 0 to 'Light Mode'");
+    baseCol.renameMode(baseCol.modes[0].modeId, "Light Mode");
+  }
+  if (!baseCol.modes.find((m) => m.name === "Dark Mode")) {
+    console.log("Adding 'Dark Mode' to baseCol");
+    baseCol.addMode("Dark Mode");
+  }
+
+  console.log(
+    "baseCol modes after setup:",
+    baseCol.modes.map((m) => ({ name: m.name, id: m.modeId })),
+  );
+  console.log("=== setupDisplayModes END ===");
 
   return { lightModeId, darkModeId };
 }
