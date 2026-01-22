@@ -42,12 +42,20 @@ interface CategoryInfo {
   count: number;
 }
 
-type ChangelogStatus = "added" | "fixed" | "changed" | "deprecated";
+type ChangelogStatus =
+  | "feat"
+  | "fix"
+  | "refactor"
+  | "docs"
+  | "chore"
+  | "deprecated";
 
 const statusConfig = {
-  added: { emoji: "⭐", label: "added" },
-  fixed: { emoji: "🪲", label: "fixed" },
-  changed: { emoji: "🔀", label: "changed" },
+  feat: { emoji: "⭐️", label: "feat" },
+  fix: { emoji: "🪲", label: "fix" },
+  refactor: { emoji: "🔁", label: "refactor" },
+  docs: { emoji: "📝", label: "docs" },
+  chore: { emoji: "🔧", label: "chore" },
   deprecated: { emoji: "⚠️", label: "deprecated" },
 };
 
@@ -70,6 +78,8 @@ const App = () => {
   const [versionNumber, setVersionNumber] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [currentScreen, setCurrentScreen] = useState<"main" | "export">("main");
+  const [selectAllStatus, setSelectAllStatus] =
+    useState<ChangelogStatus | null>("feat");
   const [exportData, setExportData] = useState<{
     mode: "full" | "info-only" | null;
     gitlabJsonSelected: string;
@@ -100,7 +110,7 @@ const App = () => {
 
       if (msg.type === "scan-result") {
         console.log(
-          `📊 App.tsx: Scan-Ergebnis erhalten - ${msg.icons.length} Icons, Type: ${msg.iconType}`
+          `📊 App.tsx: Scan-Ergebnis erhalten - ${msg.icons.length} Icons, Type: ${msg.iconType}`,
         );
 
         setIcons(msg.icons);
@@ -112,19 +122,19 @@ const App = () => {
         msg.icons.forEach((icon: IconEntry) => {
           categoryMap.set(
             icon.category,
-            (categoryMap.get(icon.category) || 0) + 1
+            (categoryMap.get(icon.category) || 0) + 1,
           );
         });
 
         const categoryList = Array.from(categoryMap.entries()).map(
-          ([name, count]) => ({ name, count })
+          ([name, count]) => ({ name, count }),
         );
 
         console.log(`🗂 App.tsx: ${categoryList.length} Kategorien gefunden`);
         setCategories(categoryList);
       } else if (msg.type === "select-export-page-icons") {
         console.log(
-          `📄 App.tsx: ${msg.icons.length} Icons von Export-Seite erhalten`
+          `📄 App.tsx: ${msg.icons.length} Icons von Export-Seite erhalten`,
         );
 
         // Gruppiere nach Icon-Set und nimm nur einen Vertreter pro Set
@@ -136,9 +146,11 @@ const App = () => {
           }
         });
 
-        const iconsToSelect: SelectedIcon[] = Array.from(iconSetMap.values()).map((icon) => ({
+        const iconsToSelect: SelectedIcon[] = Array.from(
+          iconSetMap.values(),
+        ).map((icon) => ({
           icon,
-          status: "added" as ChangelogStatus
+          status: "feat" as ChangelogStatus,
         }));
 
         setSelectedIcons(iconsToSelect);
@@ -153,11 +165,11 @@ const App = () => {
         console.log(`✅ App.tsx: Export-Daten erhalten (Mode: ${msg.mode})`);
         console.log(`   Icon Type: ${msg.iconType}`);
         console.log(
-          `   GitLab Selected length: ${msg.gitlabJsonSelected?.length || 0}`
+          `   GitLab Selected length: ${msg.gitlabJsonSelected?.length || 0}`,
         );
         console.log(`   GitLab All length: ${msg.gitlabJsonAll?.length || 0}`);
         console.log(
-          `   Marketing CSV length: ${msg.marketingCsv?.length || 0}`
+          `   Marketing CSV length: ${msg.marketingCsv?.length || 0}`,
         );
 
         setExportData({
@@ -194,7 +206,23 @@ const App = () => {
 
   // Icon-Set Namen extrahieren (ohne Variante/Größe)
   const getIconSetName = (iconName: string): string => {
-    return iconName.split("/")[0].split("=")[0].trim();
+    // Entferne alles nach "/" (Varianten) und nach "=" (Properties)
+    // Dann entferne auch "size=" und "variant=" Teile falls vorhanden
+    let baseName = iconName.split("/")[0].split("=")[0].trim();
+
+    // Entferne auch ", size" oder ", variant" Teile (alternative Notation)
+    baseName = baseName.split(",")[0].trim();
+
+    return baseName;
+  };
+
+  // Prüfe ob ein Icon-Name eine Property-Definition ist (kein echtes Icon)
+  const isPropertyDefinition = (iconName: string): boolean => {
+    const baseName = getIconSetName(iconName);
+    const propertyNames = ["size", "variant", "state", "type", "color"];
+    return (
+      propertyNames.includes(baseName.toLowerCase()) || baseName.length === 0
+    );
   };
 
   // Gruppiere Icons nach Icon-Sets
@@ -202,6 +230,11 @@ const App = () => {
     const sets = new Map<string, IconEntry[]>();
 
     icons.forEach((icon) => {
+      // Filtere Property-Definitionen aus
+      if (isPropertyDefinition(icon.name)) {
+        return;
+      }
+
       const setName = getIconSetName(icon.name);
       if (!sets.has(setName)) {
         sets.set(setName, []);
@@ -257,7 +290,7 @@ const App = () => {
   const iconSetsByCategory = getFilteredIconSetsByCategory();
   const totalFilteredSets = Array.from(iconSetsByCategory.values()).reduce(
     (sum, sets) => sum + sets.length,
-    0
+    0,
   );
 
   // ================================================================
@@ -273,29 +306,47 @@ const App = () => {
   // Toggle Icon-Set (alle Varianten)
   const toggleIconSet = (setName: string, icons: IconEntry[]) => {
     console.log(
-      `🔄 App.tsx: Toggle Icon-Set '${setName}' mit ${icons.length} Varianten`
+      `🔄 App.tsx: Toggle Icon-Set '${setName}' mit ${icons.length} Varianten`,
     );
 
     setSelectedIcons((prev) => {
       const isSelected = prev.some(
-        (si) => getIconSetName(si.icon.name) === setName
+        (si) => getIconSetName(si.icon.name) === setName,
       );
 
       if (isSelected) {
         const newSelection = prev.filter(
-          (si) => getIconSetName(si.icon.name) !== setName
+          (si) => getIconSetName(si.icon.name) !== setName,
         );
         console.log(`➖ Icon-Set entfernt. ${newSelection.length} Icons übrig`);
+
+        // Prüfe ob alle verbleibenden Icons den gleichen Status haben
+        if (newSelection.length > 0) {
+          const allSameStatus = newSelection.every(
+            (si) => si.status === newSelection[0].status,
+          );
+          setSelectAllStatus(allSameStatus ? newSelection[0].status : null);
+        } else {
+          setSelectAllStatus("feat");
+        }
+
         return newSelection;
       } else {
         const representativeIcon = icons[0];
         const newSelection = [
           ...prev,
-          { icon: representativeIcon, status: "added" as ChangelogStatus },
+          { icon: representativeIcon, status: "feat" as ChangelogStatus },
         ];
         console.log(
-          `➕ Icon-Set hinzugefügt. ${newSelection.length} Icons gesamt`
+          `➕ Icon-Set hinzugefügt. ${newSelection.length} Icons gesamt`,
         );
+
+        // Prüfe ob alle Icons den gleichen Status haben
+        const allSameStatus = newSelection.every(
+          (si) => si.status === newSelection[0].status,
+        );
+        setSelectAllStatus(allSameStatus ? newSelection[0].status : null);
+
         return newSelection;
       }
     });
@@ -304,12 +355,36 @@ const App = () => {
   // Status für ein Icon ändern
   const updateIconStatus = (iconId: string, status: ChangelogStatus) => {
     console.log(
-      `🔄 App.tsx: Status für Icon ${iconId} auf '${status}' gesetzt`
+      `🔄 App.tsx: Status für Icon ${iconId} auf '${status}' gesetzt`,
     );
 
-    setSelectedIcons((prev) =>
-      prev.map((si) => (si.icon.id === iconId ? { ...si, status } : si))
+    setSelectedIcons((prev) => {
+      const updated = prev.map((si) =>
+        si.icon.id === iconId ? { ...si, status } : si,
+      );
+
+      // Prüfe ob alle Icons den gleichen Status haben
+      const allSameStatus = updated.every(
+        (si) => si.status === updated[0].status,
+      );
+      if (allSameStatus) {
+        setSelectAllStatus(updated[0].status);
+      } else {
+        setSelectAllStatus(null as any); // Kein Status ausgewählt wenn unterschiedlich
+      }
+
+      return updated;
+    });
+  };
+
+  // Alle ausgewählten Icons auf einen Status setzen
+  const setAllIconsToStatus = (status: ChangelogStatus) => {
+    console.log(
+      `🔄 App.tsx: Setze alle ${selectedIcons.length} Icons auf Status '${status}'`,
     );
+
+    setSelectAllStatus(status);
+    setSelectedIcons((prev) => prev.map((si) => ({ ...si, status })));
   };
 
   // Kategorie-Click: Toggle alle Icon-Sets dieser Kategorie
@@ -317,7 +392,7 @@ const App = () => {
     console.log(`🗂 App.tsx: Toggle Kategorie '${categoryName}'`);
 
     const categoryIconSets = Array.from(iconSets.entries()).filter(
-      ([_, icons]) => icons[0].category === categoryName
+      ([_, icons]) => icons[0].category === categoryName,
     );
 
     const isCategorySelected = selectedCategories.includes(categoryName);
@@ -326,7 +401,7 @@ const App = () => {
       console.log(`   ↳ Entferne alle Icons der Kategorie '${categoryName}'`);
 
       setSelectedIcons((prev) =>
-        prev.filter((si) => si.icon.category !== categoryName)
+        prev.filter((si) => si.icon.category !== categoryName),
       );
 
       setSelectedCategories((prev) => prev.filter((c) => c !== categoryName));
@@ -337,7 +412,7 @@ const App = () => {
 
       categoryIconSets.forEach(([setName, icons]) => {
         const isAlreadySelected = selectedIcons.some(
-          (si) => getIconSetName(si.icon.name) === setName
+          (si) => getIconSetName(si.icon.name) === setName,
         );
 
         if (!isAlreadySelected) {
@@ -345,7 +420,7 @@ const App = () => {
             ...prev,
             {
               icon: icons[0],
-              status: "added" as ChangelogStatus,
+              status: "feat" as ChangelogStatus,
             },
           ]);
         }
@@ -358,7 +433,7 @@ const App = () => {
     console.log("📄 App.tsx: Lade Icons von Export-Seite");
     parent.postMessage(
       { pluginMessage: { type: "SELECT_FROM_EXPORT_PAGE" } },
-      "*"
+      "*",
     );
   };
 
@@ -369,8 +444,8 @@ const App = () => {
     const allSets: SelectedIcon[] = Array.from(iconSets.entries()).map(
       ([_, icons]) => ({
         icon: icons[0],
-        status: "added" as ChangelogStatus,
-      })
+        status: "feat" as ChangelogStatus,
+      }),
     );
 
     setSelectedIcons(allSets);
@@ -387,8 +462,6 @@ const App = () => {
     setSelectedCategories([]);
   };
 
-
-
   // Export: Full mit Assets
   const handleExportFull = () => {
     console.log("🚀 App.tsx: Starte Full Export...");
@@ -400,14 +473,14 @@ const App = () => {
 
     const hasVersion = versionNumber.trim().length > 0;
 
-    // Prüfe ob "added" Icons dabei sind → Overview muss generiert werden
-    const hasAddedIcons = selectedIcons.some((si) => si.status === "added");
+    // Prüfe ob "feat" Icons dabei sind → Overview muss generiert werden
+    const hasFeatIcons = selectedIcons.some((si) => si.status === "feat");
 
     console.log(
-      `📋 Version: ${hasVersion ? versionNumber : "(keine - kein Changelog)"}`
+      `📋 Version: ${hasVersion ? versionNumber : "(keine - kein Changelog)"}`,
     );
     console.log(
-      `📊 Overview generieren: ${hasAddedIcons ? "Ja (added Icons vorhanden)" : "Nein (keine added Icons)"}`
+      `📊 Overview generieren: ${hasFeatIcons ? "Ja (feat Icons vorhanden)" : "Nein (keine feat Icons)"}`,
     );
 
     // Sende nur die Icon-IDs und Status-Mapping
@@ -425,11 +498,11 @@ const App = () => {
           type: "EXPORT_FULL",
           selectedIconIds: selectedIconIds,
           version: hasVersion ? versionNumber : null,
-          generateOverview: hasAddedIcons,
+          generateOverview: hasFeatIcons,
           iconStatuses: iconStatuses,
         },
       },
-      "*"
+      "*",
     );
   };
 
@@ -444,21 +517,21 @@ const App = () => {
 
     const hasVersion = versionNumber.trim().length > 0;
 
-    // Prüfe ob "added" Icons dabei sind → Overview muss generiert werden
-    const hasAddedIcons = selectedIcons.some((si) => si.status === "added");
+    // Prüfe ob "feat" Icons dabei sind → Overview muss generiert werden
+    const hasFeatIcons = selectedIcons.some((si) => si.status === "feat");
 
     console.log(
-      `📋 Version: ${hasVersion ? versionNumber : "(keine - kein Changelog)"}`
+      `📋 Version: ${hasVersion ? versionNumber : "(keine - kein Changelog)"}`,
     );
     console.log(
-      `📊 Overview generieren: ${hasAddedIcons ? "Ja (added Icons vorhanden)" : "Nein (keine added Icons)"}`
+      `📊 Overview generieren: ${hasFeatIcons ? "Ja (feat Icons vorhanden)" : "Nein (keine feat Icons)"}`,
     );
 
     // Sende nur die Icon-IDs
     const selectedIconIds = selectedIcons.map(({ icon }) => icon.id);
 
     console.log(
-      `📤 Sende ${selectedIconIds.length} Icon-IDs zum Info-Only Export`
+      `📤 Sende ${selectedIconIds.length} Icon-IDs zum Info-Only Export`,
     );
 
     parent.postMessage(
@@ -467,11 +540,57 @@ const App = () => {
           type: "EXPORT_INFO_ONLY",
           selectedIconIds: selectedIconIds,
           version: hasVersion ? versionNumber : null,
-          generateOverview: hasAddedIcons,
+          generateOverview: hasFeatIcons,
         },
       },
-      "*"
+      "*",
     );
+  };
+
+  // Export: Nur Changelog
+  const handleExportChangelogOnly = () => {
+    console.log("🚀 App.tsx: Starte Changelog-Only Export...");
+
+    if (selectedIcons.length === 0) {
+      alert("Bitte wählen Sie mindestens ein Icon aus.");
+      return;
+    }
+
+    const hasVersion = versionNumber.trim().length > 0;
+
+    if (!hasVersion) {
+      alert(
+        "Bitte geben Sie eine Versionsnummer ein, um ein Changelog zu erstellen.",
+      );
+      return;
+    }
+
+    console.log(`📋 Version: ${versionNumber}`);
+
+    // Sende nur die Icon-IDs und Status-Mapping
+    const selectedIconIds = selectedIcons.map(({ icon }) => icon.id);
+    const iconStatuses: Record<string, ChangelogStatus> = {};
+    selectedIcons.forEach(({ icon, status }) => {
+      iconStatuses[icon.id] = status;
+    });
+
+    console.log(
+      `📤 Sende ${selectedIconIds.length} Icon-IDs zum Changelog-Only Export`,
+    );
+
+    parent.postMessage(
+      {
+        pluginMessage: {
+          type: "EXPORT_CHANGELOG_ONLY",
+          selectedIconIds: selectedIconIds,
+          version: versionNumber,
+          iconStatuses: iconStatuses,
+        },
+      },
+      "*",
+    );
+
+    alert(`Changelog Frame für v${versionNumber} wurde erstellt!`);
   };
 
   // ====================================================================
@@ -520,7 +639,7 @@ const App = () => {
     "🎨 App.tsx RENDER - currentScreen:",
     currentScreen,
     "exportData.mode:",
-    exportData.mode
+    exportData.mode,
   );
 
   if (isLoading) {
@@ -581,7 +700,7 @@ const App = () => {
                 onClick={() =>
                   copyToClipboard(
                     exportData.gitlabJsonSelected,
-                    "GitLab Descriptions (Selected)"
+                    "GitLab Descriptions (Selected)",
                   )
                 }
               >
@@ -612,7 +731,7 @@ const App = () => {
                 onClick={() =>
                   copyToClipboard(
                     exportData.gitlabJsonAll,
-                    "GitLab Descriptions (All)"
+                    "GitLab Descriptions (All)",
                   )
                 }
               >
@@ -643,7 +762,7 @@ const App = () => {
                 onClick={() =>
                   copyToClipboard(
                     exportData.marketingCsv,
-                    "Marketing Portal CSV"
+                    "Marketing Portal CSV",
                   )
                 }
               >
@@ -703,7 +822,9 @@ const App = () => {
                 <button onClick={selectAllIconSets}>Select all</button>
               </DBTag>
               <DBTag>
-                <button onClick={selectFromExportPage}>Select Export-Page</button>
+                <button onClick={selectFromExportPage}>
+                  Select Export-Page
+                </button>
               </DBTag>
               <DBTag>
                 <button onClick={clearSelection}>Clear selection</button>
@@ -717,7 +838,9 @@ const App = () => {
                 </button>
               </DBTag>
               <DBTag>
-                <button onClick={selectFromExportPage}>Select Export-Page</button>
+                <button onClick={selectFromExportPage}>
+                  Select Export-Page
+                </button>
               </DBTag>
             </>
           )}
@@ -794,7 +917,7 @@ const App = () => {
                     )}
                   </div>
                 );
-              }
+              },
             )}
 
             {totalFilteredSets === 0 && (
@@ -810,6 +933,43 @@ const App = () => {
               <h4 className="text-sm mb-0">
                 Ausgewählt: {selectedIcons.length} Icon-Sets
               </h4>
+
+              {/* Header mit "Select All" für jeden Status */}
+              <div className="flex gap-fix-xs mb-fix-sm mt-fix-sm">
+                <p className="text-sm my-fix-xs w-1/4 font-semibold">
+                  Select all
+                </p>
+                <div className="flex w-3/4 gap-fix-sm items-center">
+                  {(
+                    [
+                      "feat",
+                      "fix",
+                      "refactor",
+                      "docs",
+                      "chore",
+                      "deprecated",
+                    ] as ChangelogStatus[]
+                  ).map((s) => (
+                    <DBTag key={`select-all-${s}`} showCheckState={false}>
+                      <label htmlFor={`select-all-${s}`}>
+                        <input
+                          type="radio"
+                          name="select-all-status"
+                          id={`select-all-${s}`}
+                          value={s}
+                          checked={selectAllStatus === s}
+                          onChange={() => setAllIconsToStatus(s)}
+                        />
+                        {statusConfig[s].emoji} {statusConfig[s].label}
+                      </label>
+                    </DBTag>
+                  ))}
+                </div>
+              </div>
+
+              {/* Border unter Select All */}
+              <div className="border-t border-gray-200 mb-fix-sm"></div>
+
               <div className="space-y-3 gap-fix-sm">
                 {selectedIcons.map(({ icon, status }) => {
                   const setName = getIconSetName(icon.name);
@@ -819,13 +979,15 @@ const App = () => {
                       <div className="flex w-3/4 gap-fix-sm items-center">
                         {(
                           [
-                            "added",
-                            "fixed",
-                            "changed",
+                            "feat",
+                            "fix",
+                            "refactor",
+                            "docs",
+                            "chore",
                             "deprecated",
                           ] as ChangelogStatus[]
                         ).map((s) => (
-                          <DBTag showCheckState={false}>
+                          <DBTag showCheckState={false} key={`${icon.id}-${s}`}>
                             <label htmlFor={`status-${icon.id}-${s}`}>
                               <input
                                 type="radio"
@@ -859,6 +1021,11 @@ const App = () => {
             <DBButton onClick={handleExportInfoOnly} variant="secondary">
               📋 Nur Infos exportieren
             </DBButton>
+            {versionNumber.trim().length > 0 && (
+              <DBButton onClick={handleExportChangelogOnly} variant="secondary">
+                📝 Nur Changelog erstellen
+              </DBButton>
+            )}
           </div>
         </div>
       )}

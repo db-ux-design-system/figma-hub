@@ -12,9 +12,11 @@ export const EXCLUDED_PAGES = [
 export const ALLOWED_SIZES_FUNCTIONAL = [64, 48, 32, 24, 20];
 
 export const STATUS_CONFIG = {
-  added: { emoji: "⭐", label: "added" },
-  fixed: { emoji: "🪲", label: "fixed" },
-  changed: { emoji: "🔀", label: "changed" },
+  feat: { emoji: "⭐️", label: "feat" },
+  fix: { emoji: "🪲", label: "fix" },
+  refactor: { emoji: "🔁", label: "refactor" },
+  docs: { emoji: "📝", label: "docs" },
+  chore: { emoji: "🔧", label: "chore" },
   deprecated: { emoji: "⚠️", label: "deprecated" },
 };
 
@@ -27,8 +29,12 @@ export const VARIABLE_KEYS = {
     strokeWeight: "66832c3b7274994cd407781d49d031b9fc588f4d",
     fillColor: "539324f386b2150504d789cfbad9126c14cbdad1",
     strokeColor: "47a78b18c953cec8622180b54e0ab9c1ab5b30ca",
+    width: "376e09539dd3c7da959848e0ec2abf32fc448e25",
   },
   changelogStatus: {
+    gap: "7bf011be28799b8941bfdc8d3e4bdef53a98bfee",
+  },
+  changelogIconsContainer: {
     gap: "783a93db6d2cc787ac709aadc1062ad083568515",
   },
   changelogHeadline: {

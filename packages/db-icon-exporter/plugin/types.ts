@@ -26,7 +26,13 @@ export interface IconData {
   parsedDescription: ParsedDescription;
 }
 
-export type ChangelogStatus = "added" | "fixed" | "changed" | "deprecated";
+export type ChangelogStatus =
+  | "feat"
+  | "fix"
+  | "refactor"
+  | "docs"
+  | "chore"
+  | "deprecated";
 
 export interface ExportRequest {
   type: "EXPORT_FULL" | "EXPORT_INFO_ONLY";

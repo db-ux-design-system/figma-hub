@@ -12,12 +12,13 @@ import {
   bindChangelogFrameVariables,
   bindChangelogStatusFrameVariables,
   bindChangelogHeadlineVariables,
+  bindChangelogIconsContainerVariables,
 } from "./variablesBinder";
 
 export async function buildGitLabFrame(
   selectedIcons: IconData[],
   iconType: string,
-  allIcons: IconData[]
+  allIcons: IconData[],
 ): Promise<FrameNode> {
   const frame = figma.createFrame();
   frame.name = "GitLab";
@@ -27,7 +28,7 @@ export async function buildGitLabFrame(
   frame.itemSpacing = 16;
 
   const selectedBaseNames = new Set(
-    selectedIcons.map((icon) => extractIconBaseName(icon.name))
+    selectedIcons.map((icon) => extractIconBaseName(icon.name)),
   );
 
   const iconSets = new Map<string, IconData[]>();
@@ -43,24 +44,30 @@ export async function buildGitLabFrame(
 
   const sizes = iconType === "functional" ? [32, 24, 20] : [64];
 
-  for (const [setName, variants] of iconSets) {
+  // Sortiere Icon-Sets alphabetisch
+  const sortedIconSets = Array.from(iconSets.entries()).sort((a, b) =>
+    a[0].localeCompare(b[0]),
+  );
+
+  for (const [setName, variants] of sortedIconSets) {
     const category = variants[0].category
       .toLowerCase()
       .replace(/\s+/g, "-")
       .replace(/&/g, "");
-    const iconName = setName.toLowerCase().replace(/\s+/g, "-");
+    // Icon-Namen in Figma sind bereits identisch zu GitLab-Namen
+    const iconName = setName;
 
     for (const size of sizes) {
       if (iconType === "functional") {
         const outlined = variants.find(
-          (v) => extractIconSize(v.name) === size && !isFilledVariant(v.name)
+          (v) => extractIconSize(v.name) === size && !isFilledVariant(v.name),
         );
         if (outlined) {
           const node = await figma.getNodeByIdAsync(outlined.id);
           if (node && node.type === "COMPONENT") {
             const instance = node.createInstance();
-            instance.name = `${category}/${iconName}/outlined/${size}.svg`;
-            
+            instance.name = `${category}/${iconName}/outlined/${size}`;
+
             // Unbind and set color
             const fills = JSON.parse(JSON.stringify(instance.fills)) as Paint[];
             if (fills.length > 0 && fills[0].type === "SOLID") {
@@ -68,20 +75,20 @@ export async function buildGitLabFrame(
               delete (fills[0] as any).boundVariables;
               instance.fills = fills;
             }
-            
+
             frame.appendChild(instance);
           }
         }
 
         const filled = variants.find(
-          (v) => extractIconSize(v.name) === size && isFilledVariant(v.name)
+          (v) => extractIconSize(v.name) === size && isFilledVariant(v.name),
         );
         if (filled) {
           const node = await figma.getNodeByIdAsync(filled.id);
           if (node && node.type === "COMPONENT") {
             const instance = node.createInstance();
-            instance.name = `${category}/${iconName}/filled/${size}.svg`;
-            
+            instance.name = `${category}/${iconName}/filled/${size}`;
+
             // Unbind and set color
             const fills = JSON.parse(JSON.stringify(instance.fills)) as Paint[];
             if (fills.length > 0 && fills[0].type === "SOLID") {
@@ -89,7 +96,7 @@ export async function buildGitLabFrame(
               delete (fills[0] as any).boundVariables;
               instance.fills = fills;
             }
-            
+
             frame.appendChild(instance);
           }
         }
@@ -98,29 +105,33 @@ export async function buildGitLabFrame(
         const node = await figma.getNodeByIdAsync(icon.id);
         if (node && node.type === "COMPONENT") {
           const instance = node.createInstance();
-          instance.name = `db_ic_il_${category}_${iconName}.svg`;
-          
+          instance.name = `${category}/${iconName}`;
+
           // Unbind and set colors for Base and Pulse layers
           const baseLayer = instance.findOne((n) => n.name === "Base");
           if (baseLayer && "fills" in baseLayer) {
-            const fills = JSON.parse(JSON.stringify(baseLayer.fills)) as Paint[];
+            const fills = JSON.parse(
+              JSON.stringify(baseLayer.fills),
+            ) as Paint[];
             if (fills.length > 0 && fills[0].type === "SOLID") {
               fills[0].color = { r: 0.086, g: 0.094, b: 0.106 };
               delete (fills[0] as any).boundVariables;
               baseLayer.fills = fills;
             }
           }
-          
+
           const pulseLayer = instance.findOne((n) => n.name === "Pulse");
           if (pulseLayer && "fills" in pulseLayer) {
-            const fills = JSON.parse(JSON.stringify(pulseLayer.fills)) as Paint[];
+            const fills = JSON.parse(
+              JSON.stringify(pulseLayer.fills),
+            ) as Paint[];
             if (fills.length > 0 && fills[0].type === "SOLID") {
               fills[0].color = { r: 0.925, g: 0, b: 0.086 };
               delete (fills[0] as any).boundVariables;
               pulseLayer.fills = fills;
             }
           }
-          
+
           frame.appendChild(instance);
         }
       }
@@ -133,7 +144,7 @@ export async function buildGitLabFrame(
 export async function buildMarketingFrame(
   selectedIcons: IconData[],
   iconType: string,
-  allIcons: IconData[]
+  allIcons: IconData[],
 ): Promise<FrameNode> {
   const frame = figma.createFrame();
   frame.name = "Export_Icon_UPDATE";
@@ -143,7 +154,7 @@ export async function buildMarketingFrame(
   frame.itemSpacing = 16;
 
   const selectedBaseNames = new Set(
-    selectedIcons.map((icon) => extractIconBaseName(icon.name))
+    selectedIcons.map((icon) => extractIconBaseName(icon.name)),
   );
 
   const iconSets = new Map<string, IconData[]>();
@@ -159,17 +170,24 @@ export async function buildMarketingFrame(
 
   const sizes = iconType === "functional" ? [64, 48, 32, 24, 20] : [64];
 
-  for (const [setName, variants] of iconSets) {
+  // Sortiere Icon-Sets alphabetisch
+  const sortedIconSets = Array.from(iconSets.entries()).sort((a, b) =>
+    a[0].localeCompare(b[0]),
+  );
+
+  for (const [setName, variants] of sortedIconSets) {
     const category = variants[0].category
       .toLowerCase()
       .replace(/\s+/g, "_")
       .replace(/&/g, "");
-    const iconName = setName.toLowerCase().replace(/\s+/g, "_");
+    // Marketing: Funktionale Icons von kebab-case zu snake_case, illustrative bleiben snake_case
+    const iconName =
+      iconType === "functional" ? setName.replace(/-/g, "_") : setName;
 
     for (const size of sizes) {
       if (iconType === "functional") {
         const outlined = variants.find(
-          (v) => extractIconSize(v.name) === size && !isFilledVariant(v.name)
+          (v) => extractIconSize(v.name) === size && !isFilledVariant(v.name),
         );
         if (outlined) {
           const node = await figma.getNodeByIdAsync(outlined.id);
@@ -177,7 +195,7 @@ export async function buildMarketingFrame(
             const instance = node.createInstance();
             let filename = `db_ic_${category}_${iconName}_${size}.svg`;
             instance.name = cleanFilename(filename);
-            
+
             // Unbind and set color
             const fills = JSON.parse(JSON.stringify(instance.fills)) as Paint[];
             if (fills.length > 0 && fills[0].type === "SOLID") {
@@ -185,13 +203,13 @@ export async function buildMarketingFrame(
               delete (fills[0] as any).boundVariables;
               instance.fills = fills;
             }
-            
+
             frame.appendChild(instance);
           }
         }
 
         const filled = variants.find(
-          (v) => extractIconSize(v.name) === size && isFilledVariant(v.name)
+          (v) => extractIconSize(v.name) === size && isFilledVariant(v.name),
         );
         if (filled) {
           const node = await figma.getNodeByIdAsync(filled.id);
@@ -199,7 +217,7 @@ export async function buildMarketingFrame(
             const instance = node.createInstance();
             let filename = `db_ic_${category}_${iconName}_${size}_filled.svg`;
             instance.name = cleanFilename(filename);
-            
+
             // Unbind and set color
             const fills = JSON.parse(JSON.stringify(instance.fills)) as Paint[];
             if (fills.length > 0 && fills[0].type === "SOLID") {
@@ -207,7 +225,7 @@ export async function buildMarketingFrame(
               delete (fills[0] as any).boundVariables;
               instance.fills = fills;
             }
-            
+
             frame.appendChild(instance);
           }
         }
@@ -218,28 +236,32 @@ export async function buildMarketingFrame(
           const instance = node.createInstance();
           let filename = `db_ic_il_${category}_${iconName}.svg`;
           instance.name = cleanFilename(filename);
-          
+
           // Unbind and set colors for Base and Pulse layers
           const baseLayer = instance.findOne((n) => n.name === "Base");
           if (baseLayer && "fills" in baseLayer) {
-            const fills = JSON.parse(JSON.stringify(baseLayer.fills)) as Paint[];
+            const fills = JSON.parse(
+              JSON.stringify(baseLayer.fills),
+            ) as Paint[];
             if (fills.length > 0 && fills[0].type === "SOLID") {
               fills[0].color = { r: 0.157, g: 0.176, b: 0.216 };
               delete (fills[0] as any).boundVariables;
               baseLayer.fills = fills;
             }
           }
-          
+
           const pulseLayer = instance.findOne((n) => n.name === "Pulse");
           if (pulseLayer && "fills" in pulseLayer) {
-            const fills = JSON.parse(JSON.stringify(pulseLayer.fills)) as Paint[];
+            const fills = JSON.parse(
+              JSON.stringify(pulseLayer.fills),
+            ) as Paint[];
             if (fills.length > 0 && fills[0].type === "SOLID") {
               fills[0].color = { r: 0.925, g: 0, b: 0.086 };
               delete (fills[0] as any).boundVariables;
               pulseLayer.fills = fills;
             }
           }
-          
+
           frame.appendChild(instance);
         }
       }
@@ -249,9 +271,13 @@ export async function buildMarketingFrame(
   return frame;
 }
 
-export async function updateOverviewPage(addedIcons: IconData[], allIcons: IconData[], iconType: string) {
+export async function updateOverviewPage(
+  addedIcons: IconData[],
+  allIcons: IconData[],
+  iconType: string,
+) {
   const overviewPage = figma.root.children.find((page) =>
-    page.name.includes("Overview")
+    page.name.includes("Overview"),
   );
 
   if (!overviewPage) {
@@ -280,7 +306,8 @@ export async function updateOverviewPage(addedIcons: IconData[], allIcons: IconD
 
   for (const [category, icons] of iconsByCategory) {
     const categoryFrame = overviewPage.findOne(
-      (node) => node.type === "FRAME" && node.name.includes(`${category} Icons`)
+      (node) =>
+        node.type === "FRAME" && node.name.includes(`${category} Icons`),
     ) as FrameNode | null;
 
     if (!categoryFrame) {
@@ -289,24 +316,25 @@ export async function updateOverviewPage(addedIcons: IconData[], allIcons: IconD
     }
 
     const sortedIcons = icons.sort((a, b) =>
-      extractIconBaseName(a.name).localeCompare(extractIconBaseName(b.name))
+      extractIconBaseName(a.name).localeCompare(extractIconBaseName(b.name)),
     );
 
     for (const icon of sortedIcons) {
       const baseName = extractIconBaseName(icon.name);
-      
+
       // Für funktionale Icons: Finde 24px outlined Variante
       // Für illustrative Icons: Nimm das Icon direkt (keine Varianten)
       let iconToAdd: IconData | null = null;
-      
+
       if (iconType === "functional") {
-        iconToAdd = allIcons.find(
-          (i) =>
-            extractIconBaseName(i.name) === baseName &&
-            extractIconSize(i.name) === 24 &&
-            !isFilledVariant(i.name)
-        ) || null;
-        
+        iconToAdd =
+          allIcons.find(
+            (i) =>
+              extractIconBaseName(i.name) === baseName &&
+              extractIconSize(i.name) === 24 &&
+              !isFilledVariant(i.name),
+          ) || null;
+
         if (!iconToAdd) {
           console.warn(`   ⚠️ Keine 24px Variante gefunden für: ${baseName}`);
           continue;
@@ -318,9 +346,9 @@ export async function updateOverviewPage(addedIcons: IconData[], allIcons: IconD
 
       // Prüfe ob Icon bereits vorhanden ist
       const existingInstances = categoryFrame.findAll(
-        (node) => node.type === "INSTANCE"
+        (node) => node.type === "INSTANCE",
       ) as InstanceNode[];
-      
+
       let alreadyExists = false;
       for (const inst of existingInstances) {
         const mainComp = await inst.getMainComponentAsync();
@@ -348,11 +376,11 @@ export async function updateOverviewPage(addedIcons: IconData[], allIcons: IconD
 async function findVariantBySize(
   icon: IconData,
   size: number,
-  page: PageNode
+  page: PageNode,
 ): Promise<IconData | null> {
   const baseName = extractIconBaseName(icon.name);
   const allComponents = page.findAll(
-    (node) => node.type === "COMPONENT"
+    (node) => node.type === "COMPONENT",
   ) as ComponentNode[];
 
   for (const comp of allComponents) {
@@ -376,10 +404,10 @@ async function findVariantBySize(
 export async function createChangelogFrame(
   version: string,
   iconsByStatus: Map<ChangelogStatus, IconData[]>,
-  allIcons: IconData[]
+  allIcons: IconData[],
 ) {
   const changelogPage = figma.root.children.find((page) =>
-    page.name.includes("Changelog")
+    page.name.includes("Changelog"),
   );
 
   if (!changelogPage) {
@@ -392,13 +420,13 @@ export async function createChangelogFrame(
   const tagComponent = await figma.importComponentByKeyAsync(TAG_COMPONENT_KEY);
 
   const existingFrames = changelogPage.findAll(
-    (node) => node.type === "FRAME" && node.parent === changelogPage
+    (node) => node.type === "FRAME" && node.parent === changelogPage,
   ) as FrameNode[];
 
   let yPosition = 0;
   if (existingFrames.length > 0) {
     const lastFrame = existingFrames.reduce((prev, curr) =>
-      curr.y + curr.height > prev.y + prev.height ? curr : prev
+      curr.y + curr.height > prev.y + prev.height ? curr : prev,
     );
     yPosition = lastFrame.y + lastFrame.height + 48;
   }
@@ -409,10 +437,11 @@ export async function createChangelogFrame(
   versionFrame.y = yPosition;
   versionFrame.layoutMode = "VERTICAL";
   versionFrame.primaryAxisSizingMode = "AUTO";
-  versionFrame.counterAxisSizingMode = "AUTO";
+  versionFrame.counterAxisSizingMode = "FIXED";
   versionFrame.cornerRadius = 8;
   versionFrame.strokes = [{ type: "SOLID", color: { r: 0, g: 0, b: 0 } }];
   versionFrame.fills = [{ type: "SOLID", color: { r: 1, g: 1, b: 1 } }];
+  versionFrame.clipsContent = false;
 
   await bindChangelogFrameVariables(versionFrame);
 
@@ -428,44 +457,66 @@ export async function createChangelogFrame(
 
     const statusFrame = figma.createFrame();
     statusFrame.name = `Changelog - ${STATUS_CONFIG[status].label}`;
-    statusFrame.layoutMode = "HORIZONTAL";
+    statusFrame.layoutMode = "VERTICAL";
     statusFrame.primaryAxisSizingMode = "AUTO";
     statusFrame.counterAxisSizingMode = "AUTO";
-    statusFrame.counterAxisAlignItems = "CENTER";
-    statusFrame.itemSpacing = 16;
+    statusFrame.counterAxisAlignItems = "MIN";
     statusFrame.paddingTop = 0;
     statusFrame.paddingBottom = 0;
     statusFrame.paddingLeft = 0;
     statusFrame.paddingRight = 0;
     statusFrame.fills = [];
-    statusFrame.layoutAlign = "MIN";
+    statusFrame.layoutAlign = "STRETCH";
+    statusFrame.clipsContent = false;
 
     await bindChangelogStatusFrameVariables(statusFrame);
 
     if (tagComponent) {
       const tagInstance = tagComponent.createInstance();
-      
+
       // Set properties based on status
       const statusProps = {
-        added: { text: "⭐️ added", semantic: "Successful" },
-        fixed: { text: "🪲 fixed", semantic: "Warning" },
-        changed: { text: "🔁 changed", semantic: "Informational" },
-        deprecated: { text: "⚠️ deprecated", semantic: "Critical" }
+        feat: { text: "⭐️ feat", semantic: "Successful" },
+        fix: { text: "🪲 fix", semantic: "Warning" },
+        refactor: { text: "🔁 refactor", semantic: "Informational" },
+        docs: { text: "📝 docs", semantic: "Informational" },
+        chore: { text: "🔧 chore", semantic: "Informational" },
+        deprecated: { text: "⚠️ deprecated", semantic: "Critical" },
       };
-      
+
       const props = statusProps[status];
       if (props) {
-        tagInstance.setProperties({ 
+        tagInstance.setProperties({
           Semantic: props.semantic,
-          "✏️ Text#498:799": props.text 
+          "✏️ Text#498:799": props.text,
         });
       }
-      
+
       statusFrame.appendChild(tagInstance);
     }
 
+    // Create Icons Container Frame
+    const iconsContainer = figma.createFrame();
+    iconsContainer.name = `Icons - ${STATUS_CONFIG[status].label}`;
+    iconsContainer.layoutMode = "HORIZONTAL";
+    iconsContainer.primaryAxisSizingMode = "FIXED";
+    iconsContainer.counterAxisSizingMode = "AUTO";
+    iconsContainer.primaryAxisAlignItems = "MIN";
+    iconsContainer.counterAxisAlignItems = "MIN";
+    iconsContainer.layoutWrap = "WRAP";
+    iconsContainer.paddingTop = 0;
+    iconsContainer.paddingBottom = 0;
+    iconsContainer.paddingLeft = 0;
+    iconsContainer.paddingRight = 0;
+    iconsContainer.fills = [];
+    iconsContainer.layoutAlign = "STRETCH";
+    iconsContainer.layoutGrow = 0;
+    iconsContainer.clipsContent = false;
+
+    await bindChangelogIconsContainerVariables(iconsContainer);
+
     const sortedIcons = icons.sort((a, b) =>
-      extractIconBaseName(a.name).localeCompare(extractIconBaseName(b.name))
+      extractIconBaseName(a.name).localeCompare(extractIconBaseName(b.name)),
     );
 
     for (const icon of sortedIcons) {
@@ -475,17 +526,18 @@ export async function createChangelogFrame(
         (i) =>
           extractIconBaseName(i.name) === baseName &&
           extractIconSize(i.name) === 32 &&
-          !isFilledVariant(i.name)
+          !isFilledVariant(i.name),
       );
 
       const iconToAdd = size32Icon || icon;
       const node = await figma.getNodeByIdAsync(iconToAdd.id);
       if (node && node.type === "COMPONENT") {
         const instance = node.createInstance();
-        statusFrame.appendChild(instance);
+        iconsContainer.appendChild(instance);
       }
     }
 
+    statusFrame.appendChild(iconsContainer);
     versionFrame.appendChild(statusFrame);
   }
 

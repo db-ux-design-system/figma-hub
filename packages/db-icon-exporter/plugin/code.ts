@@ -1,7 +1,16 @@
 // code.ts
 
-import { scanIcons, globalIconData, globalIconType, lastExportRequest } from "./utils/scanner";
-import { exportFullWithAssets, exportInfoOnly } from "./utils/exporter";
+import {
+  scanIcons,
+  globalIconData,
+  globalIconType,
+  lastExportRequest,
+} from "./utils/scanner";
+import {
+  exportFullWithAssets,
+  exportInfoOnly,
+  exportChangelogOnly,
+} from "./utils/exporter";
 
 console.log("🚀 Plugin Backend gestartet");
 
@@ -37,7 +46,7 @@ figma.ui.onmessage = async (msg) => {
     });
   } else if (msg.type === "SELECT_FROM_EXPORT_PAGE") {
     console.log("📄 Backend: Lade Icons von Export-Seite...");
-    
+
     if (globalIconData.length === 0) {
       figma.ui.postMessage({
         type: "error",
@@ -45,10 +54,10 @@ figma.ui.onmessage = async (msg) => {
       });
       return;
     }
-    
+
     try {
-      const exportPage = figma.root.children.find((page) =>
-        page.name === "🚀 Icon Export"
+      const exportPage = figma.root.children.find(
+        (page) => page.name === "🚀 Icon Export",
       );
 
       console.log("📄 Export-Seite gefunden:", exportPage?.name);
@@ -56,7 +65,8 @@ figma.ui.onmessage = async (msg) => {
       if (!exportPage) {
         figma.ui.postMessage({
           type: "error",
-          message: "Keine Export-Seite gefunden. Bitte erst einen Export durchführen.",
+          message:
+            "Keine Export-Seite gefunden. Bitte erst einen Export durchführen.",
         });
         return;
       }
@@ -65,7 +75,7 @@ figma.ui.onmessage = async (msg) => {
 
       // Finde GitLab oder Marketing Frame
       const gitlabFrame = exportPage.findOne(
-        (n) => n.type === "FRAME" && n.name === "GitLab"
+        (n) => n.type === "FRAME" && n.name === "GitLab",
       ) as FrameNode;
 
       console.log("📄 GitLab Frame gefunden:", gitlabFrame?.name);
@@ -80,26 +90,50 @@ figma.ui.onmessage = async (msg) => {
 
       // Sammle alle Icon-IDs von der Export-Seite
       const exportIconSetIds = new Set<string>();
-      const instances = gitlabFrame.findAll((n) => n.type === "INSTANCE") as InstanceNode[];
+      const exportComponentIds = new Set<string>();
+      const instances = gitlabFrame.findAll(
+        (n) => n.type === "INSTANCE",
+      ) as InstanceNode[];
 
       console.log("📄 Gefundene Instanzen:", instances.length);
 
       for (const instance of instances) {
         const mainComponent = await instance.getMainComponentAsync();
-        if (mainComponent?.parent?.type === "COMPONENT_SET") {
-          exportIconSetIds.add(mainComponent.parent.id);
+        if (mainComponent) {
+          // Funktionale Icons: Component ist Teil eines Component Sets
+          if (mainComponent.parent?.type === "COMPONENT_SET") {
+            exportIconSetIds.add(mainComponent.parent.id);
+          } else {
+            // Illustrative Icons: Component ist standalone
+            exportComponentIds.add(mainComponent.id);
+          }
         }
       }
 
-      console.log(`✅ ${exportIconSetIds.size} Icon-Sets von Export-Seite gefunden`);
+      console.log(
+        `✅ ${exportIconSetIds.size} Component Sets (funktional) + ${exportComponentIds.size} Components (illustrativ) von Export-Seite gefunden`,
+      );
 
       // Finde alle Varianten dieser Icon-Sets in globalIconData
       const iconsWithData: typeof globalIconData = [];
-      
+
       for (const icon of globalIconData) {
         const node = await figma.getNodeByIdAsync(icon.id);
-        if (node?.parent?.type === "COMPONENT_SET" && exportIconSetIds.has(node.parent.id)) {
-          iconsWithData.push(icon);
+        if (node) {
+          // Funktionale Icons: Prüfe ob Component Set ID dabei ist
+          if (
+            node.parent?.type === "COMPONENT_SET" &&
+            exportIconSetIds.has(node.parent.id)
+          ) {
+            iconsWithData.push(icon);
+          }
+          // Illustrative Icons: Prüfe ob Component ID dabei ist
+          else if (
+            node.type === "COMPONENT" &&
+            exportComponentIds.has(node.id)
+          ) {
+            iconsWithData.push(icon);
+          }
         }
       }
 
@@ -123,7 +157,7 @@ figma.ui.onmessage = async (msg) => {
       msg.version,
       msg.generateOverview,
       globalIconType,
-      msg.iconStatuses
+      msg.iconStatuses,
     );
   } else if (msg.type === "EXPORT_INFO_ONLY") {
     console.log("🚀 Backend: Starte Info-Only Export...");
@@ -131,7 +165,15 @@ figma.ui.onmessage = async (msg) => {
       msg.selectedIconIds,
       msg.version,
       msg.generateOverview,
-      globalIconType
+      globalIconType,
+    );
+  } else if (msg.type === "EXPORT_CHANGELOG_ONLY") {
+    console.log("🚀 Backend: Starte Changelog-Only Export...");
+    await exportChangelogOnly(
+      msg.selectedIconIds,
+      msg.version,
+      globalIconType,
+      msg.iconStatuses,
     );
   } else {
     console.warn("⚠️ Unbekannter Message Type:", msg.type);

@@ -5,13 +5,13 @@ import { extractIconBaseName, toHyphenatedKey } from "../helpers";
 
 export function generateGitLabDescriptions(
   icons: IconData[],
-  iconType: string
+  iconType: string,
 ): string {
   const descriptionsMap: Record<string, any> = {};
 
   icons.forEach((iconData) => {
     const baseName = extractIconBaseName(iconData.name);
-    const key = toHyphenatedKey(baseName);
+    const key = toHyphenatedKey(baseName, iconType);
 
     if (descriptionsMap[key]) {
       return;

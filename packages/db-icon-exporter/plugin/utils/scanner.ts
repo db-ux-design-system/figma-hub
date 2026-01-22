@@ -21,58 +21,57 @@ export async function scanIcons() {
   let iconType = "unknown";
 
   // Sammle alle Seitennamen für Debugging
-  const pageNames = figma.root.children.map(p => p.name);
+  const pageNames = figma.root.children.map((p) => p.name);
   console.log(`📚 Gefundene Seiten (${pageNames.length}):`, pageNames);
 
   // Prüfe Dateinamen
   if (fileName.toLowerCase().includes("illustrative")) {
     iconType = "illustrative";
     console.log("✅ Library-Type aus Dateinamen erkannt: ILLUSTRATIVE");
-  } else if (fileName.toLowerCase().includes("db theme icons") || fileName.toLowerCase().includes("functional")) {
+  } else if (
+    fileName.toLowerCase().includes("db theme icons") ||
+    fileName.toLowerCase().includes("functional")
+  ) {
     iconType = "functional";
     console.log("✅ Library-Type aus Dateinamen erkannt: FUNCTIONAL");
   } else {
     // Fallback: Analysiere erste Komponente
-    console.log("⚠️ Library-Type nicht aus Dateinamen erkennbar, analysiere Komponenten...");
-    
+    console.log(
+      "⚠️ Library-Type nicht aus Dateinamen erkennbar, analysiere Komponenten...",
+    );
+
     for (const page of figma.root.children) {
       await page.loadAsync();
-      const components = page.findAll(
-        (node) => node.type === "COMPONENT_SET" || node.type === "COMPONENT"
+      const componentSets = page.findAll(
+        (node) => node.type === "COMPONENT_SET",
       );
-      
+
+      // Wenn Component Sets gefunden werden, ist es functional
+      if (componentSets.length > 0) {
+        iconType = "functional";
+        console.log(
+          "✅ Library-Type erkannt: FUNCTIONAL (Component Sets gefunden)",
+        );
+        break;
+      }
+
+      // Sonst prüfe auf einzelne Components (= Illustrative)
+      const components = page.findAll((node) => node.type === "COMPONENT");
+
       if (components.length > 0) {
-        const firstComp = components[0];
-        let testNode: ComponentNode | null = null;
-        
-        if (firstComp.type === "COMPONENT_SET") {
-          testNode = (firstComp as ComponentSetNode).children.find(
-            (child) => child.type === "COMPONENT"
-          ) as ComponentNode;
-        } else {
-          testNode = firstComp as ComponentNode;
-        }
-        
-        if (testNode) {
-          // Prüfe auf "Base" und "Pulse" Ebenen (typisch für Illustrative)
-          const hasBaseLayer = testNode.findOne((n) => n.name === "Base") !== null;
-          const hasPulseLayer = testNode.findOne((n) => n.name === "Pulse") !== null;
-          
-          if (hasBaseLayer && hasPulseLayer) {
-            iconType = "illustrative";
-            console.log("✅ Library-Type aus Komponenten-Struktur erkannt: ILLUSTRATIVE (Base + Pulse Ebenen gefunden)");
-          } else {
-            iconType = "functional";
-            console.log("✅ Library-Type aus Komponenten-Struktur erkannt: FUNCTIONAL");
-          }
-          break;
-        }
+        iconType = "illustrative";
+        console.log(
+          "✅ Library-Type erkannt: ILLUSTRATIVE (einzelne Components gefunden)",
+        );
+        break;
       }
     }
-    
+
     if (iconType === "unknown") {
-      iconType = "functional";
-      console.log("⚠️ Library-Type konnte nicht erkannt werden - Fallback: FUNCTIONAL");
+      iconType = "illustrative";
+      console.log(
+        "⚠️ Library-Type konnte nicht erkannt werden - Fallback: ILLUSTRATIVE",
+      );
     }
   }
 
@@ -91,7 +90,7 @@ export async function scanIcons() {
     const pageName = page.name;
 
     const shouldExclude = EXCLUDED_PAGES.some((term) =>
-      pageName.toLowerCase().includes(term.toLowerCase())
+      pageName.toLowerCase().includes(term.toLowerCase()),
     );
 
     if (shouldExclude) {
@@ -108,7 +107,7 @@ export async function scanIcons() {
     console.log(`   ✅ Seite geladen!`);
 
     const components = page.findAll(
-      (node) => node.type === "COMPONENT_SET" || node.type === "COMPONENT"
+      (node) => node.type === "COMPONENT_SET" || node.type === "COMPONENT",
     );
 
     console.log(`   ↳ ${components.length} Komponenten gefunden`);
@@ -116,7 +115,36 @@ export async function scanIcons() {
     for (const comp of components) {
       if (comp.type === "COMPONENT_SET") {
         const componentSet = comp as ComponentSetNode;
-        const setName = componentSet.name;
+        let setName = componentSet.name;
+
+        // Bereinige Set-Namen von Size/Variant-Suffixen (sollte nicht vorkommen, aber zur Sicherheit)
+        setName = setName.split(",")[0].trim();
+        setName = setName.split("=")[0].trim();
+
+        // Filtere Property-Namen aus (z.B. "Size", "Variant", etc.)
+        // Diese sind keine echten Icons, sondern nur Property-Definitionen
+        const propertyNames = ["size", "variant", "state", "type", "color"];
+        if (propertyNames.includes(setName.toLowerCase())) {
+          console.log(`      ⏭️ Überspringe Property-Definition: "${setName}"`);
+          continue;
+        }
+
+        // Zusätzlicher Check: Wenn der Set-Name leer ist oder nur aus Properties besteht
+        if (!setName || setName.length === 0) {
+          console.log(`      ⏭️ Überspringe Component Set ohne Namen`);
+          continue;
+        }
+
+        // Prüfe ob der Component Set Name mit "=" beginnt (Property ohne Icon-Namen)
+        if (
+          componentSet.name.trim().startsWith("=") ||
+          componentSet.name.trim().match(/^(Size|Variant|State|Type|Color)=/i)
+        ) {
+          console.log(
+            `      ⏭️ Überspringe Property-Only Component Set: "${componentSet.name}"`,
+          );
+          continue;
+        }
 
         console.log(`      📦 Component Set: "${setName}"`);
 
@@ -124,11 +152,11 @@ export async function scanIcons() {
         const parsedDescription = parseDescription(rawDescription, iconType);
 
         const variantComponents = componentSet.children.filter(
-          (child) => child.type === "COMPONENT"
+          (child) => child.type === "COMPONENT",
         ) as ComponentNode[];
 
         console.log(
-          `         ↳ ${variantComponents.length} Varianten gefunden`
+          `         ↳ ${variantComponents.length} Varianten gefunden`,
         );
 
         variantComponents.forEach((variant) => {
@@ -149,7 +177,11 @@ export async function scanIcons() {
       } else if (comp.type === "COMPONENT") {
         // Einzelne Komponente ohne Set
         const component = comp as ComponentNode;
-        const componentName = component.name;
+        let componentName = component.name;
+
+        // Bereinige Component-Namen von Size/Variant-Suffixen (sollte bei illustrativen Icons nicht vorkommen)
+        componentName = componentName.split(",")[0].trim();
+        componentName = componentName.split("=")[0].trim();
 
         console.log(`      📦 Component: "${componentName}"`);
 
@@ -192,7 +224,7 @@ export async function scanIcons() {
 
   globalIconData = iconData;
   console.log(
-    `💾 Gespeichert: ${globalIconData.length} Icons global verfügbar`
+    `💾 Gespeichert: ${globalIconData.length} Icons global verfügbar`,
   );
 
   figma.ui.postMessage({
