@@ -142,6 +142,7 @@ const App = () => {
   const [activeTab, setActiveTab] = useState(0);
 
   const handleAction = () => {
+    console.log("Active tab:", activeTab);
     if (activeTab === 0) {
       handleRename();
     } else if (activeTab === 1) {
@@ -158,12 +159,12 @@ const App = () => {
         <DBTabs
           width="full"
           alignment="center"
-          onChange={(e: any) => setActiveTab(e.target.value)}
+          initialSelectedIndex={activeTab}
         >
           <DBTabList>
-            <DBTabItem>Rename</DBTabItem>
-            <DBTabItem>Transform</DBTabItem>
-            <DBTabItem>Clean</DBTabItem>
+            <DBTabItem onChange={() => setActiveTab(0)}>Rename</DBTabItem>
+            <DBTabItem onChange={() => setActiveTab(1)}>Transform</DBTabItem>
+            <DBTabItem onChange={() => setActiveTab(2)}>Clean</DBTabItem>
           </DBTabList>
 
           {/* Tab Panel 1: Rename */}

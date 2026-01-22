@@ -44,7 +44,7 @@ interface CleanMessage {
 const toTitleCase = (str: string) =>
   str.replace(
     /\w\S*/g,
-    (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
+    (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase(),
   );
 const toSentenceCase = (str: string) =>
   str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
@@ -64,33 +64,51 @@ const toCamelCase = (str: string) => {
 };
 const toConstantCase = (str: string) =>
   str
-    .split(/[\s-]+/)
-    .join("_")
+    .replace(/[\s-]+/g, "_")
+    .replace(/([a-z])([A-Z])/g, "$1_$2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2")
+    .replace(/__+/g, "_")
+    .replace(/^_/, "")
     .toUpperCase();
 const toSnakeCase = (str: string) =>
   str
-    .split(/[\s-]+/)
-    .join("_")
+    .replace(/[\s-]+/g, "_")
+    .replace(/([a-z])([A-Z])/g, "$1_$2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2")
+    .replace(/__+/g, "_")
+    .replace(/^_/, "")
     .toLowerCase();
 const toParamCase = (str: string) =>
   str
-    .split(/[\s_]+/)
-    .join("-")
+    .replace(/[\s_]+/g, "-")
+    .replace(/([a-z])([A-Z])/g, "$1-$2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1-$2")
+    .replace(/--+/g, "-")
+    .replace(/^-/, "")
     .toLowerCase();
 const toPathCase = (str: string) =>
   str
-    .split(/[\s-_]+/)
-    .join("/")
+    .replace(/[\s-_]+/g, "/")
+    .replace(/([a-z])([A-Z])/g, "$1/$2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1/$2")
+    .replace(/\/\/+/g, "/")
+    .replace(/^\//, "")
     .toLowerCase();
 const toDotCase = (str: string) =>
   str
-    .split(/[\s-_]+/)
-    .join(".")
+    .replace(/[\s-_]+/g, ".")
+    .replace(/([a-z])([A-Z])/g, "$1.$2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1.$2")
+    .replace(/\.\.+/g, ".")
+    .replace(/^\./, "")
     .toLowerCase();
 const toNoCase = (str: string) =>
   str
-    .split(/[\s-_]+/)
-    .join(" ")
+    .replace(/[\s-_]+/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
+    .replace(/\s\s+/g, " ")
+    .replace(/^\s/, "")
     .toLowerCase();
 
 const transformCase = (str: string, caseType: string): string => {
@@ -130,7 +148,7 @@ const cleanText = (
   str: string,
   cleanSpecialChars: boolean,
   cleanDigits: boolean,
-  cleanExtraSpaces: boolean
+  cleanExtraSpaces: boolean,
 ): string => {
   let result = str;
   if (cleanSpecialChars) result = result.replace(/[^a-zA-Z0-9\s-_]/g, "");
@@ -143,13 +161,14 @@ const processNodes = (
   nodes: readonly SceneNode[],
   processor: (node: SceneNode) => void,
   nodeTypes: NodeType[],
-  onlyParents: boolean
+  onlyParents: boolean,
 ) => {
   let count = 0;
 
   const traverse = (node: SceneNode, isTopLevel: boolean) => {
-    const shouldProcess = nodeTypes.includes(node.type as NodeType) && (!onlyParents || isTopLevel);
-    
+    const shouldProcess =
+      nodeTypes.includes(node.type as NodeType) && (!onlyParents || isTopLevel);
+
     if (shouldProcess) {
       processor(node);
       count++;
@@ -162,12 +181,12 @@ const processNodes = (
     }
   };
 
-  nodes.forEach(node => traverse(node, true));
+  nodes.forEach((node) => traverse(node, true));
   return count;
 };
 
 figma.ui.onmessage = async (
-  msg: RenameMessage | TransformMessage | CleanMessage
+  msg: RenameMessage | TransformMessage | CleanMessage,
 ) => {
   const selection = figma.currentPage.selection;
 
@@ -177,7 +196,10 @@ figma.ui.onmessage = async (
   }
 
   console.log("Message:", msg);
-  console.log("Selection:", selection.map(n => ({ name: n.name, type: n.type })));
+  console.log(
+    "Selection:",
+    selection.map((n) => ({ name: n.name, type: n.type })),
+  );
 
   let count = 0;
 
@@ -192,16 +214,20 @@ figma.ui.onmessage = async (
         node.name = newName;
       },
       msg.nodeTypes,
-      msg.onlyParents
+      msg.onlyParents,
     );
   } else if (msg.type === "transform") {
     count = processNodes(
       selection,
       (node) => {
-        node.name = transformCase(node.name, msg.caseType);
+        const newName = transformCase(node.name, msg.caseType);
+        console.log(
+          `Transforming "${node.name}" to "${newName}" (${msg.caseType})`,
+        );
+        node.name = newName;
       },
       msg.nodeTypes,
-      msg.onlyParents
+      msg.onlyParents,
     );
   } else if (msg.type === "clean") {
     count = processNodes(
@@ -211,11 +237,11 @@ figma.ui.onmessage = async (
           node.name,
           msg.cleanSpecialChars,
           msg.cleanDigits,
-          msg.cleanExtraSpaces
+          msg.cleanExtraSpaces,
         );
       },
       msg.nodeTypes,
-      msg.onlyParents
+      msg.onlyParents,
     );
   }
 
