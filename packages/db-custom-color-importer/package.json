@@ -1,8 +1,8 @@
 {
-  "name": "db-custom-color-importer",
+  "name": "@db-ux/custom-color-importer",
   "private": true,
   "version": "0.1.0",
-  "description": "Figma plugin to import custom colors from the DB UX Theme Builder",
+  "description": "This plugin imports the custom color variables from Theme Builder Export.",
   "main": "index.js",
   "workspaces": [
     "plugin",
