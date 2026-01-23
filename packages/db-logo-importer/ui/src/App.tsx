@@ -73,7 +73,7 @@ const App = () => {
     <div className="p-fix-md flex flex-col gap-fix-md">
       {/* Header area */}
       <header>
-        <h2>DB Logo Importer</h2>
+        <h1 className="text-2xl">DB Logo Importer</h1>
         <p className="text-sm">
           Please use the{" "}
           <a
