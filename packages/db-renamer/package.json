@@ -1,8 +1,8 @@
 {
-  "name": "db-renamer",
+  "name": "@db-ux/renamer",
   "private": true,
   "version": "0.1.0",
-  "description": "Figma plugin to rename layers with find & replace, case transformation, and cleaning",
+  "description": "This plugin provides comprehensive renaming functionality for Figma layers.",
   "main": "index.js",
   "workspaces": [
     "plugin",
