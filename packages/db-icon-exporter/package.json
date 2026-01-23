@@ -1,8 +1,8 @@
 {
-  "name": "db-icon-exporter",
+  "name": "@db-ux/icon-exporter",
   "private": true,
   "version": "0.1.0",
-  "description": "Figma plugin to create components from SVGs, assign color variables, and scale.",
+  "description": "This plugin exports icons from Figma to SVG format, optimized for the Deutsche Bahn design system.",
   "main": "index.js",
   "workspaces": [
     "plugin",
