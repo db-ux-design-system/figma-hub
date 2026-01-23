@@ -15,18 +15,30 @@
     "build:handover": "npm run build -w=@db-ux/handover",
     "build:auto-sync": "npm run build -w=@db-ux/auto-sync",
     "build:design-migration": "npm run build -w=@db-ux/design-migration",
+    "build:db-logo-importer": "npm run build -w=db-logo-importer",
     "dev": "npm-run-all --parallel dev:*",
     "dev:codegen": "npm run dev -w=@db-ux/codegen",
     "dev:inspect": "npm run dev -w=@db-ux/inspect",
     "dev:handover": "npm run dev -w=@db-ux/handover",
     "dev:auto-sync": "npm run dev -w=@db-ux/auto-sync",
-    "dev:design-migration": "npm run dev -w=@db-ux/design-migration"
+    "dev:design-migration": "npm run dev -w=@db-ux/design-migration",
+    "dev:db-logo-importer": "npm run dev -w=db-logo-importer"
   },
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "@types/node": "^24.3.1",
-    "npm-run-all2": "8.0.4",
-    "adm-zip": "^0.5.16"
+    "@types/node": "^24.6.2",
+    "adm-zip": "^0.5.16",
+    "npm-run-all2": "8.0.4"
+  },
+  "dependencies": {
+    "@db-ux/db-theme": "5.3.0",
+    "@db-ux/db-theme-fonts": "2.0.5",
+    "@db-ux/db-theme-icons": "3.4.0",
+    "@db-ux/db-theme-illustrative-icons": "3.0.0",
+    "@db-ux/react-core-components": "4.2.6"
+  },
+  "engines": {
+    "node": ">= 22"
   }
 }
