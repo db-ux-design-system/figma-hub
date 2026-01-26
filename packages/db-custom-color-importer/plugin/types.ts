@@ -9,6 +9,7 @@ export interface ImportMessage {
   type: string;
   data: ColorData;
   deleteMissing: boolean;
+  fileName?: string;
 }
 
 export interface ColorData {

@@ -1,4 +1,4 @@
-import { ColorData } from "../types";
+import { ColorData, ImportMessage } from "../types";
 import { MAPPINGS } from "../config";
 import { hexToRgba, areColorsEqual } from "./color";
 import { deleteCollections } from "./cleanup";
@@ -138,7 +138,7 @@ export async function createAdaptiveColorVariables(
   }
 }
 
-export async function handleImportJson(msg: any) {
+export async function handleImportJson(msg: ImportMessage) {
   try {
     const data = msg.data;
     const colorFamilies = Object.keys(data.colors);
@@ -203,7 +203,7 @@ export async function handleImportJson(msg: any) {
     const { baseCol, displayCol, colorCol } =
       await getOrCreateCollections(prefixOriginal);
     const baseModeId = baseCol.modes[0].modeId;
-    const { lightModeId, darkModeId } = setupDisplayModes(displayCol);
+    const { lightModeId, darkModeId } = setupDisplayModes(displayCol, baseCol);
     const { dbAdaptiveModeId, colorFamilyModeIds } = setupColorModes(
       colorCol,
       colorFamilies,

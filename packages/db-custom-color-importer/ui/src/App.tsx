@@ -52,7 +52,9 @@ function App() {
 
   const handleImport = () => {
     if (!jsonInput) {
-      setFeedback("Please select a JSON file to import.");
+      setFeedback(
+        "Please select the exported JSON file to import (utils folder, *-figma-custom-colors.json).",
+      );
       return;
     }
 
@@ -83,8 +85,8 @@ function App() {
       <header>
         <h1 className="text-2xl">DB Custom Color Importer</h1>
         <p className="text-sm">
-          Select a JSON file with custom colors that you created and exported in
-          the{" "}
+          Select the JSON file with custom colors that you created and exported
+          in the{" "}
           <a
             href="https://design-system.deutschebahn.com/theme-builder/"
             target="_blank"
@@ -92,8 +94,8 @@ function App() {
             className="underline"
           >
             DB UX Theme Builder
-          </a>
-          .
+          </a>{" "}
+          (utils folder, *-figma-custom-colors.json).
         </p>
       </header>
       <DBStack gap="medium">
