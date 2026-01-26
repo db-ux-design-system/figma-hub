@@ -24,8 +24,8 @@ export function DescriptionDialog({
   onSave,
   onCancel,
 }: DescriptionDialogProps) {
-  const [formData, setFormData] = useState<DescriptionData>(
-    initialData || {
+  const [formData, setFormData] = useState<DescriptionData>(() => {
+    const initial = initialData || {
       iconName: "",
       enDefault: "",
       enContextual: "",
@@ -35,23 +35,48 @@ export function DescriptionDialog({
       en: "",
       de: "",
       illustrativeKeywords: "",
-    },
-  );
+    };
+
+    // Always set iconName from prop if not in initialData
+    if (!initial.iconName && iconName) {
+      initial.iconName = iconName;
+    }
+
+    return initial;
+  });
 
   useEffect(() => {
     if (initialData) {
-      setFormData(initialData);
+      const updated = { ...initialData };
+      // Always set iconName from prop if not in initialData
+      if (!updated.iconName && iconName) {
+        updated.iconName = iconName;
+      }
+      setFormData(updated);
     }
-  }, [initialData]);
+  }, [initialData, iconName]);
 
   if (!isOpen) return null;
 
-  // Check if icon name is still the template name
-  const isTemplateName = iconName === "icon-name" || iconName === "icon_name";
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+
+    // Set icon name from prop
+    const dataToSave = { ...formData, iconName };
+
+    // Validate required fields based on icon type
+    if (iconType === "functional") {
+      if (!dataToSave.enDefault || !dataToSave.deDefault) {
+        return;
+      }
+    } else {
+      // Illustrative icons
+      if (!dataToSave.en || !dataToSave.de) {
+        return;
+      }
+    }
+
+    onSave(dataToSave);
   };
 
   // Render functional icon form
@@ -61,31 +86,13 @@ export function DescriptionDialog({
         <div className="flex-shrink-0 mb-fix-md">
           <h3 className="text-lg mb-0">Edit Icon Set</h3>
         </div>
-
         <div className="flex-1 overflow-y-auto px-fix-xs -m-fix-xs">
           <form
             onSubmit={handleSubmit}
             id="description-form"
             className="space-y-4"
+            noValidate
           >
-            {/* Icon Name field - only show if template name not changed */}
-            {isTemplateName && (
-              <div className="form-section">
-                <div className="form-group my-fix-sm">
-                  <DBInput
-                    label="Icon Name"
-                    variant="floating"
-                    value={formData.iconName || ""}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      setFormData({ ...formData, iconName: e.target.value })
-                    }
-                    required
-                    placeholder="e.g., bell-disabled"
-                  />
-                </div>
-              </div>
-            )}
-
             <div className="flex flex-row gap-fix-sm">
               <div className="form-section w-1/2">
                 <h4 className="text-sm mb-fix-sm">EN:</h4>
@@ -189,30 +196,15 @@ export function DescriptionDialog({
   return (
     <div className="flex flex-col h-full">
       <div className="flex-shrink-0 mb-fix-md">
-        <h3 className="text-lg mb-0">Edit Icon Description</h3>
+        <h3 className="text-lg mb-0">Edit Icon</h3>
       </div>
-
-      <div className="flex-1 overflow-y-auto px-fix-xs">
-        <form onSubmit={handleSubmit} id="description-form">
-          {/* Icon Name field - only show if template name not changed */}
-          {isTemplateName && (
-            <div className="form-section mb-fix-md">
-              <h4 className="text-sm mb-fix-sm">Icon Name:</h4>
-              <div className="form-group mb-fix-sm">
-                <DBInput
-                  label="Icon Name"
-                  variant="floating"
-                  value={formData.iconName || ""}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    setFormData({ ...formData, iconName: e.target.value })
-                  }
-                  required
-                  placeholder="e.g., train_station"
-                />
-              </div>
-            </div>
-          )}
-
+      <div className="flex-1 overflow-y-auto px-fix-xs -m-fix-xs">
+        <form
+          onSubmit={handleSubmit}
+          id="description-form"
+          className="space-y-4"
+          noValidate
+        >
           <div className="flex flex-row gap-fix-sm mb-fix-md">
             <div className="form-section w-1/2">
               <h4 className="text-sm mb-fix-sm">EN:</h4>

@@ -24,6 +24,8 @@ import { ColorApplicator } from "./processors/color-applicator.js";
 import { ScaleProcessor } from "./processors/scale-processor.js";
 import { DescriptionEditor } from "./processors/description-editor.js";
 import { IllustrativeProcessor } from "./processors/illustrative-processor.js";
+import { UnionProcessor } from "./processors/union-processor.js";
+import { IllustrativeFlattenProcessor } from "./processors/illustrative-flatten-processor.js";
 
 // Show the plugin UI
 figma.showUI(__html__, {
@@ -637,6 +639,9 @@ async function handleDescriptionEdit(data: DescriptionData): Promise<void> {
       editor.updateDescription(node, data);
     }
 
+    // Refresh selection info to update the UI with the new name
+    await handleGetSelection();
+
     sendMessage({
       type: "success",
       data: { message: "Description updated successfully" },
@@ -755,7 +760,7 @@ async function handleCreateIconSet(): Promise<void> {
     // Step 0: Clean up structure (remove empty groups)
     sendMessage({
       type: "progress",
-      data: "Step 0/3: Cleaning up structure...",
+      data: "Step 0/4: Cleaning up structure...",
     });
     const flattenOutlineValidator = new FlattenOutlineValidator("functional");
     for (const variant of info.componentSet!.children as ComponentNode[]) {
@@ -765,7 +770,7 @@ async function handleCreateIconSet(): Promise<void> {
     // Step 1: Color Application
     sendMessage({
       type: "progress",
-      data: "Step 1/3: Applying colors...",
+      data: "Step 1/4: Applying colors...",
     });
     const config = {
       functional: "497497bca9694f6004d1667de59f1a903b3cd3ef",
@@ -774,18 +779,26 @@ async function handleCreateIconSet(): Promise<void> {
     const applicator = new ColorApplicator(info.iconType!, config);
     await applicator.apply(info.componentSet!);
 
-    // Step 2: Scaling
+    // Step 2: Flatten (combine all direct children in container)
     sendMessage({
       type: "progress",
-      data: "Step 2/3: Creating scaled variants...",
+      data: "Step 2/4: Flattening vector paths...",
+    });
+    const unionProcessor = new UnionProcessor();
+    await unionProcessor.union(info.componentSet!);
+
+    // Step 3: Scaling
+    sendMessage({
+      type: "progress",
+      data: "Step 3/4: Creating scaled variants...",
     });
     const processor = new ScaleProcessor();
     await processor.scale(info.componentSet!);
 
-    // Step 3: Open Description Dialog
+    // Step 4: Open Description Dialog
     sendMessage({
       type: "progress",
-      data: "Step 3/3: Opening description editor...",
+      data: "Step 4/4: Opening description editor...",
     });
 
     // After workflow completes, allow selection changes again
@@ -821,23 +834,31 @@ async function handleCreateIllustrativeIcon(): Promise<void> {
     // Step 0: Clean up structure (remove empty groups)
     sendMessage({
       type: "progress",
-      data: "Step 0/2: Cleaning up structure...",
+      data: "Step 0/3: Cleaning up structure...",
     });
     const flattenOutlineValidator = new FlattenOutlineValidator("functional");
     flattenOutlineValidator.cleanupStructure(info.component);
 
-    // Step 1: Apply colors to Base and Pulse layers
+    // Step 1: Flatten and separate into Base + Pulse
     sendMessage({
       type: "progress",
-      data: "Step 1/2: Applying colors...",
+      data: "Step 1/3: Flattening and separating layers...",
+    });
+    const flattenProcessor = new IllustrativeFlattenProcessor();
+    await flattenProcessor.process(info.component);
+
+    // Step 2: Apply colors to Base and Pulse layers
+    sendMessage({
+      type: "progress",
+      data: "Step 2/3: Applying colors...",
     });
     const processor = new IllustrativeProcessor();
     await processor.process(info.component);
 
-    // Step 2: Open Description Dialog
+    // Step 3: Open Description Dialog
     sendMessage({
       type: "progress",
-      data: "Step 2/2: Opening description editor...",
+      data: "Step 3/3: Opening description editor...",
     });
 
     // After workflow completes, allow selection changes again

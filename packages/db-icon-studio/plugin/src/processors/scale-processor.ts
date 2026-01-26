@@ -210,78 +210,34 @@ export class ScaleProcessor {
       if (clone.children && clone.children.length > 0) {
         const container = clone.children[0];
 
-        // Check if container has auto-layout
-        const hasAutoLayout =
-          "layoutMode" in container && container.layoutMode !== "NONE";
+        // After flatten step, container should have exactly one "Vector" child
+        if ("children" in container && container.children.length > 0) {
+          console.log(
+            `    Container has ${container.children.length} child(ren)`,
+          );
 
-        if (hasAutoLayout) {
-          // Auto-layout: scale the children directly, container adjusts automatically
-          console.log(`    Auto-layout container detected`);
+          // Get the vector (should be named "Vector" after flatten)
+          const vector = container.children[0];
 
-          if ("children" in container && container.children.length > 0) {
-            for (const child of container.children) {
-              if ("rescale" in child && typeof child.rescale === "function") {
-                child.rescale(scaleFactor);
-                console.log(
-                  `    Rescaled child "${child.name}" by ${scaleFactor.toFixed(2)}`,
-                );
-              } else if (
-                "resize" in child &&
-                typeof child.resize === "function"
-              ) {
-                const childWidth = child.width * scaleFactor;
-                const childHeight = child.height * scaleFactor;
-                child.resize(childWidth, childHeight);
-                console.log(
-                  `    Resized child "${child.name}" to ${childWidth.toFixed(1)}x${childHeight.toFixed(1)}`,
-                );
-              }
-            }
+          // Scale the vector using rescale()
+          if ("rescale" in vector && typeof vector.rescale === "function") {
+            vector.rescale(scaleFactor);
+            console.log(
+              `    Rescaled vector "${vector.name}" by ${scaleFactor.toFixed(2)}`,
+            );
+          } else {
+            console.warn(
+              `    Vector "${vector.name}" does not support rescale()`,
+            );
           }
         } else {
-          // No auto-layout: use rescale() to proportionally scale children
-          if (
-            "rescale" in container &&
-            typeof container.rescale === "function"
-          ) {
-            container.rescale(scaleFactor);
-            console.log(
-              `    Rescaled container and children by ${scaleFactor.toFixed(2)}`,
-            );
-          } else if (
-            "resize" in container &&
-            typeof container.resize === "function"
-          ) {
-            // Fallback: resize container and manually scale children
-            container.resize(targetSize, targetSize);
-            console.log(`    Resized container to ${targetSize}x${targetSize}`);
+          console.warn(`    Container has no children to scale`);
+        }
 
-            // Manually scale children
-            if ("children" in container && container.children.length > 0) {
-              for (const child of container.children) {
-                if ("rescale" in child && typeof child.rescale === "function") {
-                  child.rescale(scaleFactor);
-                  console.log(
-                    `    Rescaled child "${child.name}" by ${scaleFactor.toFixed(2)}`,
-                  );
-                } else if (
-                  "resize" in child &&
-                  typeof child.resize === "function"
-                ) {
-                  const childWidth = child.width * scaleFactor;
-                  const childHeight = child.height * scaleFactor;
-                  child.resize(childWidth, childHeight);
-
-                  // Also scale position
-                  child.x = child.x * scaleFactor;
-                  child.y = child.y * scaleFactor;
-                  console.log(
-                    `    Scaled child "${child.name}" to ${childWidth.toFixed(1)}x${childHeight.toFixed(1)} at (${child.x.toFixed(1)}, ${child.y.toFixed(1)})`,
-                  );
-                }
-              }
-            }
-          }
+        // Resize container to target size
+        if ("resize" in container && typeof container.resize === "function") {
+          container.resize(targetSize, targetSize);
+          console.log(`    Resized container to ${targetSize}x${targetSize}`);
         }
 
         // Remove fill from container

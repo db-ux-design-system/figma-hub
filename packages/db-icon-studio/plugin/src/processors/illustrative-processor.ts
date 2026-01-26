@@ -4,8 +4,8 @@
  * Processes illustrative icons with a single vector layer containing both black and red fills
  *
  * Structure transformation:
- * BEFORE: Component > Container > [flattened vector with black and red]
- * AFTER:  Component > Container > Vector (with color variables applied)
+ * BEFORE: Component > Container > Vector (with black and red fills)
+ * AFTER:  Component > Container > Vector (with color variables applied to fills)
  */
 
 import { ProcessingError } from "../utils/error-handler.js";
@@ -16,6 +16,8 @@ export class IllustrativeProcessor {
 
   /**
    * Process an illustrative icon component
+   *
+   * Expects structure: Component > Container > Vector (with black and red fills)
    */
   async process(component: ComponentNode): Promise<void> {
     try {
@@ -41,30 +43,22 @@ export class IllustrativeProcessor {
         console.log(`Removed Auto Layout from container`);
       }
 
-      // Find the single vector (should be already flattened by user)
-      const allVectors = this.findAllVectorsInNode(container);
-      console.log(`Found ${allVectors.length} vectors in container`);
+      // Find the Vector layer
+      const children = Array.from(container.children);
+      const vectorLayer = children.find((child) => child.name === "Vector");
 
-      if (allVectors.length !== 1) {
-        throw new ProcessingError(
-          `Expected exactly 1 vector, found ${allVectors.length}. Please flatten all vectors together.`,
-        );
+      if (!vectorLayer) {
+        throw new ProcessingError("No Vector layer found in container");
       }
 
-      const vector = allVectors[0];
-      console.log(`Processing vector: ${vector.name}`);
+      console.log(`Found Vector layer`);
 
-      // Rename vector to "Vector"
-      vector.name = "Vector";
-      console.log(`Renamed vector to: Vector`);
+      // Apply color variables to the vector's fills
+      await this.applyColorVariables(vectorLayer);
 
-      // Apply color variables to the vector
-      // For illustrative icons with both colors, we need to bind both color variables
-      await this.applyColorVariables(vector);
-
-      // Set constraints to SCALE for the vector (Auto Layout was removed from container)
-      if ("constraints" in vector) {
-        vector.constraints = {
+      // Set constraints to SCALE for the vector
+      if ("constraints" in vectorLayer) {
+        vectorLayer.constraints = {
           horizontal: "SCALE",
           vertical: "SCALE",
         };
@@ -96,187 +90,219 @@ export class IllustrativeProcessor {
   }
 
   /**
-   * Find all vector nodes recursively
-   */
-  private findAllVectorsInNode(node: SceneNode): SceneNode[] {
-    const vectors: SceneNode[] = [];
-    const vectorTypes = [
-      "VECTOR",
-      "STAR",
-      "LINE",
-      "ELLIPSE",
-      "POLYGON",
-      "RECTANGLE",
-      "BOOLEAN_OPERATION",
-    ];
-
-    if (vectorTypes.includes(node.type)) {
-      vectors.push(node);
-    }
-
-    if ("children" in node) {
-      for (const child of node.children) {
-        vectors.push(...this.findAllVectorsInNode(child));
-      }
-    }
-
-    return vectors;
-  }
-
-  /**
    * Apply color variables to a vector with both black and red fills
-   * For boolean operations or compound vectors, we bind variables to child fills
+   * Handles Vector Networks with mixed fills
    */
   private async applyColorVariables(vector: SceneNode): Promise<void> {
     try {
       console.log(`  Applying color variables to ${vector.name}...`);
+      console.log(`  Vector type: ${vector.type}`);
 
       // Import both color variables
+      console.log(`  Importing base variable: ${this.baseColorKey}`);
       const baseVariable = await figma.variables.importVariableByKeyAsync(
         this.baseColorKey,
       );
+
+      console.log(`  Importing pulse variable: ${this.pulseColorKey}`);
       const pulseVariable = await figma.variables.importVariableByKeyAsync(
         this.pulseColorKey,
       );
 
+      if (!baseVariable) {
+        console.error(`  ✗ Could not import base color variable!`);
+      } else {
+        console.log(`  ✓ Base variable imported: ${baseVariable.name}`);
+      }
+
+      if (!pulseVariable) {
+        console.error(`  ✗ Could not import pulse color variable!`);
+      } else {
+        console.log(`  ✓ Pulse variable imported: ${pulseVariable.name}`);
+      }
+
       if (!baseVariable || !pulseVariable) {
-        console.warn(`  Could not import color variables`);
+        console.error(`  Cannot proceed without both color variables`);
         return;
       }
 
-      // Apply color variables recursively to all fills in the vector
-      this.applyColorToNode(vector, baseVariable, pulseVariable);
+      // Check if this is a Vector Network (has mixed fills)
+      if (
+        vector.type === "VECTOR" &&
+        "fills" in vector &&
+        typeof vector.fills === "symbol"
+      ) {
+        console.log(`  Vector has mixed fills - this is a Vector Network`);
 
-      console.log(`  ✓ Color variables applied to ${vector.name}`);
+        // For Vector Networks, we need to update the vectorNetwork regions
+        if ("vectorNetwork" in vector) {
+          const vectorNode = vector as VectorNode;
+          const network = vectorNode.vectorNetwork;
+
+          console.log(
+            `  Vector network has ${network.regions?.length || 0} regions`,
+          );
+
+          // Process each region and update fills with bound variables
+          if (network.regions && network.regions.length > 0) {
+            const updatedRegions = network.regions.map((region, i) => {
+              console.log(
+                `    Region ${i}: windingRule=${region.windingRule}, loops=${region.loops.length}`,
+              );
+
+              // Update fills for this region
+              const newFills: Paint[] = [];
+
+              if (region.fills && region.fills.length > 0) {
+                for (const fill of region.fills) {
+                  if (fill.type === "SOLID" && fill.visible !== false) {
+                    const { r, g, b } = fill.color;
+                    const isBlack = r < 0.1 && g < 0.1 && b < 0.1;
+                    const isRed = r > 0.5 && g < 0.3 && b < 0.3;
+
+                    console.log(
+                      `      Fill: r=${r.toFixed(3)}, g=${g.toFixed(3)}, b=${b.toFixed(3)} -> ${isBlack ? "BLACK" : isRed ? "RED" : "OTHER"}`,
+                    );
+
+                    if (isBlack) {
+                      newFills.push({
+                        type: "SOLID",
+                        color: { r: 0, g: 0, b: 0 },
+                        boundVariables: {
+                          color: {
+                            type: "VARIABLE_ALIAS",
+                            id: baseVariable.id,
+                          },
+                        },
+                      });
+                      console.log(`      ✓ Bound to base variable`);
+                    } else if (isRed) {
+                      newFills.push({
+                        type: "SOLID",
+                        color: { r: 1, g: 0, b: 0 },
+                        boundVariables: {
+                          color: {
+                            type: "VARIABLE_ALIAS",
+                            id: pulseVariable.id,
+                          },
+                        },
+                      });
+                      console.log(`      ✓ Bound to pulse variable`);
+                    } else {
+                      newFills.push(fill);
+                      console.log(`      Kept as-is`);
+                    }
+                  } else {
+                    newFills.push(fill);
+                  }
+                }
+              }
+
+              // Return updated region
+              return {
+                ...region,
+                fills: newFills,
+              };
+            });
+
+            // Create updated network with new regions
+            const updatedNetwork = {
+              ...network,
+              regions: updatedRegions,
+            };
+
+            // Apply the updated network back to the vector (must use async method)
+            await vectorNode.setVectorNetworkAsync(updatedNetwork);
+            console.log(
+              `  ✓ Updated vector network with ${updatedRegions.length} regions`,
+            );
+          } else {
+            console.warn(`  Vector network has no regions to process`);
+          }
+        } else {
+          console.warn(`  Vector does not have vectorNetwork property`);
+        }
+      } else {
+        console.log(`  Vector has regular fills, processing normally...`);
+        await this.applyColorsRecursively(vector, baseVariable, pulseVariable);
+      }
+
+      console.log(`  ✓ Color application complete`);
     } catch (error) {
-      console.warn(`  Failed to apply color variables:`, error);
+      console.error(`  Failed to apply color variables:`, error);
+      if (error instanceof Error) {
+        console.error(`  Error message: ${error.message}`);
+        console.error(`  Error stack: ${error.stack}`);
+      }
     }
   }
 
   /**
-   * Recursively apply color variables to fills based on their color
+   * Recursively apply color variables to a node and its children (for non-vector-network nodes)
    */
-  private applyColorToNode(
+  private async applyColorsRecursively(
     node: SceneNode,
     baseVariable: Variable,
     pulseVariable: Variable,
-  ): void {
-    console.log(`    Processing node: ${node.name} (${node.type})`);
+  ): Promise<void> {
+    console.log(`    Processing node: "${node.name}" (${node.type})`);
 
-    // Check if node has fills property
-    if (!("fills" in node)) {
-      console.log(`      No fills property, skipping`);
-      // Still check children
-      if ("children" in node && node.children) {
-        for (const child of node.children) {
-          this.applyColorToNode(child, baseVariable, pulseVariable);
-        }
-      }
-      return;
-    }
+    // Check if node has fills
+    if ("fills" in node) {
+      const fills = node.fills;
 
-    const fills = node.fills;
-    console.log(
-      `      fills type: ${typeof fills}, is symbol: ${typeof fills === "symbol"}`,
-    );
+      // Handle array fills
+      if (Array.isArray(fills)) {
+        console.log(`      Processing ${fills.length} fills...`);
+        const newFills: Paint[] = [];
 
-    // If fills is figma.mixed (symbol), we need to access child nodes
-    if (typeof fills === "symbol") {
-      console.log(
-        `      fills is mixed - processing children to bind variables`,
-      );
+        for (const fill of fills) {
+          if (fill.type === "SOLID" && fill.visible !== false) {
+            const { r, g, b } = fill.color;
+            const isBlack = r < 0.1 && g < 0.1 && b < 0.1;
+            const isRed = r > 0.5 && g < 0.3 && b < 0.3;
 
-      // For mixed fills, we need to process children (vector network regions)
-      if ("children" in node && node.children) {
-        console.log(`      Processing ${node.children.length} children...`);
-        for (const child of node.children) {
-          this.applyColorToNode(child, baseVariable, pulseVariable);
-        }
-      }
-
-      // Also try to bind variables using setBoundVariable if available
-      if (
-        "setBoundVariable" in node &&
-        typeof node.setBoundVariable === "function"
-      ) {
-        try {
-          // Try to bind both variables - Figma will apply them to the appropriate regions
-          console.log(
-            `      Attempting to bind variables using setBoundVariable...`,
-          );
-          node.setBoundVariable("fills", baseVariable.id);
-          console.log(`      ✓ Bound base variable`);
-        } catch (error) {
-          console.log(`      Could not bind variables directly:`, error);
-        }
-      }
-
-      return;
-    }
-
-    // If fills is an array, process each fill
-    if (Array.isArray(fills)) {
-      console.log(`      Processing ${fills.length} fills...`);
-      const newFills: Paint[] = [];
-
-      for (const fill of fills) {
-        if (fill.type === "SOLID" && fill.visible !== false) {
-          const { r, g, b } = fill.color;
-          console.log(
-            `        Fill color: r=${r.toFixed(3)}, g=${g.toFixed(3)}, b=${b.toFixed(3)}`,
-          );
-
-          // Determine if this fill is black or red
-          const isBlack = r < 0.1 && g < 0.1 && b < 0.1;
-          const isRed = r > 0.5 && g < 0.3 && b < 0.3;
-
-          if (isBlack) {
-            // Bind to base (black) variable
-            newFills.push({
-              type: "SOLID",
-              color: { r: 0, g: 0, b: 0 },
-              boundVariables: {
-                color: {
-                  type: "VARIABLE_ALIAS",
-                  id: baseVariable.id,
+            if (isBlack) {
+              newFills.push({
+                type: "SOLID",
+                color: { r: 0, g: 0, b: 0 },
+                boundVariables: {
+                  color: {
+                    type: "VARIABLE_ALIAS",
+                    id: baseVariable.id,
+                  },
                 },
-              },
-            });
-            console.log(`        ✓ Bound black fill to base variable`);
-          } else if (isRed) {
-            // Bind to pulse (red) variable
-            newFills.push({
-              type: "SOLID",
-              color: { r: 1, g: 0, b: 0 },
-              boundVariables: {
-                color: {
-                  type: "VARIABLE_ALIAS",
-                  id: pulseVariable.id,
+              });
+            } else if (isRed) {
+              newFills.push({
+                type: "SOLID",
+                color: { r: 1, g: 0, b: 0 },
+                boundVariables: {
+                  color: {
+                    type: "VARIABLE_ALIAS",
+                    id: pulseVariable.id,
+                  },
                 },
-              },
-            });
-            console.log(`        ✓ Bound red fill to pulse variable`);
+              });
+            } else {
+              newFills.push(fill);
+            }
           } else {
-            // Keep other fills as-is
-            console.log(`        Keeping fill as-is (not black or red)`);
             newFills.push(fill);
           }
-        } else {
-          // Keep non-solid or invisible fills
-          console.log(`        Keeping fill as-is (not solid or invisible)`);
-          newFills.push(fill);
+        }
+
+        if (newFills.length > 0) {
+          node.fills = newFills;
+          console.log(`      ✓ Applied ${newFills.length} fills`);
         }
       }
-
-      node.fills = newFills;
-      console.log(`      ✓ Applied ${newFills.length} fills to node`);
     }
 
-    // Recursively process children (for boolean operations)
-    if ("children" in node && node.children) {
-      console.log(`      Processing ${node.children.length} children...`);
+    // Recursively process children
+    if ("children" in node && node.children && node.children.length > 0) {
       for (const child of node.children) {
-        this.applyColorToNode(child, baseVariable, pulseVariable);
+        await this.applyColorsRecursively(child, baseVariable, pulseVariable);
       }
     }
   }

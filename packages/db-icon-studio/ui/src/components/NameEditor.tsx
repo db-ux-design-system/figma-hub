@@ -33,7 +33,7 @@ export function NameEditor({
   };
 
   return (
-    <div className="flex flex-col name-editor space-y-4 gap-fix-md mt-fix-lg">
+    <div className="flex flex-col name-editor space-y-4 gap-fix-md mt-fix-sm">
       <h3 className="text-lg mb-0">
         🪲 Fix wrong icon name
         <br />
@@ -41,7 +41,7 @@ export function NameEditor({
 
       <form
         onSubmit={handleSubmit}
-        className="flex flex-col space-y-4 gap-fix-lg"
+        className="flex flex-col space-y-4 gap-fix-sm"
       >
         <div className="flex flex-row gap-fix-2xs items-end">
           <div className="flex-1 w-1/2">
@@ -63,8 +63,7 @@ export function NameEditor({
             </div>
           )}
         </div>
-
-        <DBButton variant="outlined">Update Name</DBButton>
+        <DBButton variant="brand">Update Name</DBButton>
       </form>
     </div>
   );

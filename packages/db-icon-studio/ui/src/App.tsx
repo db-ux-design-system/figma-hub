@@ -158,7 +158,7 @@ function App() {
   return (
     <div className="flex flex-col h-screen db-bg-color-basic-level-1 overflow-hidden">
       <header className="flex-shrink-0 gap-fix-md p-fix-md">
-        <h1 className="text-2xl my-fix-sm">DB Icon Studio test</h1>
+        <h1 className="text-2xl my-fix-sm">DB Icon Studio</h1>
         <SelectionStatus
           info={state.selectionInfo}
           nameValidation={state.nameValidationResult}
@@ -185,7 +185,7 @@ function App() {
               />
             </div>
           ) : (
-            <div className="py-fix-md space-y-4">
+            <div className="space-y-4">
               {state.selectionInfo.isComplete &&
               !state.showDescriptionDialog &&
               (!state.nameValidationResult ||
