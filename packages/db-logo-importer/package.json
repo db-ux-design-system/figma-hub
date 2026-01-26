@@ -1,8 +1,8 @@
 {
-  "name": "db-logo-importer",
+  "name": "@db-ux/icon-importer",
   "private": true,
   "version": "0.1.0",
-  "description": "Figma plugin to create components from SVGs, assign color variables, and scale.",
+  "description": "This plugin creates a Figma component from an imported SVG, assigns color variables to shapes, and scales it to a defined size.",
   "main": "index.js",
   "workspaces": [
     "plugin/*",
