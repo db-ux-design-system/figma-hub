@@ -1,0 +1,19 @@
+{
+  "name": "@db-ux/custom-color-importer",
+  "private": true,
+  "version": "0.1.0",
+  "description": "This plugin imports the custom color variables from Theme Builder Export.",
+  "main": "index.js",
+  "workspaces": [
+    "plugin",
+    "ui"
+  ],
+  "scripts": {
+    "build": "npm-run-all --parallel build:plugin build:ui",
+    "build:plugin": "cd plugin && npm run build",
+    "build:ui": "cd ui && npm run build",
+    "dev": "npm-run-all --parallel dev:plugin dev:ui",
+    "dev:plugin": "cd plugin && npm run dev",
+    "dev:ui": "cd ui && npm run dev"
+  }
+}
