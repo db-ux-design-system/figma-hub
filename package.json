@@ -25,7 +25,7 @@
     "dev:auto-sync": "npm run dev -w=@db-ux/auto-sync",
     "dev:design-migration": "npm run dev -w=@db-ux/design-migration",
     "dev:db-logo-importer": "npm run dev -w=@db-ux/logo-importer",
-    "dev:db-icon-exporter": "npm run dev -w=@db-ux/icon-exporter"
+    "dev:db-icon-exporter": "npm run dev -w=@db-ux/icon-exporter",
     "dev:db-custom-color-importer": "npm run dev -w=@db-ux/custom-color-importer"
   },
   "author": "",
