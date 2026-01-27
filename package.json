@@ -23,7 +23,7 @@
     "dev:handover": "npm run dev -w=@db-ux/handover",
     "dev:auto-sync": "npm run dev -w=@db-ux/auto-sync",
     "dev:design-migration": "npm run dev -w=@db-ux/design-migration",
-    "dev:db-logo-importer": "npm run dev -w=@db-ux/db-logo-importer",
+    "dev:db-logo-importer": "npm run dev -w=@db-ux/logo-importer",
     "dev:db-custom-color-importer": "npm run dev -w=@db-ux/custom-color-importer"
   },
   "author": "",
