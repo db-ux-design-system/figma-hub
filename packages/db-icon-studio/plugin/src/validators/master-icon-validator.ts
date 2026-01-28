@@ -298,7 +298,7 @@ export class MasterIconValidator {
     const warnings: ValidationWarning[] = [];
     const vectorPositions: VectorPositionInfo[] = [];
 
-    const vectors = this.findAllVectorNodesWithPosition(container);
+    const vectors = this.findAllVectorNodesWithPosition(container, container);
 
     for (const vectorInfo of vectors) {
       const vector = vectorInfo.node;
@@ -371,10 +371,12 @@ export class MasterIconValidator {
   }
 
   /**
-   * Validate that strokes are not in the safety zone AND collect position information
+   * Validate safety zone and collect position information
    * Safety zone rules:
    * - Fills: minimum 2px from container edge
    * - Strokes: minimum 3px from container edge
+   *
+   * Position calculation: Accumulate all parent offsets relative to container
    */
   private validateSafetyZoneAndCollectPosition(
     vector: SceneNode,
@@ -400,29 +402,82 @@ export class MasterIconValidator {
       return { errors, warnings, positionInfo };
     }
 
-    // Calculate absolute position by adding up all parent offsets
-    let absoluteX = vector.x;
-    let absoluteY = vector.y;
+    // Use absoluteRenderBounds for accurate visual bounds (includes stroke width)
+    // Fall back to absoluteBoundingBox if not available
+    const bounds =
+      "absoluteRenderBounds" in vector && vector.absoluteRenderBounds
+        ? vector.absoluteRenderBounds
+        : "absoluteBoundingBox" in vector && vector.absoluteBoundingBox
+          ? vector.absoluteBoundingBox
+          : null;
 
-    for (const parent of parentChain) {
-      if ("x" in parent && "y" in parent) {
-        absoluteX += parent.x;
-        absoluteY += parent.y;
+    if (!bounds) {
+      console.warn(
+        `[MasterIconValidator] No bounds available for vector "${vector.name}"`,
+      );
+      return { errors, warnings, positionInfo };
+    }
+
+    console.log(
+      `[MasterIconValidator] Vector "${vector.name}": bounds x=${bounds.x}, y=${bounds.y}, width=${bounds.width}, height=${bounds.height}`,
+    );
+
+    // Calculate absolute position relative to container
+    // We need to find the container's absolute position first
+    let containerAbsoluteX = 0;
+    let containerAbsoluteY = 0;
+
+    // The parent chain should contain the container's children
+    // We need to get the container's absolute position
+    if (parentChain.length > 0) {
+      const firstParent = parentChain[0];
+      if (
+        "absoluteBoundingBox" in firstParent &&
+        firstParent.absoluteBoundingBox
+      ) {
+        // The first parent in chain is a child of container
+        // We need to go up one more level to get container
+        if ("parent" in firstParent && firstParent.parent) {
+          const container = firstParent.parent;
+          if (
+            "absoluteBoundingBox" in container &&
+            container.absoluteBoundingBox
+          ) {
+            containerAbsoluteX = container.absoluteBoundingBox.x;
+            containerAbsoluteY = container.absoluteBoundingBox.y;
+            console.log(
+              `[MasterIconValidator] Container absolute position: (${containerAbsoluteX}, ${containerAbsoluteY})`,
+            );
+          }
+        }
       }
     }
 
-    // Store relative position (as shown in Figma)
+    // Calculate position relative to container
+    const absoluteX = bounds.x - containerAbsoluteX;
+    const absoluteY = bounds.y - containerAbsoluteY;
+
+    // Store relative position (as shown in Figma - relative to immediate parent)
     const relativeX = vector.x;
     const relativeY = vector.y;
 
-    // Calculate distances from edges
+    console.log(
+      `[MasterIconValidator] Vector "${vector.name}": absolute position relative to container (${absoluteX}, ${absoluteY})`,
+    );
+    console.log(`[MasterIconValidator] Container size: ${containerSize}`);
+
+    // Calculate distances from container edges using absolute bounds
     // Round to 2 decimal places to avoid floating point precision issues
     const distanceLeft = Math.round(absoluteX * 100) / 100;
     const distanceTop = Math.round(absoluteY * 100) / 100;
     const distanceRight =
-      Math.round((containerSize - (absoluteX + vector.width)) * 100) / 100;
+      Math.round((containerSize - (absoluteX + bounds.width)) * 100) / 100;
     const distanceBottom =
-      Math.round((containerSize - (absoluteY + vector.height)) * 100) / 100;
+      Math.round((containerSize - (absoluteY + bounds.height)) * 100) / 100;
+
+    console.log(
+      `[MasterIconValidator] Vector "${vector.name}": distances - left: ${distanceLeft}, top: ${distanceTop}, right: ${distanceRight}, bottom: ${distanceBottom}`,
+    );
 
     // Find the direct parent frame (if any) - but exclude the Container itself
     const directParentFrame =
@@ -451,8 +506,8 @@ export class MasterIconValidator {
       y: absoluteY,
       relativeX,
       relativeY,
-      width: vector.width,
-      height: vector.height,
+      width: bounds.width,
+      height: bounds.height,
       distanceFromEdges: {
         left: distanceLeft,
         top: distanceTop,
@@ -508,9 +563,11 @@ export class MasterIconValidator {
 
   /**
    * Find all vector nodes recursively with their parent chain for absolute position calculation
+   * The parent chain excludes the container itself (starting point)
    */
   private findAllVectorNodesWithPosition(
     node: SceneNode,
+    containerNode: SceneNode,
     parentChain: SceneNode[] = [],
   ): Array<{ node: SceneNode; parentChain: SceneNode[] }> {
     const vectors: Array<{ node: SceneNode; parentChain: SceneNode[] }> = [];
@@ -529,12 +586,17 @@ export class MasterIconValidator {
     }
 
     if ("children" in node && node.children) {
-      // Add current node to parent chain for children
-      const newParentChain = [...parentChain, node];
+      // Add current node to parent chain for children (but not the container itself)
+      const newParentChain =
+        node === containerNode ? [] : [...parentChain, node];
 
       for (const child of node.children) {
         vectors.push(
-          ...this.findAllVectorNodesWithPosition(child, newParentChain),
+          ...this.findAllVectorNodesWithPosition(
+            child,
+            containerNode,
+            newParentChain,
+          ),
         );
       }
     }

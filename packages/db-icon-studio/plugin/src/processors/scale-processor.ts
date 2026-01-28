@@ -219,12 +219,31 @@ export class ScaleProcessor {
           // Get the vector (should be named "Vector" after flatten)
           const vector = container.children[0];
 
+          // Store original position before scaling
+          const originalX = "x" in vector ? (vector.x as number) : 0;
+          const originalY = "y" in vector ? (vector.y as number) : 0;
+
+          console.log(
+            `    Vector "${vector.name}" original position: (${originalX}, ${originalY})`,
+          );
+
           // Scale the vector using rescale()
           if ("rescale" in vector && typeof vector.rescale === "function") {
             vector.rescale(scaleFactor);
             console.log(
               `    Rescaled vector "${vector.name}" by ${scaleFactor.toFixed(2)}`,
             );
+
+            // Scale the position as well (for non-auto-layout containers)
+            if ("x" in vector && "y" in vector) {
+              const newX = originalX * scaleFactor;
+              const newY = originalY * scaleFactor;
+              vector.x = newX;
+              vector.y = newY;
+              console.log(
+                `    Scaled position to (${newX.toFixed(2)}, ${newY.toFixed(2)})`,
+              );
+            }
           } else {
             console.warn(
               `    Vector "${vector.name}" does not support rescale()`,
