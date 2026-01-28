@@ -17,6 +17,7 @@
     "build:design-migration": "npm run build -w=@db-ux/design-migration",
     "build:db-logo-importer": "npm run build -w=@db-ux/logo-importer",
     "build:db-icon-studio": "npm run build -w=@db-ux/icon-studio",
+    "build:db-custom-color-importer": "npm run build -w=@db-ux/custom-color-importer",
     "dev": "npm-run-all --parallel dev:*",
     "dev:codegen": "npm run dev -w=@db-ux/codegen",
     "dev:inspect": "npm run dev -w=@db-ux/inspect",
@@ -24,12 +25,13 @@
     "dev:auto-sync": "npm run dev -w=@db-ux/auto-sync",
     "dev:design-migration": "npm run dev -w=@db-ux/design-migration",
     "dev:db-logo-importer": "npm run dev -w=@db-ux/logo-importer",
-    "dev:db-icon-studio": "npm run dev -w=@db-ux/icon-studio"
+    "dev:db-icon-studio": "npm run dev -w=@db-ux/icon-studio",
+    "dev:db-custom-color-importer": "npm run dev -w=@db-ux/custom-color-importer"
   },
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "@types/node": "^24.6.2",
+    "@types/node": "^25.0.10",
     "adm-zip": "^0.5.16",
     "npm-run-all2": "8.0.4"
   },
