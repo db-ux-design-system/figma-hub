@@ -168,7 +168,8 @@ function App() {
 
       <div className="flex-1 overflow-y-auto gap-fix-md px-fix-md">
         {state.selectionInfo?.isComponentSet ||
-        state.selectionInfo?.isComponent ? (
+        state.selectionInfo?.isComponent ||
+        state.selectionInfo?.isMasterIconFrame ? (
           state.selectionInfo.isComplete && state.showDescriptionDialog ? (
             <div className="h-full py-fix-md">
               <DescriptionDialog
@@ -198,6 +199,7 @@ function App() {
                   <ValidationResults
                     nameValidation={state.nameValidationResult}
                     sizeValidation={state.sizeValidationResult}
+                    isMasterIconFrame={state.selectionInfo.isMasterIconFrame}
                   />
 
                   {state.canCreateIconSet && (

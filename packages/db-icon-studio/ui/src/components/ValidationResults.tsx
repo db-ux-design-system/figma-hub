@@ -9,11 +9,13 @@ import type { NameValidationResult, ValidationResult } from "../types";
 interface ValidationResultsProps {
   nameValidation: NameValidationResult | null;
   sizeValidation: ValidationResult | null;
+  isMasterIconFrame?: boolean;
 }
 
 export function ValidationResults({
   nameValidation,
   sizeValidation,
+  isMasterIconFrame = false,
 }: ValidationResultsProps) {
   const hasNameErrors = nameValidation && !nameValidation.isValid;
   const hasSizeErrors = sizeValidation && !sizeValidation.isValid;
@@ -21,6 +23,54 @@ export function ValidationResults({
     sizeValidation &&
     sizeValidation.warnings &&
     sizeValidation.warnings.length > 0;
+
+  // Show success message for master icon frames without errors (warnings are OK)
+  const showSuccessMessage =
+    isMasterIconFrame && !hasNameErrors && !hasSizeErrors;
+
+  if (showSuccessMessage) {
+    return (
+      <div className="space-y-4">
+        <DBNotification
+          headline="Master icon template validated successfully"
+          semantic="successful"
+          variant="standalone"
+          className="mb-fix-md"
+        >
+          <div className="space-y-2">
+            <p>
+              Your master icon is ready! You can now fill your icon component
+              set.
+            </p>
+            <div className="mt-fix-sm text-md">
+              <strong>Next steps:</strong>
+              <ol className="list-decimal list-inline pl-fix-md mt-2 space-y-1">
+                <li>Copy vectors to icon component set container</li>
+                <li>Convert to outline (⇧ Shift + ⌘ Cmd + O)</li>
+                <li>Union overlapping shapes (⇧ Shift + ⌥ Opt + U)</li>
+                <li>Flatten paths (⇧ Shift + ⌥ Opt + F)</li>
+              </ol>
+            </div>
+          </div>
+        </DBNotification>
+
+        {/* Show warnings below success message if any */}
+        {hasSizeWarnings && sizeValidation && sizeValidation.warnings && (
+          <DBNotification
+            headline="Validation warnings"
+            semantic="warning"
+            variant="standalone"
+          >
+            <ul className="list-disc pl-fix-md space-y-fix-xs">
+              {sizeValidation.warnings.map((warning, index) => (
+                <li key={index}>{warning.message}</li>
+              ))}
+            </ul>
+          </DBNotification>
+        )}
+      </div>
+    );
+  }
 
   if (!hasNameErrors && !hasSizeErrors && !hasSizeWarnings) {
     return null;

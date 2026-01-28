@@ -13,9 +13,11 @@ import { SelectionError } from "./error-handler.js";
 export interface InternalSelectionInfo {
   isComponentSet: boolean;
   isComponent: boolean;
+  isMasterIconFrame: boolean;
   iconType: "functional" | "illustrative" | null;
   componentSet: ComponentSetNode | null;
   component: ComponentNode | null;
+  masterIconFrame: FrameNode | null;
   variants: ComponentNode[];
 }
 
@@ -38,9 +40,11 @@ export function getSelectionInfo(): InternalSelectionInfo {
     return {
       isComponentSet: false,
       isComponent: false,
+      isMasterIconFrame: false,
       iconType: null,
       componentSet: null,
       component: null,
+      masterIconFrame: null,
       variants: [],
     };
   }
@@ -50,69 +54,130 @@ export function getSelectionInfo(): InternalSelectionInfo {
     return {
       isComponentSet: false,
       isComponent: false,
+      isMasterIconFrame: false,
       iconType: null,
       componentSet: null,
       component: null,
+      masterIconFrame: null,
       variants: [],
     };
   }
 
   const node = selection[0];
 
+  // Debug: Log the node type
+  console.log(
+    `[getSelectionInfo] Selected node type: ${node.type}, name: ${node.name}`,
+  );
+
+  // Check for Frame (master icon template)
+  if (node.type === "FRAME") {
+    const iconType = detectIconTypeFromFrame(node);
+    console.log(
+      `[getSelectionInfo] Detected as FRAME with iconType: ${iconType}`,
+    );
+
+    // Only treat as master icon frame if it has a valid size
+    if (iconType) {
+      return {
+        isComponentSet: false,
+        isComponent: false,
+        isMasterIconFrame: true,
+        iconType,
+        componentSet: null,
+        component: null,
+        masterIconFrame: node,
+        variants: [],
+      };
+    }
+
+    // Frame with invalid size - not a master icon frame
+    return {
+      isComponentSet: false,
+      isComponent: false,
+      isMasterIconFrame: false,
+      iconType: null,
+      componentSet: null,
+      component: null,
+      masterIconFrame: null,
+      variants: [],
+    };
+  }
+
   // Check for Component Set (functional icons)
   if (node.type === "COMPONENT_SET") {
     const iconType = detectIconType(node);
-    const variants = node.children as ComponentNode[];
+    console.log(
+      `[getSelectionInfo] Detected as COMPONENT_SET with iconType: ${iconType}`,
+    );
 
     return {
       isComponentSet: true,
       isComponent: false,
+      isMasterIconFrame: false,
       iconType,
       componentSet: node,
       component: null,
-      variants,
+      masterIconFrame: null,
+      variants: [],
     };
   }
 
   // Check for single Component (illustrative icons or variant within a set)
   if (node.type === "COMPONENT") {
+    console.log(`[getSelectionInfo] Detected as COMPONENT`);
+
     // Check if this component is part of a ComponentSet
     const parentNode = node.parent;
 
     if (parentNode && parentNode.type === "COMPONENT_SET") {
       // This is a variant within a ComponentSet (functional icon)
       const iconType = detectIconType(parentNode);
+      console.log(
+        `[getSelectionInfo] Component is part of ComponentSet with iconType: ${iconType}`,
+      );
 
       return {
         isComponentSet: false,
         isComponent: true,
+        isMasterIconFrame: false,
         iconType,
         componentSet: null,
         component: node,
+        masterIconFrame: null,
         variants: [],
       };
     }
 
     // This is a standalone component (illustrative icon)
     const iconType = detectIconTypeFromComponent(node);
+    console.log(
+      `[getSelectionInfo] Standalone component with iconType: ${iconType}`,
+    );
 
     return {
       isComponentSet: false,
       isComponent: true,
+      isMasterIconFrame: false,
       iconType,
       componentSet: null,
       component: node,
+      masterIconFrame: null,
       variants: [],
     };
   }
+
+  console.log(`[getSelectionInfo] Node type ${node.type} not recognized`);
 
   // Not a valid selection
   return {
     isComponentSet: false,
     isComponent: false,
+    isMasterIconFrame: false,
     iconType: null,
     componentSet: null,
     component: null,
+    masterIconFrame: null,
     variants: [],
   };
 }
@@ -171,6 +236,31 @@ export function detectIconTypeFromComponent(
 
   // Default to illustrative for single components
   return "illustrative";
+}
+
+/**
+ * Detect the icon type from a frame (master icon template)
+ *
+ * @param frame - The frame to analyze
+ * @returns The detected icon type
+ */
+export function detectIconTypeFromFrame(
+  frame: FrameNode,
+): "functional" | "illustrative" | null {
+  const size = Math.round(frame.width);
+
+  // Functional icon sizes: 32, 24, 20
+  if ([32, 24, 20].includes(size)) {
+    return "functional";
+  }
+
+  // Illustrative icon size: 64
+  if (size === 64) {
+    return "illustrative";
+  }
+
+  // Unknown size
+  return null;
 }
 
 /**

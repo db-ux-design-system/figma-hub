@@ -29,16 +29,16 @@ export function SelectionStatus({
     );
   }
 
-  if (!info.isComponentSet && !info.isComponent) {
+  if (!info.isComponentSet && !info.isComponent && !info.isMasterIconFrame) {
     return (
       <DBNotification
         variant="standalone"
         semantic="informational"
         className="mt-fix-lg"
-        headline={"No Component or Component Set selected"}
+        headline={"No Component, Component Set, or Master Icon Frame selected"}
       >
-        Please select a Component Set (functional icons) or Component
-        (illustrative icons).
+        Please select a Component Set (functional icons), Component
+        (illustrative icons), or Master Icon Frame (icon templates).
       </DBNotification>
     );
   }
@@ -57,7 +57,11 @@ export function SelectionStatus({
   const hasSizeError = sizeValidation && !sizeValidation.isValid;
 
   // Get the name to display
-  const displayName = info.componentSet?.name || info.component?.name || "";
+  const displayName =
+    info.componentSet?.name ||
+    info.component?.name ||
+    info.masterIconFrame?.name ||
+    "";
 
   return (
     <div className="grid grid-cols-2 gap-x-fix-lg gap-y-fix-2xs">
@@ -66,6 +70,14 @@ export function SelectionStatus({
         <DBInfotext showIcon={false} semantic="neutral">
           <strong>Icon Type:&nbsp;</strong>
           {info.iconType === "functional" ? "Functional" : "Illustrative"}
+        </DBInfotext>
+      )}
+
+      {/* Master Icon Frame Size */}
+      {info.isMasterIconFrame && info.masterIconFrame && (
+        <DBInfotext showIcon={false} semantic="neutral">
+          <strong>Frame Size:&nbsp;</strong>
+          {info.masterIconFrame.size}px
         </DBInfotext>
       )}
 
@@ -83,13 +95,23 @@ export function SelectionStatus({
       )}
 
       {/* Icon Name */}
-      <DBInfotext
-        showIcon={false}
-        semantic={hasNameError ? "critical" : "neutral"}
-      >
-        <strong>Icon Name:&nbsp;</strong>
-        {displayName}
-      </DBInfotext>
+      {!info.isMasterIconFrame && (
+        <DBInfotext
+          showIcon={false}
+          semantic={hasNameError ? "critical" : "neutral"}
+        >
+          <strong>Icon Name:&nbsp;</strong>
+          {displayName}
+        </DBInfotext>
+      )}
+
+      {/* Frame Name - for master icon frames */}
+      {info.isMasterIconFrame && (
+        <DBInfotext showIcon={false} semantic="neutral">
+          <strong>Frame Name:&nbsp;</strong>
+          {displayName}
+        </DBInfotext>
+      )}
 
       {/* Sizes - only for functional icons */}
       {info.isComponentSet && (

@@ -6,6 +6,7 @@
 export interface SelectionInfo {
   isComponentSet: boolean;
   isComponent: boolean;
+  isMasterIconFrame: boolean;
   iconType: "functional" | "illustrative" | null;
   componentSet: {
     name: string;
@@ -14,6 +15,11 @@ export interface SelectionInfo {
   component: {
     name: string;
     id: string;
+  } | null;
+  masterIconFrame: {
+    name: string;
+    id: string;
+    size: number;
   } | null;
   variantCount: number;
   isComplete: boolean; // True if all 7 sizes exist for Outlined variant (functional) or icon is ready (illustrative)
@@ -27,6 +33,7 @@ export interface ValidationResult {
   isValid: boolean;
   errors: ValidationError[];
   warnings?: ValidationWarning[];
+  vectorPositions?: VectorPositionInfo[]; // Position information for vectors
 }
 
 export interface ValidationError {
@@ -38,6 +45,27 @@ export interface ValidationWarning {
   message: string;
   node?: string;
   canProceed: boolean; // If true, user can choose to proceed despite warning
+}
+
+// Vector Position Information
+export interface VectorPositionInfo {
+  name: string;
+  x: number; // Absolute X position in container
+  y: number; // Absolute Y position in container
+  relativeX: number; // X position relative to direct parent
+  relativeY: number; // Y position relative to direct parent
+  width: number;
+  height: number;
+  distanceFromEdges: {
+    left: number;
+    top: number;
+    right: number;
+    bottom: number;
+  };
+  strokeWeight?: number;
+  isInFrame: boolean; // True if vector is in a nested frame (not directly in container)
+  parentFrameName?: string; // Name of parent frame if isInFrame is true
+  layerPath: string[]; // Full path of parent layers (e.g., ["Container", "Group 1", "Icon Frame"])
 }
 
 export interface NameValidationResult {

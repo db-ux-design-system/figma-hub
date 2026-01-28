@@ -20,6 +20,7 @@ import { IllustrativeSizeValidator } from "./validators/illustrative-size-valida
 import { IllustrativeCompletionValidator } from "./validators/illustrative-completion-validator.js";
 import { FlattenOutlineValidator } from "./validators/flatten-outline-validator.js";
 import { IllustrativeFlattenOutlineValidator } from "./validators/illustrative-flatten-outline-validator.js";
+import { MasterIconValidator } from "./validators/master-icon-validator.js";
 import { ColorApplicator } from "./processors/color-applicator.js";
 import { ScaleProcessor } from "./processors/scale-processor.js";
 import { DescriptionEditor } from "./processors/description-editor.js";
@@ -240,6 +241,7 @@ async function handleGetSelection(): Promise<void> {
     const selectionInfo: SelectionInfo = {
       isComponentSet: info.isComponentSet,
       isComponent: info.isComponent,
+      isMasterIconFrame: info.isMasterIconFrame,
       iconType: info.iconType,
       componentSet: info.componentSet
         ? {
@@ -251,6 +253,13 @@ async function handleGetSelection(): Promise<void> {
         ? {
             name: info.component.name,
             id: info.component.id,
+          }
+        : null,
+      masterIconFrame: info.masterIconFrame
+        ? {
+            name: info.masterIconFrame.name,
+            id: info.masterIconFrame.id,
+            size: Math.round(info.masterIconFrame.width),
           }
         : null,
       variantCount: info.variants.length,
@@ -312,7 +321,7 @@ async function handleGetSelection(): Promise<void> {
     }
 
     // Automatically run validations in background
-    if (info.iconType) {
+    if (info.iconType && !info.isMasterIconFrame) {
       // Run name validation
       try {
         const nameValidator = new NameValidator(info.iconType);
@@ -476,6 +485,23 @@ async function handleGetSelection(): Promise<void> {
             console.warn("Functional size validation failed:", error);
           }
         }
+      }
+    }
+
+    // Automatically run validations for Master Icon Frames
+    if (info.isMasterIconFrame && info.masterIconFrame) {
+      try {
+        const masterIconValidator = new MasterIconValidator();
+        const masterIconResult = masterIconValidator.validate(
+          info.masterIconFrame,
+        );
+
+        sendMessage({
+          type: "size-validation-result",
+          data: masterIconResult,
+        });
+      } catch (error) {
+        console.warn("Master icon validation failed:", error);
       }
     }
   } catch (error) {
