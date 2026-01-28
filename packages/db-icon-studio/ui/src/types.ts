@@ -115,6 +115,7 @@ export type PluginMessage =
   | { type: "validation-result"; data: ValidationResult }
   | { type: "name-validation-result"; data: NameValidationResult }
   | { type: "size-validation-result"; data: ValidationResult }
+  | { type: "component-readiness-result"; data: ValidationResult }
   | { type: "existing-description"; data: DescriptionData }
   | { type: "progress"; data: string }
   | { type: "success"; data?: any }

@@ -22,6 +22,7 @@ interface AppState {
   selectionInfo: SelectionInfo | null;
   nameValidationResult: NameValidationResult | null;
   sizeValidationResult: ValidationResult | null;
+  componentReadinessResult: ValidationResult | null;
   isProcessing: boolean;
   currentOperation: string | null;
   error: string | null;
@@ -35,6 +36,7 @@ function App() {
     selectionInfo: null,
     nameValidationResult: null,
     sizeValidationResult: null,
+    componentReadinessResult: null,
     isProcessing: false,
     currentOperation: null,
     error: null,
@@ -72,7 +74,9 @@ function App() {
       case "name-validation-result":
         setState((prev) => {
           const canCreate =
-            msg.data.isValid && (prev.sizeValidationResult?.isValid ?? false);
+            msg.data.isValid &&
+            (prev.sizeValidationResult?.isValid ?? false) &&
+            (prev.componentReadinessResult?.isValid ?? true);
           return {
             ...prev,
             nameValidationResult: msg.data,
@@ -85,10 +89,27 @@ function App() {
         setState((prev) => {
           // Warnings don't block creation, only errors do
           const canCreate =
-            (prev.nameValidationResult?.isValid ?? false) && msg.data.isValid;
+            (prev.nameValidationResult?.isValid ?? false) &&
+            msg.data.isValid &&
+            (prev.componentReadinessResult?.isValid ?? true);
           return {
             ...prev,
             sizeValidationResult: msg.data,
+            canCreateIconSet: canCreate,
+            isProcessing: false,
+          };
+        });
+        break;
+      case "component-readiness-result":
+        setState((prev) => {
+          // Recalculate canCreateIconSet based on all validations
+          const canCreate =
+            (prev.nameValidationResult?.isValid ?? false) &&
+            (prev.sizeValidationResult?.isValid ?? false) &&
+            msg.data.isValid;
+          return {
+            ...prev,
+            componentReadinessResult: msg.data,
             canCreateIconSet: canCreate,
             isProcessing: false,
           };
@@ -199,6 +220,7 @@ function App() {
                   <ValidationResults
                     nameValidation={state.nameValidationResult}
                     sizeValidation={state.sizeValidationResult}
+                    componentReadinessResult={state.componentReadinessResult}
                     isMasterIconFrame={state.selectionInfo.isMasterIconFrame}
                   />
 

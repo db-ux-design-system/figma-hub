@@ -118,6 +118,7 @@ export type UIMessage =
 export type PluginMessage =
   | { type: "selection-info"; data: SelectionInfo }
   | { type: "validation-result"; data: ValidationResult }
+  | { type: "component-readiness-result"; data: ValidationResult }
   | { type: "name-validation-result"; data: NameValidationResult }
   | { type: "size-validation-result"; data: ValidationResult }
   | { type: "existing-description"; data: DescriptionData }

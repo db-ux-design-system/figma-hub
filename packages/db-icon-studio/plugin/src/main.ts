@@ -21,6 +21,7 @@ import { IllustrativeCompletionValidator } from "./validators/illustrative-compl
 import { FlattenOutlineValidator } from "./validators/flatten-outline-validator.js";
 import { IllustrativeFlattenOutlineValidator } from "./validators/illustrative-flatten-outline-validator.js";
 import { MasterIconValidator } from "./validators/master-icon-validator.js";
+import { ComponentReadinessValidator } from "./validators/component-readiness-validator.js";
 import { ColorApplicator } from "./processors/color-applicator.js";
 import { ScaleProcessor } from "./processors/scale-processor.js";
 import { DescriptionEditor } from "./processors/description-editor.js";
@@ -502,6 +503,39 @@ async function handleGetSelection(): Promise<void> {
         });
       } catch (error) {
         console.warn("Master icon validation failed:", error);
+      }
+    }
+
+    // Automatically run component readiness validation for Component Sets
+    if (info.isComponentSet && info.componentSet) {
+      try {
+        const readinessValidator = new ComponentReadinessValidator();
+        const readinessResult = readinessValidator.validateComponentSet(
+          info.componentSet,
+        );
+
+        // Send as additional validation result
+        sendMessage({
+          type: "component-readiness-result",
+          data: readinessResult,
+        });
+      } catch (error) {
+        console.warn("Component readiness validation failed:", error);
+      }
+    }
+
+    // Also run for single components
+    if (info.isComponent && info.component && !info.isComponentSet) {
+      try {
+        const readinessValidator = new ComponentReadinessValidator();
+        const readinessResult = readinessValidator.validate(info.component);
+
+        sendMessage({
+          type: "component-readiness-result",
+          data: readinessResult,
+        });
+      } catch (error) {
+        console.warn("Component readiness validation failed:", error);
       }
     }
   } catch (error) {

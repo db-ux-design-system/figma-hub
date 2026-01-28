@@ -9,12 +9,14 @@ import type { NameValidationResult, ValidationResult } from "../types";
 interface ValidationResultsProps {
   nameValidation: NameValidationResult | null;
   sizeValidation: ValidationResult | null;
+  componentReadinessResult?: ValidationResult | null;
   isMasterIconFrame?: boolean;
 }
 
 export function ValidationResults({
   nameValidation,
   sizeValidation,
+  componentReadinessResult = null,
   isMasterIconFrame = false,
 }: ValidationResultsProps) {
   const hasNameErrors = nameValidation && !nameValidation.isValid;
@@ -23,6 +25,12 @@ export function ValidationResults({
     sizeValidation &&
     sizeValidation.warnings &&
     sizeValidation.warnings.length > 0;
+  const hasReadinessErrors =
+    componentReadinessResult && !componentReadinessResult.isValid;
+  const hasReadinessWarnings =
+    componentReadinessResult &&
+    componentReadinessResult.warnings &&
+    componentReadinessResult.warnings.length > 0;
 
   // Show success message for master icon frames without errors (warnings are OK)
   const showSuccessMessage =
@@ -72,7 +80,13 @@ export function ValidationResults({
     );
   }
 
-  if (!hasNameErrors && !hasSizeErrors && !hasSizeWarnings) {
+  if (
+    !hasNameErrors &&
+    !hasSizeErrors &&
+    !hasSizeWarnings &&
+    !hasReadinessErrors &&
+    !hasReadinessWarnings
+  ) {
     return null;
   }
 
@@ -92,7 +106,7 @@ export function ValidationResults({
 
   return (
     <div className="space-y-4 flex flex-col gap-fix-sm">
-      {(hasNameErrors || hasSizeErrors) && (
+      {(hasNameErrors || hasSizeErrors || hasReadinessErrors) && (
         <h4 className="text-lg">
           Please remove the following bugs to continue.
         </h4>
@@ -102,6 +116,7 @@ export function ValidationResults({
           headline="Name validation failed"
           semantic="critical"
           variant="standalone"
+          className="mb-fix-md"
         >
           <ul className="list-disc pl-fix-md space-y-fix-xs">
             {nameValidation.errors.map((error, index) => (
@@ -130,6 +145,26 @@ export function ValidationResults({
         </DBNotification>
       )}
 
+      {hasReadinessErrors && componentReadinessResult && (
+        <DBNotification
+          headline="Component readiness validation failed"
+          semantic="critical"
+          variant="standalone"
+          className="mb-fix-md"
+        >
+          <ul className="list-disc pl-fix-md space-y-fix-xs">
+            {componentReadinessResult.errors.map((error, index) => (
+              <li
+                key={index}
+                dangerouslySetInnerHTML={{
+                  __html: error.message,
+                }}
+              />
+            ))}
+          </ul>
+        </DBNotification>
+      )}
+
       {hasSizeWarnings && sizeValidation && sizeValidation.warnings && (
         <DBNotification
           headline="Validation warnings"
@@ -144,6 +179,28 @@ export function ValidationResults({
           </ul>
         </DBNotification>
       )}
+
+      {hasReadinessWarnings &&
+        componentReadinessResult &&
+        componentReadinessResult.warnings && (
+          <DBNotification
+            headline="Component readiness warnings"
+            semantic="warning"
+            variant="standalone"
+            className="mb-fix-md"
+          >
+            <ul className="list-disc list-inside pl-fix-md space-y-fix-xs">
+              {componentReadinessResult.warnings.map((warning, index) => (
+                <li
+                  key={index}
+                  dangerouslySetInnerHTML={{
+                    __html: warning.message,
+                  }}
+                />
+              ))}
+            </ul>
+          </DBNotification>
+        )}
     </div>
   );
 }
