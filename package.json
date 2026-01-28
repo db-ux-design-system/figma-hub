@@ -27,7 +27,7 @@
     "dev:db-custom-color-importer": "npm run dev -w=@db-ux/custom-color-importer"
   },
   "author": "",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "devDependencies": {
     "@types/node": "^25.0.10",
     "adm-zip": "^0.5.16",
