@@ -321,8 +321,9 @@ export class SizeValidator {
 
       // Check if this node has size properties
       if ("width" in node && "height" in node) {
-        const nodeWidth = Math.ceil(node.width);
-        const nodeHeight = Math.ceil(node.height);
+        // Round to 2 decimal places to avoid floating point precision issues
+        const nodeWidth = Math.round(node.width * 100) / 100;
+        const nodeHeight = Math.round(node.height * 100) / 100;
         const actualWidth = node.width.toFixed(2);
         const actualHeight = node.height.toFixed(2);
 
@@ -330,7 +331,9 @@ export class SizeValidator {
         const hasStroke =
           "strokes" in node &&
           Array.isArray(node.strokes) &&
-          node.strokes.length > 0;
+          node.strokes.length > 0 &&
+          "strokeWeight" in node &&
+          (node.strokeWeight as number) > 0;
         const hasFill =
           "fills" in node && Array.isArray(node.fills) && node.fills.length > 0;
 
@@ -338,6 +341,16 @@ export class SizeValidator {
         const maxSize =
           hasFill && !hasStroke ? constraints.fill : constraints.stroke;
         const elementType = hasFill && !hasStroke ? "Fill" : "Stroke";
+
+        // Debug logging
+        console.log(`[SizeValidator] Node: ${node.name}`);
+        console.log(`  Raw size: ${node.width}x${node.height}`);
+        console.log(`  Rounded size: ${nodeWidth}x${nodeHeight}`);
+        console.log(`  hasStroke: ${hasStroke}, hasFill: ${hasFill}`);
+        console.log(`  maxSize: ${maxSize}, elementType: ${elementType}`);
+        console.log(
+          `  Comparison: ${nodeWidth} > ${maxSize} = ${nodeWidth > maxSize}`,
+        );
 
         if (nodeWidth > maxSize || nodeHeight > maxSize) {
           errors.push({

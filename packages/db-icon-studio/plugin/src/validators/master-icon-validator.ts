@@ -468,12 +468,33 @@ export class MasterIconValidator {
 
     // Calculate distances from container edges using absolute bounds
     // Round to 2 decimal places to avoid floating point precision issues
-    const distanceLeft = Math.round(absoluteX * 100) / 100;
-    const distanceTop = Math.round(absoluteY * 100) / 100;
-    const distanceRight =
+    let distanceLeft = Math.round(absoluteX * 100) / 100;
+    let distanceTop = Math.round(absoluteY * 100) / 100;
+    let distanceRight =
       Math.round((containerSize - (absoluteX + bounds.width)) * 100) / 100;
-    const distanceBottom =
+    let distanceBottom =
       Math.round((containerSize - (absoluteY + bounds.height)) * 100) / 100;
+
+    // Determine if vector has strokes or only fills
+    const hasStrokes =
+      "strokes" in vector &&
+      vector.strokes &&
+      vector.strokes.length > 0 &&
+      strokeWeight > 0;
+
+    // For strokes: absoluteRenderBounds includes the stroke width (outer edge)
+    // But safety zone should be measured from the path center
+    // So we need to add half the stroke weight to the distances
+    if (hasStrokes && strokeWeight > 0) {
+      const halfStroke = strokeWeight / 2;
+      distanceLeft += halfStroke;
+      distanceTop += halfStroke;
+      distanceRight += halfStroke;
+      distanceBottom += halfStroke;
+      console.log(
+        `[MasterIconValidator] Adjusted distances for stroke (${strokeWeight}px, +${halfStroke}px): left: ${distanceLeft}, top: ${distanceTop}, right: ${distanceRight}, bottom: ${distanceBottom}`,
+      );
+    }
 
     console.log(
       `[MasterIconValidator] Vector "${vector.name}": distances - left: ${distanceLeft}, top: ${distanceTop}, right: ${distanceRight}, bottom: ${distanceBottom}`,
@@ -491,13 +512,6 @@ export class MasterIconValidator {
 
     // Build layer path (names of all parent layers)
     const layerPath = parentChain.map((parent) => parent.name);
-
-    // Determine if vector has strokes or only fills
-    const hasStrokes =
-      "strokes" in vector &&
-      vector.strokes &&
-      vector.strokes.length > 0 &&
-      strokeWeight > 0;
 
     // Create position info
     positionInfo = {
