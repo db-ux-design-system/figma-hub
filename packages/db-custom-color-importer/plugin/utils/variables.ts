@@ -93,7 +93,18 @@ export async function createDisplayModeVariables(
       if (dId)
         v.setValueForMode(darkModeId, { type: "VARIABLE_ALIAS", id: dId });
 
-      v.scopes = [];
+      // Set scopes based on variable name (same as adaptive variables)
+      if (m.name.startsWith("bg/") || m.name.startsWith("origin/")) {
+        v.scopes = ["FRAME_FILL", "SHAPE_FILL"];
+      } else if (
+        m.name.startsWith("on-bg/") ||
+        m.name.startsWith("on-origin/")
+      ) {
+        v.scopes = ["SHAPE_FILL", "TEXT_FILL", "STROKE_COLOR", "EFFECT_COLOR"];
+      } else {
+        v.scopes = [];
+      }
+
       v.hiddenFromPublishing = true;
       displayVarMap[varPath] = v.id;
     }
@@ -112,10 +123,21 @@ export async function createAdaptiveColorVariables(
   prefix: string,
 ) {
   for (const m of MAPPINGS) {
-    const colorVarPath = `${prefix}-adaptive/${m.name}`;
-    let v = varMap.get(colorVarPath);
+    // First, try to find existing adaptive variable (with any prefix)
+    const adaptivePattern = `-adaptive/${m.name}`;
+    let v: Variable | undefined;
 
+    // Search for existing variable ending with "-adaptive/..."
+    for (const [varName, variable] of varMap.entries()) {
+      if (varName.endsWith(adaptivePattern)) {
+        v = variable;
+        break;
+      }
+    }
+
+    // If not found, create new one with current prefix
     if (!v) {
+      const colorVarPath = `${prefix}-adaptive/${m.name}`;
       v = figma.variables.createVariable(colorVarPath, colorCol, "COLOR");
     }
 
@@ -128,7 +150,8 @@ export async function createAdaptiveColorVariables(
       v.scopes = ["SHAPE_FILL", "TEXT_FILL", "STROKE_COLOR", "EFFECT_COLOR"];
     }
 
-    if (m.key) {
+    // Only set db-adaptive mode if it doesn't already have a value
+    if (m.key && !v.valuesByMode[dbAdaptiveModeId]) {
       try {
         const ext = await figma.variables.importVariableByKeyAsync(m.key);
         v.setValueForMode(dbAdaptiveModeId, {
@@ -140,6 +163,7 @@ export async function createAdaptiveColorVariables(
       }
     }
 
+    // Add new color family modes to the existing variable
     for (const family of colorFamilies) {
       // Check if family already starts with prefix to avoid duplication
       const familyWithPrefix = family
