@@ -58,11 +58,75 @@ export function DescriptionDialog({
 
   if (!isOpen) return null;
 
+  /**
+   * Format comma-separated values with proper capitalization
+   * - English: lowercase after comma (except first word)
+   * - German: capitalize after comma (nouns)
+   */
+  const formatCommaSeparatedValues = (
+    value: string,
+    language: "en" | "de",
+  ): string => {
+    if (!value || !value.includes(",")) return value;
+
+    const parts = value.split(",").map((part) => part.trim());
+
+    return parts
+      .map((part, index) => {
+        if (!part) return part;
+
+        if (language === "en") {
+          // English: lowercase after comma (except first item)
+          if (index === 0) {
+            // Keep first item as-is (user's capitalization)
+            return part;
+          } else {
+            // Lowercase first character after comma
+            return part.charAt(0).toLowerCase() + part.slice(1);
+          }
+        } else {
+          // German: capitalize after comma
+          if (index === 0) {
+            // Keep first item as-is
+            return part;
+          } else {
+            // Capitalize first character after comma
+            return part.charAt(0).toUpperCase() + part.slice(1);
+          }
+        }
+      })
+      .join(", ");
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Set icon name from prop
+    // Set icon name from prop and format comma-separated values
     const dataToSave = { ...formData, iconName };
+
+    // Format comma-separated values based on language
+    if (iconType === "functional") {
+      dataToSave.enDefault = formatCommaSeparatedValues(
+        dataToSave.enDefault,
+        "en",
+      );
+      dataToSave.enContextual = formatCommaSeparatedValues(
+        dataToSave.enContextual,
+        "en",
+      );
+      dataToSave.deDefault = formatCommaSeparatedValues(
+        dataToSave.deDefault,
+        "de",
+      );
+      dataToSave.deContextual = formatCommaSeparatedValues(
+        dataToSave.deContextual,
+        "de",
+      );
+    } else {
+      // Illustrative icons - format single values (may contain commas)
+      dataToSave.en = formatCommaSeparatedValues(dataToSave.en, "en");
+      dataToSave.de = formatCommaSeparatedValues(dataToSave.de, "de");
+    }
 
     // Validate required fields based on icon type
     if (iconType === "functional") {

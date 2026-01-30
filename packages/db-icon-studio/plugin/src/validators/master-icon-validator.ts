@@ -536,8 +536,12 @@ export class MasterIconValidator {
     };
 
     // Validate safety zone based on vector type
-    // Fills: 2px minimum, Strokes: 3px minimum
-    const minDistance = hasStrokes ? 3 : 2;
+    // Fills: 2px minimum from fill edge to container edge
+    // Strokes: Measured from path center, so we need:
+    //   - Visual outer stroke edge should be 2px from container edge
+    //   - Path center distance = 2px + strokeWeight/2
+    // Examples: 2px stroke → 3px min, 1.5px stroke → 2.75px min, 1.75px stroke → 2.875px min
+    const minDistance = hasStrokes ? 2 + strokeWeight / 2 : 2;
     const vectorType = hasStrokes ? "stroke" : "fill";
 
     // Check distances from all edges
