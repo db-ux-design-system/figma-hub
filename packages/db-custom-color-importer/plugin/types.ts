@@ -10,6 +10,7 @@ export interface ImportMessage {
   data: ColorData;
   deleteMissing: boolean;
   fileName?: string;
+  customPrefix?: string;
 }
 
 export interface ColorData {

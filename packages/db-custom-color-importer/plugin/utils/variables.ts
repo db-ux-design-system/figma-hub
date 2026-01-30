@@ -30,7 +30,14 @@ export async function createBaseVariables(
     for (const tokenKey in tokens) {
       const token = tokens[tokenKey];
       if (token && token.$value) {
-        const varPath = `${prefix}-colors/${prefix}-${family}/${tokenKey}`;
+        // Check if family already starts with prefix to avoid duplication
+        const familyWithPrefix = family
+          .toLowerCase()
+          .startsWith(prefix.toLowerCase() + "-")
+          ? family
+          : `${prefix}-${family}`;
+
+        const varPath = `${prefix}-colors/${familyWithPrefix}/${tokenKey}`;
         let v = varMap.get(varPath);
         const newVal = hexToRgba(token.$value);
 
@@ -64,9 +71,16 @@ export async function createDisplayModeVariables(
 
   for (const family of colorFamilies) {
     for (const m of MAPPINGS) {
-      const varPath = `${prefix}-${family}/${m.name}`;
-      const lId = baseMap[`${prefix}-colors/${prefix}-${family}/${m.light}`];
-      const dId = baseMap[`${prefix}-colors/${prefix}-${family}/${m.dark}`];
+      // Check if family already starts with prefix to avoid duplication
+      const familyWithPrefix = family
+        .toLowerCase()
+        .startsWith(prefix.toLowerCase() + "-")
+        ? family
+        : `${prefix}-${family}`;
+
+      const varPath = `${familyWithPrefix}/${m.name}`;
+      const lId = baseMap[`${prefix}-colors/${familyWithPrefix}/${m.light}`];
+      const dId = baseMap[`${prefix}-colors/${familyWithPrefix}/${m.dark}`];
 
       if (!lId && !dId) continue;
 
@@ -79,7 +93,18 @@ export async function createDisplayModeVariables(
       if (dId)
         v.setValueForMode(darkModeId, { type: "VARIABLE_ALIAS", id: dId });
 
-      v.scopes = [];
+      // Set scopes based on variable name (same as adaptive variables)
+      if (m.name.startsWith("bg/") || m.name.startsWith("origin/")) {
+        v.scopes = ["FRAME_FILL", "SHAPE_FILL"];
+      } else if (
+        m.name.startsWith("on-bg/") ||
+        m.name.startsWith("on-origin/")
+      ) {
+        v.scopes = ["SHAPE_FILL", "TEXT_FILL", "STROKE_COLOR", "EFFECT_COLOR"];
+      } else {
+        v.scopes = [];
+      }
+
       v.hiddenFromPublishing = true;
       displayVarMap[varPath] = v.id;
     }
@@ -98,11 +123,24 @@ export async function createAdaptiveColorVariables(
   prefix: string,
 ) {
   for (const m of MAPPINGS) {
-    const colorVarPath = `${prefix}-adaptive/${m.name}`;
-    let v = varMap.get(colorVarPath);
+    // First, try to find existing adaptive variable (with any prefix)
+    const adaptivePattern = `-adaptive/${m.name}`;
+    let v: Variable | undefined;
+    let isNewVariable = false;
 
+    // Search for existing variable ending with "-adaptive/..."
+    for (const [varName, variable] of varMap.entries()) {
+      if (varName.endsWith(adaptivePattern)) {
+        v = variable;
+        break;
+      }
+    }
+
+    // If not found, create new one with current prefix
     if (!v) {
+      const colorVarPath = `${prefix}-adaptive/${m.name}`;
       v = figma.variables.createVariable(colorVarPath, colorCol, "COLOR");
+      isNewVariable = true;
     }
 
     v.hiddenFromPublishing = false;
@@ -114,20 +152,33 @@ export async function createAdaptiveColorVariables(
       v.scopes = ["SHAPE_FILL", "TEXT_FILL", "STROKE_COLOR", "EFFECT_COLOR"];
     }
 
+    // Set db-adaptive mode if variable is new OR if it doesn't have a value yet
     if (m.key) {
-      try {
-        const ext = await figma.variables.importVariableByKeyAsync(m.key);
-        v.setValueForMode(dbAdaptiveModeId, {
-          type: "VARIABLE_ALIAS",
-          id: ext.id,
-        });
-      } catch (e) {
-        console.warn(`Key ${m.key} für ${m.name} nicht gefunden.`);
+      const hasDbAdaptiveValue = v.valuesByMode[dbAdaptiveModeId] !== undefined;
+
+      if (isNewVariable || !hasDbAdaptiveValue) {
+        try {
+          const ext = await figma.variables.importVariableByKeyAsync(m.key);
+          v.setValueForMode(dbAdaptiveModeId, {
+            type: "VARIABLE_ALIAS",
+            id: ext.id,
+          });
+        } catch (e) {
+          console.warn(`Key ${m.key} für ${m.name} nicht gefunden.`);
+        }
       }
     }
 
+    // Add new color family modes to the existing variable
     for (const family of colorFamilies) {
-      const sourceId = displayVarMap[`${prefix}-${family}/${m.name}`];
+      // Check if family already starts with prefix to avoid duplication
+      const familyWithPrefix = family
+        .toLowerCase()
+        .startsWith(prefix.toLowerCase() + "-")
+        ? family
+        : `${prefix}-${family}`;
+
+      const sourceId = displayVarMap[`${familyWithPrefix}/${m.name}`];
       if (sourceId) {
         v.setValueForMode(colorFamilyModeIds[family], {
           type: "VARIABLE_ALIAS",
@@ -144,27 +195,20 @@ export async function handleImportJson(msg: ImportMessage) {
     const colorFamilies = Object.keys(data.colors);
     const deleteMissing = msg.deleteMissing;
     const fileName = msg.fileName || "";
+    const customPrefix = msg.customPrefix;
 
-    // Extract prefix from filename
-    // Examples:
-    // "DB Theme-figma.json" -> "db"
-    // "DB-Theme-figma.json" -> "db"
-    // "Whitelabel Theme-figma.json" -> "whitelabel"
-    // "S-Bahn Theme-figma.json" -> "sbahn"
-    // "DB-DiBeTheme-figma.json" -> "dibe"
-    // "DB DiBeTheme-figma.json" -> "dibe"
-    // "Whitelabel NemoTheme-figma.json" -> "nemo"
+    // Use custom prefix if provided, otherwise extract from filename
     let prefix = "custom";
     let prefixOriginal = "custom"; // Keep original casing for collection names
-    if (fileName) {
-      // Remove .json extension
+
+    if (customPrefix) {
+      // Use the prefix confirmed by the user
+      prefixOriginal = customPrefix;
+      prefix = customPrefix.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+    } else if (fileName) {
+      // Fallback: Extract prefix from filename (legacy behavior)
       const nameWithoutExt = fileName.replace(/\.json$/i, "");
-
-      // Known prefixes at the start
       const knownPrefixes = ["DB", "Whitelabel", "S-Bahn", "sab"];
-
-      // Try to match pattern: [KnownPrefix][-\s][Something]Theme-figma
-      // or: [KnownPrefix][-\s]Theme-figma
       const regexWithMiddle = new RegExp(
         `^(${knownPrefixes.join("|")})[-\\s]+(.+?)Theme-figma`,
         "i",
@@ -178,22 +222,18 @@ export async function handleImportJson(msg: ImportMessage) {
       const matchDirect = nameWithoutExt.match(regexDirect);
 
       if (matchWithMiddle && matchWithMiddle[2]) {
-        // There's something between the known prefix and "Theme"
-        // Use that middle part
         prefixOriginal = matchWithMiddle[2].trim();
       } else if (matchDirect && matchDirect[1]) {
-        // Direct match: use the known prefix itself
         prefixOriginal = matchDirect[1];
       }
 
-      // Remove special characters for variable names (keep original for collections)
       prefix = prefixOriginal.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+    }
 
-      // Fallback to "custom" if empty
-      if (!prefix) {
-        prefix = "custom";
-        prefixOriginal = "custom";
-      }
+    // Fallback to "custom" if empty
+    if (!prefix) {
+      prefix = "custom";
+      prefixOriginal = "custom";
     }
 
     if (deleteMissing) {

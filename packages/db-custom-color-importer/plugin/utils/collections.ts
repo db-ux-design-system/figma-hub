@@ -8,20 +8,33 @@ export async function getOrCreateCollections(prefix: string) {
   const localCollections =
     await figma.variables.getLocalVariableCollectionsAsync();
 
-  // Use original casing from filename for collection names
-  const baseColName = `${prefix}-${BASE_COLLECTION_NAME}`;
-  const displayColName = `${prefix}-${DISPLAY_MODE_COLLECTION_NAME}`;
-  const colorColName = `${prefix}-${COLORS_COLLECTION_NAME}`;
+  // First, try to find existing collections with any prefix
+  let baseCol = localCollections.find((c) =>
+    c.name.endsWith(`-${BASE_COLLECTION_NAME}`),
+  );
+  let displayCol = localCollections.find((c) =>
+    c.name.endsWith(`-${DISPLAY_MODE_COLLECTION_NAME}`),
+  );
+  let colorCol = localCollections.find((c) =>
+    c.name.endsWith(`-${COLORS_COLLECTION_NAME}`),
+  );
 
-  const baseCol =
-    localCollections.find((c) => c.name === baseColName) ||
-    figma.variables.createVariableCollection(baseColName);
-  const displayCol =
-    localCollections.find((c) => c.name === displayColName) ||
-    figma.variables.createVariableCollection(displayColName);
-  const colorCol =
-    localCollections.find((c) => c.name === colorColName) ||
-    figma.variables.createVariableCollection(colorColName);
+  // If existing collections found, use them (don't rename)
+  // If not found, create new ones with the provided prefix
+  if (!baseCol) {
+    const baseColName = `${prefix}-${BASE_COLLECTION_NAME}`;
+    baseCol = figma.variables.createVariableCollection(baseColName);
+  }
+
+  if (!displayCol) {
+    const displayColName = `${prefix}-${DISPLAY_MODE_COLLECTION_NAME}`;
+    displayCol = figma.variables.createVariableCollection(displayColName);
+  }
+
+  if (!colorCol) {
+    const colorColName = `${prefix}-${COLORS_COLLECTION_NAME}`;
+    colorCol = figma.variables.createVariableCollection(colorColName);
+  }
 
   return { baseCol, displayCol, colorCol };
 }
@@ -42,6 +55,7 @@ export function setupDisplayModes(
     baseCol.modes.map((m) => ({ name: m.name, id: m.modeId })),
   );
 
+  // Setup Display Collection (Mode) with Light and Dark modes
   if (displayCol.modes[0].name !== "Light Mode")
     displayCol.renameMode(displayCol.modes[0].modeId, "Light Mode");
   if (!displayCol.modes.find((m) => m.name === "Dark Mode"))
@@ -59,15 +73,17 @@ export function setupDisplayModes(
     displayCol.modes.map((m) => ({ name: m.name, id: m.modeId })),
   );
 
-  // Sync modes with Theme collection (baseCol)
-  // Ensure Theme collection has the same modes
-  if (baseCol.modes[0].name !== "Light Mode") {
-    console.log("Renaming baseCol mode 0 to 'Light Mode'");
-    baseCol.renameMode(baseCol.modes[0].modeId, "Light Mode");
+  // Theme collection (baseCol) should only have one mode
+  // Rename the default mode to "Value" or keep it as "Mode 1"
+  if (baseCol.modes[0].name !== "Value") {
+    console.log("Renaming baseCol mode 0 to 'Value'");
+    baseCol.renameMode(baseCol.modes[0].modeId, "Value");
   }
-  if (!baseCol.modes.find((m) => m.name === "Dark Mode")) {
-    console.log("Adding 'Dark Mode' to baseCol");
-    baseCol.addMode("Dark Mode");
+
+  // Remove any additional modes from Theme collection
+  while (baseCol.modes.length > 1) {
+    console.log("Removing extra mode from baseCol:", baseCol.modes[1].name);
+    baseCol.removeMode(baseCol.modes[1].modeId);
   }
 
   console.log(
@@ -93,7 +109,11 @@ export function setupColorModes(
 
   const colorFamilyModeIds: Record<string, string> = {};
   for (const family of colorFamilies) {
-    const modeName = `${prefix}-${family}`;
+    // Check if family already starts with prefix to avoid duplication
+    const modeName = family.toLowerCase().startsWith(prefix.toLowerCase() + "-")
+      ? family
+      : `${prefix}-${family}`;
+
     let mode = colorCol.modes.find((m) => m.name === modeName);
     if (!mode) {
       const newModeId = colorCol.addMode(modeName);
