@@ -126,6 +126,7 @@ export async function createAdaptiveColorVariables(
     // First, try to find existing adaptive variable (with any prefix)
     const adaptivePattern = `-adaptive/${m.name}`;
     let v: Variable | undefined;
+    let isNewVariable = false;
 
     // Search for existing variable ending with "-adaptive/..."
     for (const [varName, variable] of varMap.entries()) {
@@ -139,6 +140,7 @@ export async function createAdaptiveColorVariables(
     if (!v) {
       const colorVarPath = `${prefix}-adaptive/${m.name}`;
       v = figma.variables.createVariable(colorVarPath, colorCol, "COLOR");
+      isNewVariable = true;
     }
 
     v.hiddenFromPublishing = false;
@@ -150,16 +152,20 @@ export async function createAdaptiveColorVariables(
       v.scopes = ["SHAPE_FILL", "TEXT_FILL", "STROKE_COLOR", "EFFECT_COLOR"];
     }
 
-    // Only set db-adaptive mode if it doesn't already have a value
-    if (m.key && !v.valuesByMode[dbAdaptiveModeId]) {
-      try {
-        const ext = await figma.variables.importVariableByKeyAsync(m.key);
-        v.setValueForMode(dbAdaptiveModeId, {
-          type: "VARIABLE_ALIAS",
-          id: ext.id,
-        });
-      } catch (e) {
-        console.warn(`Key ${m.key} für ${m.name} nicht gefunden.`);
+    // Set db-adaptive mode if variable is new OR if it doesn't have a value yet
+    if (m.key) {
+      const hasDbAdaptiveValue = v.valuesByMode[dbAdaptiveModeId] !== undefined;
+
+      if (isNewVariable || !hasDbAdaptiveValue) {
+        try {
+          const ext = await figma.variables.importVariableByKeyAsync(m.key);
+          v.setValueForMode(dbAdaptiveModeId, {
+            type: "VARIABLE_ALIAS",
+            id: ext.id,
+          });
+        } catch (e) {
+          console.warn(`Key ${m.key} für ${m.name} nicht gefunden.`);
+        }
       }
     }
 
