@@ -32,7 +32,7 @@ import { IllustrativeFlattenProcessor } from "./processors/illustrative-flatten-
 // Show the plugin UI
 figma.showUI(__html__, {
   width: 500,
-  height: 600,
+  height: 700,
   themeColors: true,
 });
 
@@ -363,25 +363,13 @@ async function handleGetSelection(): Promise<void> {
           const vectorValidator = new VectorValidator("functional");
           const vectorResult = vectorValidator.validate(info.componentSet);
 
-          // Also run flatten/outline validation
-          const flattenOutlineValidator = new FlattenOutlineValidator(
-            "functional",
-          );
-          const flattenOutlineResult = flattenOutlineValidator.validate(
-            info.componentSet,
-          );
+          // Note: Flatten/outline validation is now handled by Component Readiness Validator
+          // to avoid duplicate error messages
 
-          // Combine size, vector, and flatten/outline validation results
+          // Combine size and vector validation results
           const combinedResult = {
-            isValid:
-              sizeResult.isValid &&
-              vectorResult.isValid &&
-              flattenOutlineResult.isValid,
-            errors: [
-              ...flattenOutlineResult.errors, // Show flatten/outline errors first
-              ...sizeResult.errors,
-              ...vectorResult.errors,
-            ],
+            isValid: sizeResult.isValid && vectorResult.isValid,
+            errors: [...sizeResult.errors, ...vectorResult.errors],
             warnings: vectorResult.warnings || [],
           };
 
@@ -418,17 +406,13 @@ async function handleGetSelection(): Promise<void> {
             info.component,
           );
 
-          // Combine size, vector, and flatten/outline validation results
+          // Note: Flatten/outline validation is now handled by Component Readiness Validator
+          // to avoid duplicate error messages
+
+          // Combine size and vector validation results
           const combinedResult = {
-            isValid:
-              sizeResult.isValid &&
-              vectorResult.isValid &&
-              flattenOutlineResult.isValid,
-            errors: [
-              ...flattenOutlineResult.errors, // Show flatten/outline errors first
-              ...sizeResult.errors,
-              ...vectorResult.errors,
-            ],
+            isValid: sizeResult.isValid && vectorResult.isValid,
+            errors: [...sizeResult.errors, ...vectorResult.errors],
             warnings: vectorResult.warnings || [],
           };
 
@@ -457,24 +441,13 @@ async function handleGetSelection(): Promise<void> {
             const vectorValidator = new VectorValidator("functional");
             const vectorResult = vectorValidator.validate(parentNode);
 
-            // Also run flatten/outline validation
-            const flattenOutlineValidator = new FlattenOutlineValidator(
-              "functional",
-            );
-            const flattenOutlineResult =
-              flattenOutlineValidator.validate(parentNode);
+            // Note: Flatten/outline validation is now handled by Component Readiness Validator
+            // to avoid duplicate error messages
 
-            // Combine size, vector, and flatten/outline validation results
+            // Combine size and vector validation results
             const combinedResult = {
-              isValid:
-                sizeResult.isValid &&
-                vectorResult.isValid &&
-                flattenOutlineResult.isValid,
-              errors: [
-                ...flattenOutlineResult.errors, // Show flatten/outline errors first
-                ...sizeResult.errors,
-                ...vectorResult.errors,
-              ],
+              isValid: sizeResult.isValid && vectorResult.isValid,
+              errors: [...sizeResult.errors, ...vectorResult.errors],
               warnings: vectorResult.warnings || [],
             };
 
@@ -506,8 +479,8 @@ async function handleGetSelection(): Promise<void> {
       }
     }
 
-    // Automatically run component readiness validation for Component Sets
-    if (info.isComponentSet && info.componentSet) {
+    // Automatically run component readiness validation for Component Sets (not Master Icon Frames)
+    if (info.isComponentSet && info.componentSet && !info.isMasterIconFrame) {
       try {
         const readinessValidator = new ComponentReadinessValidator();
         const readinessResult = readinessValidator.validateComponentSet(
@@ -524,8 +497,13 @@ async function handleGetSelection(): Promise<void> {
       }
     }
 
-    // Also run for single components
-    if (info.isComponent && info.component && !info.isComponentSet) {
+    // Also run for single components (not Master Icon Frames)
+    if (
+      info.isComponent &&
+      info.component &&
+      !info.isComponentSet &&
+      !info.isMasterIconFrame
+    ) {
       try {
         const readinessValidator = new ComponentReadinessValidator();
         const readinessResult = readinessValidator.validate(info.component);

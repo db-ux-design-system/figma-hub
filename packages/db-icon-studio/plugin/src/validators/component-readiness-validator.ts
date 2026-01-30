@@ -15,20 +15,39 @@ import type {
 
 export class ComponentReadinessValidator {
   /**
+   * Extract variant info from variant name
+   * E.g., "Size=32, Variant=(Def) Outlined" -> { variant: "(Def) Outlined", size: "32px" }
+   */
+  private extractVariantInfo(variantName: string): {
+    variant: string;
+    size: string;
+  } {
+    const sizeMatch = variantName.match(/Size=(\d+)/);
+    const variantMatch = variantName.match(/Variant=([^,]+)/);
+
+    const size = sizeMatch ? `${sizeMatch[1]}px` : "unknown size";
+    const variant = variantMatch ? variantMatch[1].trim() : "unknown variant";
+
+    return { variant, size };
+  }
+
+  /**
    * Validate a single component variant
    */
   validate(component: ComponentNode): ValidationResult {
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
 
+    // Extract variant info for better error messages
+    const { variant, size } = this.extractVariantInfo(component.name);
+
     // Find the Container frame or use component directly
     const container = this.findContainer(component);
     const childrenToCheck = container ? container.children : component.children;
-    const containerName = container ? "Container" : component.name;
 
     if (!childrenToCheck || childrenToCheck.length === 0) {
       errors.push({
-        message: `${containerName} is empty in "${component.name}"<br>Expected: Single flattened vector`,
+        message: `<strong>${variant}, ${size}: Empty container in variant</strong><br>Please add vector content to this variant`,
         node: component.name,
       });
       return {
@@ -40,7 +59,7 @@ export class ComponentReadinessValidator {
 
     if (childrenToCheck.length > 1) {
       errors.push({
-        message: `${containerName} has ${childrenToCheck.length} children in "${component.name}"<br>Expected: Single flattened vector<br>Action: Flatten all vectors (Cmd + E)`,
+        message: `Multiple vectors in variant: ${variant}, ${size}<br>Found ${childrenToCheck.length} separate vectors<br>Please flatten all vectors into one (Cmd + E)`,
         node: component.name,
       });
       return {
@@ -50,23 +69,15 @@ export class ComponentReadinessValidator {
       };
     }
 
-    // Get the single child
+    // Get the single child - can be VECTOR, FRAME, or GROUP
     const child = childrenToCheck[0];
 
-    // Check if it's a vector node
-    const vectorTypes = [
-      "VECTOR",
-      "BOOLEAN_OPERATION",
-      "STAR",
-      "LINE",
-      "ELLIPSE",
-      "POLYGON",
-      "RECTANGLE",
-    ];
+    // Recursively collect all vector nodes
+    const vectors = this.collectVectorNodes(child);
 
-    if (!vectorTypes.includes(child.type)) {
+    if (vectors.length === 0) {
       errors.push({
-        message: `Container child is not a vector in "${component.name}"<br>Found: ${child.type}<br>Expected: VECTOR`,
+        message: `No vector content in variant: <strong>${variant}, ${size}</strong><br>Please add vector shapes to this variant`,
         node: component.name,
       });
       return {
@@ -76,40 +87,80 @@ export class ComponentReadinessValidator {
       };
     }
 
-    // Check if it's outline stroked (no strokes, only fills)
-    const hasStrokes =
-      "strokes" in child &&
-      child.strokes &&
-      Array.isArray(child.strokes) &&
-      child.strokes.length > 0 &&
-      "strokeWeight" in child &&
-      (child.strokeWeight as number) > 0;
+    // Collect all issues for this variant
+    const issues: string[] = [];
 
+    // Check if vectors are outline stroked (no strokes, only fills)
+    let hasStrokes = false;
+    for (const vector of vectors) {
+      const vectorHasStrokes =
+        "strokes" in vector &&
+        vector.strokes &&
+        Array.isArray(vector.strokes) &&
+        vector.strokes.length > 0 &&
+        "strokeWeight" in vector &&
+        (vector.strokeWeight as number) > 0;
+
+      if (vectorHasStrokes) {
+        hasStrokes = true;
+        break;
+      }
+    }
+
+    // Check if there are multiple vectors (not flattened yet)
+    const isNotFlattened = vectors.length > 1;
+
+    // Check if vectors have fills
+    let hasAnyFills = false;
+    for (const vector of vectors) {
+      const hasFills =
+        "fills" in vector &&
+        vector.fills &&
+        Array.isArray(vector.fills) &&
+        vector.fills.length > 0;
+
+      if (hasFills) {
+        hasAnyFills = true;
+        break;
+      }
+    }
+
+    // Determine the current state and required next steps
     if (hasStrokes) {
+      // Case 1: Still has strokes → outline stroke → unify → flatten
+      issues.push(
+        "Strokes not converted<br>➔ Outline Stroke ➔ Unify ➔ Flatten",
+      );
+    } else if (!hasAnyFills) {
+      // No fills and no strokes - something is wrong
+      issues.push("No fills found");
+    } else if (isNotFlattened) {
+      // Case 2 & 3: Already has fills but not flattened
+      // We can't detect if unify was done, so we show both steps
+      issues.push(
+        `<strong>${vectors.length} separate vectors</strong><br>➔ Unify ➔ Flatten`,
+      );
+    }
+    // Case 4: Already flattened (vectors.length === 1) and has fills
+    // This is the desired state, no error needed
+    // Note: We cannot detect if unify was done before flatten
+
+    // If there are issues, create a single combined error message
+    if (issues.length > 0) {
+      const issuesText = issues.join(", ");
       errors.push({
-        message: `Vector still has strokes in "${component.name}"<br>Action: Convert to outline (Shift + Cmd + O)`,
+        message: `<strong>${variant}, ${size}:</strong> ${issuesText}`,
         node: component.name,
       });
     }
 
-    // Check if it has fills
-    const hasFills =
-      "fills" in child &&
-      child.fills &&
-      Array.isArray(child.fills) &&
-      child.fills.length > 0;
-
-    if (!hasFills) {
-      errors.push({
-        message: `Vector has no fills in "${component.name}"<br>Expected: Vector with fills after outline stroke`,
-        node: component.name,
-      });
-    }
-
-    // Check if it's a BOOLEAN_OPERATION (indicates not unified)
-    if (child.type === "BOOLEAN_OPERATION") {
+    // Check if any vector is a BOOLEAN_OPERATION (indicates not unified)
+    const hasBooleanOps = vectors.some(
+      (vector) => vector.type === "BOOLEAN_OPERATION",
+    );
+    if (hasBooleanOps) {
       warnings.push({
-        message: `Vector is a boolean operation in "${component.name}"<br>Consider: Union selection (Cmd + Opt + U) for cleaner paths`,
+        message: `Boolean operation in variant: ${variant}, ${size}<br>Consider unioning paths for cleaner output (Cmd + Opt + U)`,
         node: component.name,
         canProceed: true,
       });
@@ -120,6 +171,37 @@ export class ComponentReadinessValidator {
       errors,
       warnings,
     };
+  }
+
+  /**
+   * Recursively collect all vector nodes from a node tree
+   */
+  private collectVectorNodes(node: SceneNode): SceneNode[] {
+    const vectorTypes = [
+      "VECTOR",
+      "STAR",
+      "LINE",
+      "ELLIPSE",
+      "POLYGON",
+      "RECTANGLE",
+    ];
+
+    // If this node is a vector, return it
+    if (vectorTypes.includes(node.type)) {
+      return [node];
+    }
+
+    // If this node has children (including BOOLEAN_OPERATION), recursively collect vectors from children
+    if ("children" in node && node.children) {
+      const vectors: SceneNode[] = [];
+      for (const child of node.children) {
+        vectors.push(...this.collectVectorNodes(child));
+      }
+      return vectors;
+    }
+
+    // Not a vector and has no children
+    return [];
   }
 
   /**
@@ -175,12 +257,13 @@ export class ComponentReadinessValidator {
       variantNames[name] = (variantNames[name] || 0) + 1;
 
       if (variantNames[name] > 1) {
+        const { variant: variantType, size } = this.extractVariantInfo(name);
         console.log(
           "[ComponentReadinessValidator] ERROR: Duplicate variant detected:",
           name,
         );
         allErrors.push({
-          message: `Duplicate variant "${name}" found ${variantNames[name]} times in component set "${componentSet.name}"<br>Expected: Each variant should be unique`,
+          message: `Duplicate variant found: ${variantType}, ${size}<br>This variant exists ${variantNames[name]} times<br>Please remove duplicate variants`,
           node: componentSet.name,
         });
       }
@@ -199,7 +282,7 @@ export class ComponentReadinessValidator {
           "[ComponentReadinessValidator] ERROR: Too many variants for size",
         );
         allErrors.push({
-          message: `Size ${size}px has ${count} variants in component set "${componentSet.name}"<br>Expected: Maximum 2 variants per size (Outlined + Filled)`,
+          message: `Too many variants for ${size}px<br>Found ${count} variants, expected maximum 2 (Outlined + Filled)<br>Please remove extra variants`,
           node: componentSet.name,
         });
       }
@@ -217,7 +300,7 @@ export class ComponentReadinessValidator {
         "[ComponentReadinessValidator] ERROR: Invalid sizes detected",
       );
       allErrors.push({
-        message: `Invalid size(s) found: ${wrongSizes.join("px, ")}px in component set "${componentSet.name}"<br>Only base sizes allowed before scaling: 32px, 24px, 20px<br>Action: Remove invalid sizes or run "Create Icon Set" to generate scaled variants`,
+        message: `Invalid icon sizes found: ${wrongSizes.join("px, ")}px<br>Only base sizes allowed before scaling: 32px, 24px, 20px<br>Please remove invalid sizes or run "Create Icon Set" to generate all sizes`,
         node: componentSet.name,
       });
     }
@@ -239,6 +322,29 @@ export class ComponentReadinessValidator {
       "[ComponentReadinessValidator] Total warnings:",
       allWarnings.length,
     );
+
+    // Check if any readiness errors exist (empty container, invalid content, strokes not converted, not flattened)
+    const hasReadinessErrors = allErrors.some(
+      (error) =>
+        error.message.includes("Empty container") ||
+        error.message.includes("Invalid content") ||
+        error.message.includes("Strokes not converted") ||
+        error.message.includes("separate vectors"),
+    );
+
+    // Add preparation steps hint at the beginning if any readiness errors exist
+    if (hasReadinessErrors) {
+      allErrors.unshift({
+        message: `<p>Please prepare your icon manually in Figma first:</p><ol class="list-decimal list-inside pl-fix-md my-fix-xs">
+<li><strong>Select all vectors</strong> in the icon</li>
+<li><strong>Outline Stroke</strong> (Shift+Cmd+O / Shift+Ctrl+O)</li>
+<li><strong>Unify</strong> (Cmd+Opt+U / Ctrl+Alt+U)</li>
+<li><strong>Flatten</strong> Selection (Cmd+E / Ctrl+E)</li>
+</ol>
+<p><strong>Note:</strong> Outline BEFORE Flatten to preserve different stroke widths!</p>`,
+        node: componentSet.name,
+      });
+    }
 
     return {
       isValid: allErrors.length === 0,

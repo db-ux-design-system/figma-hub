@@ -18,9 +18,15 @@ export function WorkflowInfo({ iconType }: WorkflowInfoProps) {
         variant="standalone"
       >
         <ol className="list-decimal pl-5 mt-2 space-y-1">
-          <li>Clean up structure (remove empty groups)</li>
-          <li>Apply color variables (Base: black, Pulse: red)</li>
-          <li>Open description editor</li>
+          <li>
+            <strong>Clean up structure</strong> (remove empty groups and frames)
+          </li>
+          <li>
+            Apply <strong>color variables</strong> (Base: black, Pulse: red)
+          </li>
+          <li>
+            Open <strong>description editor</strong>
+          </li>
         </ol>
       </DBNotification>
     );
@@ -34,10 +40,18 @@ export function WorkflowInfo({ iconType }: WorkflowInfoProps) {
       variant="standalone"
     >
       <ol className="list-decimal pl-5 mt-2 space-y-1">
-        <li>Clean up structure (remove empty groups)</li>
-        <li>Apply color variables</li>
-        <li>Scale to all sizes (32, 28, 24, 20, 16, 14, 12)</li>
-        <li>Open description editor</li>
+        <li>
+          <strong>Clean up structure</strong> (remove empty groups and frames)
+        </li>
+        <li>
+          Apply <strong>color variables</strong>
+        </li>
+        <li>
+          Scale to <strong>all sizes</strong> (32, 28, 24, 20, 16, 14, 12)
+        </li>
+        <li>
+          Open <strong>description editor</strong>
+        </li>
       </ol>
     </DBNotification>
   );

@@ -25,6 +25,10 @@ export function ValidationResults({
     sizeValidation &&
     sizeValidation.warnings &&
     sizeValidation.warnings.length > 0;
+  const hasSizeInformation =
+    sizeValidation &&
+    sizeValidation.information &&
+    sizeValidation.information.length > 0;
   const hasReadinessErrors =
     componentReadinessResult && !componentReadinessResult.isValid;
   const hasReadinessWarnings =
@@ -53,10 +57,19 @@ export function ValidationResults({
             <div className="mt-fix-sm text-md">
               <strong>Next steps:</strong>
               <ol className="list-decimal list-inline pl-fix-md mt-2 space-y-1">
-                <li>Copy vectors to icon component set container</li>
-                <li>Convert to outline (⇧ Shift + ⌘ Cmd + O)</li>
-                <li>Union overlapping shapes (⇧ Shift + ⌥ Opt + U)</li>
-                <li>Flatten paths (⇧ Shift + ⌥ Opt + F)</li>
+                <li>
+                  <strong>Copy vectors</strong> to icon component set container
+                </li>
+                <li>
+                  <strong>Outline stroke</strong> (⇧ Shift + ⌘ Cmd + O)
+                </li>
+                <li>
+                  <strong>Union</strong> overlapping shapes (⇧ Shift + ⌥ Opt +
+                  U)
+                </li>
+                <li>
+                  <strong>Flatten</strong> paths (⇧ Shift + ⌥ Opt + F)
+                </li>
               </ol>
             </div>
           </div>
@@ -68,10 +81,40 @@ export function ValidationResults({
             headline="Validation warnings"
             semantic="warning"
             variant="standalone"
+            className="mb-fix-md"
           >
             <ul className="list-disc pl-fix-md space-y-fix-xs">
               {sizeValidation.warnings.map((warning, index) => (
-                <li key={index}>{warning.message}</li>
+                <li
+                  key={index}
+                  dangerouslySetInnerHTML={{
+                    __html: warning.message,
+                  }}
+                />
+              ))}
+            </ul>
+          </DBNotification>
+        )}
+
+        {/* Show information below success message if any */}
+        {hasSizeInformation && sizeValidation && sizeValidation.information && (
+          <DBNotification
+            headline="Information"
+            semantic="informational"
+            variant="standalone"
+            className="mb-fix-md"
+          >
+            <p className="mb-fix-sm">
+              Try to adjust the icon to get even pixel dimensions:
+            </p>
+            <ul className="list-disc pl-fix-md space-y-fix-xs">
+              {sizeValidation.information.map((info, index) => (
+                <li
+                  key={index}
+                  dangerouslySetInnerHTML={{
+                    __html: info.message,
+                  }}
+                />
               ))}
             </ul>
           </DBNotification>
@@ -84,6 +127,7 @@ export function ValidationResults({
     !hasNameErrors &&
     !hasSizeErrors &&
     !hasSizeWarnings &&
+    !hasSizeInformation &&
     !hasReadinessErrors &&
     !hasReadinessWarnings
   ) {
@@ -128,7 +172,39 @@ export function ValidationResults({
 
       {hasSizeErrors && sizeValidation && (
         <DBNotification
-          headline="Size validation failed"
+          headline={(() => {
+            const hasPositionErrors = sizeValidation.errors.some((error) =>
+              error.message.includes("Check position"),
+            );
+            const hasSizeOnlyErrors = sizeValidation.errors.some(
+              (error) =>
+                !error.message.includes("Check position") &&
+                !error.message.includes("stroke width") &&
+                (error.message.includes("Frame size") ||
+                  error.message.includes("Frame must be square") ||
+                  error.message.includes("Container size") ||
+                  error.message.includes("Icon content too large")),
+            );
+            const hasStrokeWidthErrors = sizeValidation.errors.some((error) =>
+              error.message.includes("stroke width"),
+            );
+
+            // Build headline based on error types
+            const errorTypes = [];
+            if (hasPositionErrors) errorTypes.push("Position");
+            if (hasStrokeWidthErrors) errorTypes.push("stroke width");
+            if (hasSizeOnlyErrors) errorTypes.push("size");
+
+            if (errorTypes.length === 0) {
+              return "Validation failed";
+            } else if (errorTypes.length === 1) {
+              return `${errorTypes[0].charAt(0).toUpperCase() + errorTypes[0].slice(1)} validation failed`;
+            } else if (errorTypes.length === 2) {
+              return `${errorTypes[0].charAt(0).toUpperCase() + errorTypes[0].slice(1)} and ${errorTypes[1]} validation failed`;
+            } else {
+              return `${errorTypes[0].charAt(0).toUpperCase() + errorTypes[0].slice(1)}, ${errorTypes[1]} and ${errorTypes[2]} validation failed`;
+            }
+          })()}
           semantic="critical"
           variant="standalone"
         >
@@ -147,20 +223,49 @@ export function ValidationResults({
 
       {hasReadinessErrors && componentReadinessResult && (
         <DBNotification
-          headline="Component readiness validation failed"
+          headline="Icon preparation required"
           semantic="critical"
           variant="standalone"
           className="mb-fix-md"
         >
+          {componentReadinessResult.errors.map((error, index) => {
+            // Check if this is the preparation steps hint (first error without bullet)
+            const isPreparationSteps = error.message.includes(
+              "Please prepare your icon manually",
+            );
+
+            if (isPreparationSteps) {
+              return (
+                <div
+                  key={index}
+                  className="mb-fix-md"
+                  dangerouslySetInnerHTML={{
+                    __html: error.message,
+                  }}
+                />
+              );
+            }
+
+            // Regular error with bullet point
+            return null;
+          })}
           <ul className="list-disc pl-fix-md space-y-fix-xs">
-            {componentReadinessResult.errors.map((error, index) => (
-              <li
-                key={index}
-                dangerouslySetInnerHTML={{
-                  __html: error.message,
-                }}
-              />
-            ))}
+            {componentReadinessResult.errors.map((error, index) => {
+              // Skip preparation steps in the bullet list
+              const isPreparationSteps = error.message.includes(
+                "Please prepare your icon manually",
+              );
+              if (isPreparationSteps) return null;
+
+              return (
+                <li
+                  key={index}
+                  dangerouslySetInnerHTML={{
+                    __html: error.message,
+                  }}
+                />
+              );
+            })}
           </ul>
         </DBNotification>
       )}
@@ -172,9 +277,14 @@ export function ValidationResults({
           variant="standalone"
           className="mb-fix-md"
         >
-          <ul className="list-disc list-inside pl-fix-md space-y-fix-xs">
+          <ul className="list-disc pl-fix-md space-y-fix-xs">
             {sizeValidation.warnings.map((warning, index) => (
-              <li key={index}>{warning.message}</li>
+              <li
+                key={index}
+                dangerouslySetInnerHTML={{
+                  __html: warning.message,
+                }}
+              />
             ))}
           </ul>
         </DBNotification>
@@ -184,12 +294,12 @@ export function ValidationResults({
         componentReadinessResult &&
         componentReadinessResult.warnings && (
           <DBNotification
-            headline="Component readiness warnings"
+            headline="Icon preparation warnings"
             semantic="warning"
             variant="standalone"
             className="mb-fix-md"
           >
-            <ul className="list-disc list-inside pl-fix-md space-y-fix-xs">
+            <ul className="list-disc pl-fix-md space-y-fix-xs">
               {componentReadinessResult.warnings.map((warning, index) => (
                 <li
                   key={index}
@@ -201,6 +311,29 @@ export function ValidationResults({
             </ul>
           </DBNotification>
         )}
+
+      {hasSizeInformation && sizeValidation && sizeValidation.information && (
+        <DBNotification
+          headline="Information"
+          semantic="informational"
+          variant="standalone"
+          className="mb-fix-md"
+        >
+          <p className="mb-fix-sm">
+            Try to adjust the icon to get even pixel dimensions.
+          </p>
+          <ul className="list-disc pl-fix-md space-y-fix-xs">
+            {sizeValidation.information.map((info, index) => (
+              <li
+                key={index}
+                dangerouslySetInnerHTML={{
+                  __html: info.message,
+                }}
+              />
+            ))}
+          </ul>
+        </DBNotification>
+      )}
     </div>
   );
 }

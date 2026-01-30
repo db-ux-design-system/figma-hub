@@ -161,26 +161,8 @@ export class SizeValidator {
             message: `Missing variant: <strong>${displayName}</strong><br>Please create this variant and add content`,
             node: componentSet.name,
           });
-        } else {
-          // Check if variant has a container with children
-          if (!variant.children || variant.children.length === 0) {
-            errors.push({
-              message: `Empty variant: <strong>${displayName}</strong><br>Please add vector content to this variant`,
-              node: variantName,
-            });
-          } else {
-            const container = variant.children[0];
-            if (
-              "children" in container &&
-              (!container.children || container.children.length === 0)
-            ) {
-              errors.push({
-                message: `Empty container in variant: <strong>${displayName}</strong><br>Please add vector content to this variant`,
-                node: variantName,
-              });
-            }
-          }
         }
+        // Note: Empty container validation is handled by Component Readiness Validator
       }
     }
 
@@ -207,10 +189,8 @@ export class SizeValidator {
         continue;
       }
 
-      // Skip if variant is empty (already reported above)
-      if (!variant.children || variant.children.length === 0) {
-        continue;
-      }
+      // Note: Empty variant validation is handled by Component Readiness Validator
+      // We skip empty variants here to avoid duplicate error messages
 
       // Check if this is a valid size
       if (!(expectedSize in this.sizeConstraints)) {

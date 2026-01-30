@@ -35,10 +35,10 @@ export function SelectionStatus({
         variant="standalone"
         semantic="informational"
         className="mt-fix-lg"
-        headline={"No Component, Component Set, or Master Icon Frame selected"}
+        headline={"No Master icon frame, component or component Set selected"}
       >
-        Please select a Component Set (functional icons), Component
-        (illustrative icons), or Master Icon Frame (icon templates).
+        Please select a master icon frame, a single component (illustrative
+        icons) or a component set (functional icons).
       </DBNotification>
     );
   }

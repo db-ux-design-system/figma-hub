@@ -10,6 +10,7 @@ import type {
   ValidationResult,
   ValidationError,
   ValidationWarning,
+  ValidationInformation,
   VectorPositionInfo,
 } from "../types/index.js";
 
@@ -24,6 +25,7 @@ export class MasterIconValidator {
   validate(frame: FrameNode): ValidationResult {
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
+    const information: ValidationInformation[] = [];
     const vectorPositions: VectorPositionInfo[] = [];
 
     // Determine icon type based on frame size
@@ -38,6 +40,7 @@ export class MasterIconValidator {
         isValid: false,
         errors,
         warnings,
+        information,
         vectorPositions,
       };
     }
@@ -50,12 +53,16 @@ export class MasterIconValidator {
     const containerResult = this.validateContainer(frame, iconType);
     errors.push(...containerResult.errors);
     warnings.push(...containerResult.warnings);
+    if (containerResult.information) {
+      information.push(...containerResult.information);
+    }
     vectorPositions.push(...containerResult.vectorPositions);
 
     return {
       isValid: errors.length === 0,
       errors,
       warnings,
+      information,
       vectorPositions,
     };
   }
@@ -120,10 +127,12 @@ export class MasterIconValidator {
   ): {
     errors: ValidationError[];
     warnings: ValidationWarning[];
+    information?: ValidationInformation[];
     vectorPositions: VectorPositionInfo[];
   } {
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
+    const information: ValidationInformation[] = [];
     const vectorPositions: VectorPositionInfo[] = [];
 
     // Check if frame has children
@@ -132,7 +141,7 @@ export class MasterIconValidator {
         message: `Frame is empty<br>Expected: Container frame with icon content`,
         node: frame.name,
       });
-      return { errors, warnings, vectorPositions };
+      return { errors, warnings, information, vectorPositions };
     }
 
     // Find Container frame (ignore helper frames like guidelines, basic shapes, etc.)
@@ -153,7 +162,7 @@ export class MasterIconValidator {
         message: `No Container frame found<br>Expected: A frame named "Container" with icon content`,
         node: frame.name,
       });
-      return { errors, warnings, vectorPositions };
+      return { errors, warnings, information, vectorPositions };
     }
 
     // Check container name
@@ -186,7 +195,7 @@ export class MasterIconValidator {
         message: `Container is empty<br>Expected: Vector paths or shapes`,
         node: frame.name,
       });
-      return { errors, warnings, vectorPositions };
+      return { errors, warnings, information, vectorPositions };
     }
 
     // Validate container content based on icon type
@@ -198,9 +207,12 @@ export class MasterIconValidator {
     );
     errors.push(...contentResult.errors);
     warnings.push(...contentResult.warnings);
+    if (contentResult.information) {
+      information.push(...contentResult.information);
+    }
     vectorPositions.push(...contentResult.vectorPositions);
 
-    return { errors, warnings, vectorPositions };
+    return { errors, warnings, information, vectorPositions };
   }
 
   /**
@@ -214,14 +226,16 @@ export class MasterIconValidator {
   ): {
     errors: ValidationError[];
     warnings: ValidationWarning[];
+    information?: ValidationInformation[];
     vectorPositions: VectorPositionInfo[];
   } {
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
+    const information: ValidationInformation[] = [];
     const vectorPositions: VectorPositionInfo[] = [];
 
     if (!("children" in container)) {
-      return { errors, warnings, vectorPositions };
+      return { errors, warnings, information, vectorPositions };
     }
 
     // Check for vector content (including fills and strokes)
@@ -245,7 +259,195 @@ export class MasterIconValidator {
     warnings.push(...strokeResult.warnings);
     vectorPositions.push(...strokeResult.vectorPositions);
 
-    return { errors, warnings, vectorPositions };
+    // Check for vectors positioned too close together (0-1px apart)
+    const proximityInformation = this.checkVectorProximity(
+      container,
+      frameName,
+    );
+    information.push(...proximityInformation);
+
+    // Calculate and check total icon content size
+    const sizeResult = this.calculateIconContentSize(
+      container,
+      frameName,
+      containerSize,
+    );
+    if (sizeResult.error) {
+      errors.push(sizeResult.error);
+    }
+    if (sizeResult.information) {
+      information.push(sizeResult.information);
+    }
+
+    return { errors, warnings, information, vectorPositions };
+  }
+
+  /**
+   * Calculate the total size of all icon content (including stroke outer edges)
+   * Returns error if icon is too large, information if pixels are uneven
+   */
+  private calculateIconContentSize(
+    container: SceneNode,
+    frameName: string,
+    containerSize: number,
+  ): {
+    error?: ValidationError;
+    information?: ValidationInformation;
+  } {
+    const vectors = this.findAllVectorNodesWithPosition(container, container);
+
+    if (vectors.length === 0) {
+      return {};
+    }
+
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    // Get container's absolute position
+    let containerX = 0;
+    let containerY = 0;
+
+    if ("absoluteBoundingBox" in container && container.absoluteBoundingBox) {
+      containerX = container.absoluteBoundingBox.x;
+      containerY = container.absoluteBoundingBox.y;
+    } else if ("x" in container && "y" in container) {
+      containerX = container.x;
+      containerY = container.y;
+    }
+
+    for (const vectorInfo of vectors) {
+      const vector = vectorInfo.node;
+
+      // Get vector bounds
+      const bounds =
+        "absoluteRenderBounds" in vector && vector.absoluteRenderBounds
+          ? vector.absoluteRenderBounds
+          : "absoluteBoundingBox" in vector && vector.absoluteBoundingBox
+            ? vector.absoluteBoundingBox
+            : null;
+
+      if (!bounds) {
+        // Fallback: calculate from relative position
+        if (
+          !(
+            "x" in vector &&
+            "y" in vector &&
+            "width" in vector &&
+            "height" in vector
+          )
+        ) {
+          continue;
+        }
+
+        let x = vector.x;
+        let y = vector.y;
+
+        // Add parent positions
+        for (const parent of vectorInfo.parentChain) {
+          if ("x" in parent && "y" in parent) {
+            x += parent.x;
+            y += parent.y;
+          }
+        }
+
+        // Check for stroke
+        const strokeWeight =
+          "strokes" in vector &&
+          vector.strokes &&
+          Array.isArray(vector.strokes) &&
+          vector.strokes.length > 0 &&
+          "strokeWeight" in vector &&
+          (vector.strokeWeight as number) > 0
+            ? (vector.strokeWeight as number)
+            : 0;
+
+        const halfStroke = strokeWeight / 2;
+
+        minX = Math.min(minX, x - halfStroke);
+        minY = Math.min(minY, y - halfStroke);
+        maxX = Math.max(maxX, x + vector.width + halfStroke);
+        maxY = Math.max(maxY, y + vector.height + halfStroke);
+      } else {
+        // Use absolute bounds (already includes stroke)
+        const relX = bounds.x - containerX;
+        const relY = bounds.y - containerY;
+
+        minX = Math.min(minX, relX);
+        minY = Math.min(minY, relY);
+        maxX = Math.max(maxX, relX + bounds.width);
+        maxY = Math.max(maxY, relY + bounds.height);
+      }
+    }
+
+    if (minX === Infinity || minY === Infinity) {
+      return {};
+    }
+
+    const width = maxX - minX;
+    const height = maxY - minY;
+
+    // Determine expected size based on container size
+    const expectedSize = containerSize - 4; // 2px safety zone on each side
+
+    // Check if icon is too large (exceeds expected size)
+    const isWidthTooLarge = width > expectedSize;
+    const isHeightTooLarge = height > expectedSize;
+
+    if (isWidthTooLarge || isHeightTooLarge) {
+      // Format values, making too large values bold
+      const widthFormatted = isWidthTooLarge
+        ? `<strong>${width.toFixed(2)}px</strong>`
+        : `${width.toFixed(2)}px`;
+      const heightFormatted = isHeightTooLarge
+        ? `<strong>${height.toFixed(2)}px</strong>`
+        : `${height.toFixed(2)}px`;
+
+      return {
+        error: {
+          message: `<strong>Icon size too large:</strong> ${widthFormatted} × ${heightFormatted}<br>Maximum: ${expectedSize}px × ${expectedSize}px (with 2px safety zone)`,
+          node: frameName,
+        },
+      };
+    }
+
+    // Check if width or height are on quarter-pixel grid (.00, .25, .50, .75)
+    // We consider these values acceptable
+    const isOnQuarterGrid = (value: number): boolean => {
+      const decimal = Math.abs(value - Math.floor(value));
+      const tolerance = 0.01;
+      return (
+        Math.abs(decimal - 0.0) < tolerance ||
+        Math.abs(decimal - 0.25) < tolerance ||
+        Math.abs(decimal - 0.5) < tolerance ||
+        Math.abs(decimal - 0.75) < tolerance ||
+        Math.abs(decimal - 1.0) < tolerance
+      );
+    };
+
+    const isWidthUneven = !isOnQuarterGrid(width);
+    const isHeightUneven = !isOnQuarterGrid(height);
+
+    // Only show information if width or height is not on quarter-pixel grid
+    if (!isWidthUneven && !isHeightUneven) {
+      return {};
+    }
+
+    // Format width and height, making uneven values bold
+    const widthFormatted = isWidthUneven
+      ? `<strong>${width.toFixed(2)}px</strong>`
+      : `${width.toFixed(2)}px`;
+    const heightFormatted = isHeightUneven
+      ? `<strong>${height.toFixed(2)}px</strong>`
+      : `${height.toFixed(2)}px`;
+
+    return {
+      information: {
+        message: `<strong>Icon content size:</strong> ${widthFormatted} × ${heightFormatted}<br>(visual outer edge including strokes)`,
+        node: frameName,
+      },
+    };
   }
 
   /**
@@ -332,20 +534,20 @@ export class MasterIconValidator {
             // Perfect - no message needed
           } else if (strokeWeight === 1.75 || strokeWeight === 1.5) {
             warnings.push({
-              message: `Vector "${vector.name}" has stroke width ${strokeWeight}px. Check if the modified stroke width is necessary.`,
+              message: `<strong>Smaller stroke width: "${vector.name}" is ${strokeWeight.toFixed(2)}px.</strong><br>Check if the modified stroke width is necessary.`,
               node: frameName,
               canProceed: true,
             });
           } else {
             errors.push({
-              message: `Vector "${vector.name}" has incorrect stroke width: ${strokeWeight}px<br>Expected: 2px (or 1.75px, 1.5px with warning) for functional icons`,
+              message: `<strong>Incorrect stroke width: "${vector.name}" is ${strokeWeight.toFixed(2)}px</strong>.<br>Use 2px (or 1.75px, 1.5px for the smaller sizes).`,
               node: frameName,
             });
           }
         } else if (iconType === "illustrative") {
           if (strokeWeight !== 2) {
             errors.push({
-              message: `Vector "${vector.name}" has incorrect stroke width: ${strokeWeight}px<br>Expected: 2px for illustrative icons`,
+              message: `<strong>Incorrect stroke width: "${vector.name}" is ${strokeWeight.toFixed(2)}px</strong>. Only use 2px.`,
               node: frameName,
             });
           }
@@ -412,45 +614,167 @@ export class MasterIconValidator {
           : null;
 
     if (!bounds) {
+      // If no absolute bounds available, calculate from relative position
+      // This happens in tests or when Figma hasn't rendered the node yet
       console.warn(
-        `[MasterIconValidator] No bounds available for vector "${vector.name}"`,
+        `[MasterIconValidator] No absolute bounds available for vector "${vector.name}", using relative position`,
       );
-      return { errors, warnings, positionInfo };
+
+      // Calculate absolute position by traversing parent chain
+      let absoluteX = vector.x;
+      let absoluteY = vector.y;
+
+      for (const parent of parentChain) {
+        if ("x" in parent && "y" in parent) {
+          absoluteX += parent.x;
+          absoluteY += parent.y;
+        }
+      }
+
+      // For synthetic bounds from relative position:
+      // - vector.x/y is the path center (for center-aligned strokes)
+      // - We need to adjust to get the visual outer edge
+      // - Subtract half stroke weight to get outer edge position
+      const hasStrokes =
+        "strokes" in vector &&
+        vector.strokes &&
+        vector.strokes.length > 0 &&
+        strokeWeight > 0;
+
+      const halfStroke = hasStrokes ? strokeWeight / 2 : 0;
+
+      // Create synthetic bounds representing the visual outer edge
+      const syntheticBounds = {
+        x: absoluteX - halfStroke,
+        y: absoluteY - halfStroke,
+        width: vector.width + strokeWeight,
+        height: vector.height + strokeWeight,
+      };
+
+      // Continue with synthetic bounds
+      return this.validateSafetyZoneWithBounds(
+        vector,
+        syntheticBounds,
+        strokeWeight,
+        containerSize,
+        frameName,
+        parentChain,
+      );
     }
 
     console.log(
       `[MasterIconValidator] Vector "${vector.name}": bounds x=${bounds.x}, y=${bounds.y}, width=${bounds.width}, height=${bounds.height}`,
     );
 
+    return this.validateSafetyZoneWithBounds(
+      vector,
+      bounds,
+      strokeWeight,
+      containerSize,
+      frameName,
+      parentChain,
+    );
+  }
+
+  /**
+   * Validate safety zone with given bounds
+   */
+  private validateSafetyZoneWithBounds(
+    vector: SceneNode,
+    bounds: { x: number; y: number; width: number; height: number },
+    strokeWeight: number,
+    containerSize: number,
+    frameName: string,
+    parentChain: SceneNode[],
+  ): {
+    errors: ValidationError[];
+    warnings: ValidationWarning[];
+    positionInfo: VectorPositionInfo | null;
+  } {
+    const errors: ValidationError[] = [];
+    const warnings: ValidationWarning[] = [];
+    let positionInfo: VectorPositionInfo | null = null;
+
+    if (
+      !("x" in vector) ||
+      !("y" in vector) ||
+      !("width" in vector) ||
+      !("height" in vector)
+    ) {
+      return { errors, warnings, positionInfo };
+    }
+
     // Calculate absolute position relative to container
-    // We need to find the container's absolute position first
+    // The container is always named "Container" (case-insensitive)
     let containerAbsoluteX = 0;
     let containerAbsoluteY = 0;
 
-    // The parent chain should contain the container's children
-    // We need to get the container's absolute position
+    // Find the container node by traversing up the parent chain
+    // The container is the node named "Container"
+    let containerNode: SceneNode | null = null;
+
     if (parentChain.length > 0) {
+      // If there's a parent chain, the container is at the root of the chain
+      // We need to find it by going up from the first parent
       const firstParent = parentChain[0];
-      if (
-        "absoluteBoundingBox" in firstParent &&
-        firstParent.absoluteBoundingBox
-      ) {
-        // The first parent in chain is a child of container
-        // We need to go up one more level to get container
-        if ("parent" in firstParent && firstParent.parent) {
-          const container = firstParent.parent;
-          if (
-            "absoluteBoundingBox" in container &&
-            container.absoluteBoundingBox
-          ) {
-            containerAbsoluteX = container.absoluteBoundingBox.x;
-            containerAbsoluteY = container.absoluteBoundingBox.y;
-            console.log(
-              `[MasterIconValidator] Container absolute position: (${containerAbsoluteX}, ${containerAbsoluteY})`,
-            );
-          }
-        }
+      if ("parent" in firstParent && firstParent.parent) {
+        containerNode = firstParent.parent;
       }
+    } else {
+      // If no parent chain, the vector is directly in the container
+      // Get container from vector's parent
+      if ("parent" in vector && vector.parent) {
+        containerNode = vector.parent;
+      }
+    }
+
+    // Verify we found the container by checking the name
+    if (
+      containerNode &&
+      "name" in containerNode &&
+      !containerNode.name.toLowerCase().includes("container")
+    ) {
+      console.warn(
+        `[MasterIconValidator] Found parent "${containerNode.name}" but it's not named "Container", searching further up...`,
+      );
+      // Search further up the tree
+      let currentNode: SceneNode | null = containerNode;
+      while (currentNode && "parent" in currentNode && currentNode.parent) {
+        const parent = currentNode.parent;
+        if (
+          "name" in parent &&
+          parent.name.toLowerCase().includes("container")
+        ) {
+          containerNode = parent;
+          break;
+        }
+        currentNode = parent;
+      }
+    }
+
+    // Get container's absolute position
+    if (containerNode) {
+      if (
+        "absoluteBoundingBox" in containerNode &&
+        containerNode.absoluteBoundingBox
+      ) {
+        containerAbsoluteX = containerNode.absoluteBoundingBox.x;
+        containerAbsoluteY = containerNode.absoluteBoundingBox.y;
+        console.log(
+          `[MasterIconValidator] Container "${containerNode.name}" absolute position: (${containerAbsoluteX}, ${containerAbsoluteY})`,
+        );
+      } else if ("x" in containerNode && "y" in containerNode) {
+        // Fallback: use relative position if absolute not available
+        containerAbsoluteX = containerNode.x;
+        containerAbsoluteY = containerNode.y;
+        console.log(
+          `[MasterIconValidator] Container "${containerNode.name}" relative position (fallback): (${containerAbsoluteX}, ${containerAbsoluteY})`,
+        );
+      }
+    } else {
+      console.warn(
+        `[MasterIconValidator] Could not find Container node for vector "${vector.name}"`,
+      );
     }
 
     // Calculate position relative to container
@@ -550,28 +874,28 @@ export class MasterIconValidator {
 
     if (distanceLeft < minDistance) {
       violations.push(
-        `left edge is in safety area (${distanceLeft.toFixed(2)}px, min: ${minDistance}px)`,
+        `left edge is in safety area (<strong>${distanceLeft.toFixed(2)}px</strong>, min: ${minDistance}px)`,
       );
     }
     if (distanceTop < minDistance) {
       violations.push(
-        `top edge is in safety area (${distanceTop.toFixed(2)}px, min: ${minDistance}px)`,
+        `top edge is in safety area (<strong>${distanceTop.toFixed(2)}px</strong>, min: ${minDistance}px)`,
       );
     }
     if (distanceRight < minDistance) {
       violations.push(
-        `right edge is in safety area (${distanceRight.toFixed(2)}px, min: ${minDistance}px)`,
+        `right edge is in safety area (<strong>${distanceRight.toFixed(2)}px</strong>, min: ${minDistance}px)`,
       );
     }
     if (distanceBottom < minDistance) {
       violations.push(
-        `bottom edge is in safety area (${distanceBottom.toFixed(2)}px, min: ${minDistance}px)`,
+        `bottom edge is in safety area (<strong>${distanceBottom.toFixed(2)}px</strong>, min: ${minDistance}px)`,
       );
     }
 
     if (violations.length > 0) {
       errors.push({
-        message: `Check position of "${vector.name}" (${vectorType}):<br>${violations.join("<br>")}`,
+        message: `<strong>Incorrect position: "${vector.name}" (${vectorType})</strong><br>${violations.join("<br>")}`,
         node: frameName,
       });
     }
@@ -620,5 +944,206 @@ export class MasterIconValidator {
     }
 
     return vectors;
+  }
+
+  /**
+   * Check if vectors are positioned too close together (0-1px apart)
+   * Overlaps (negative distance) are OK, but distances between 0 and 1px should trigger information
+   */
+  private checkVectorProximity(
+    container: SceneNode,
+    frameName: string,
+  ): ValidationInformation[] {
+    const information: ValidationInformation[] = [];
+    const vectors = this.findAllVectorNodesWithPosition(container, container);
+
+    if (vectors.length < 2) {
+      return information; // Need at least 2 vectors to check proximity
+    }
+
+    // Get bounding boxes for all vectors
+    const vectorBounds: Array<{
+      name: string;
+      bounds: { x: number; y: number; width: number; height: number };
+    }> = [];
+
+    for (const vectorInfo of vectors) {
+      const vector = vectorInfo.node;
+
+      // Get vector bounds (including stroke outer edge)
+      const bounds =
+        "absoluteRenderBounds" in vector && vector.absoluteRenderBounds
+          ? vector.absoluteRenderBounds
+          : "absoluteBoundingBox" in vector && vector.absoluteBoundingBox
+            ? vector.absoluteBoundingBox
+            : null;
+
+      if (!bounds) {
+        // Fallback: calculate from relative position
+        if (
+          !(
+            "x" in vector &&
+            "y" in vector &&
+            "width" in vector &&
+            "height" in vector
+          )
+        ) {
+          continue;
+        }
+
+        let x = vector.x;
+        let y = vector.y;
+
+        // Add parent positions
+        for (const parent of vectorInfo.parentChain) {
+          if ("x" in parent && "y" in parent) {
+            x += parent.x;
+            y += parent.y;
+          }
+        }
+
+        // Check for stroke
+        const strokeWeight =
+          "strokes" in vector &&
+          vector.strokes &&
+          Array.isArray(vector.strokes) &&
+          vector.strokes.length > 0 &&
+          "strokeWeight" in vector &&
+          (vector.strokeWeight as number) > 0
+            ? (vector.strokeWeight as number)
+            : 0;
+
+        const halfStroke = strokeWeight / 2;
+
+        vectorBounds.push({
+          name: vector.name,
+          bounds: {
+            x: x - halfStroke,
+            y: y - halfStroke,
+            width: vector.width + strokeWeight,
+            height: vector.height + strokeWeight,
+          },
+        });
+      } else {
+        vectorBounds.push({
+          name: vector.name,
+          bounds: {
+            x: bounds.x,
+            y: bounds.y,
+            width: bounds.width,
+            height: bounds.height,
+          },
+        });
+      }
+    }
+
+    // Check all pairs of vectors
+    const checkedPairs = new Set<string>();
+
+    for (let i = 0; i < vectorBounds.length; i++) {
+      for (let j = i + 1; j < vectorBounds.length; j++) {
+        const v1 = vectorBounds[i];
+        const v2 = vectorBounds[j];
+
+        // Create a unique key for this pair
+        const pairKey = `${v1.name}|${v2.name}`;
+        if (checkedPairs.has(pairKey)) {
+          continue;
+        }
+        checkedPairs.add(pairKey);
+
+        // Calculate minimum distance between the two bounding boxes
+        const distance = this.calculateBoundingBoxDistance(
+          v1.bounds,
+          v2.bounds,
+        );
+
+        // Show information if distance is between 0 and 1px (exclusive)
+        // Negative distance means overlap, which is OK
+        if (distance > 0 && distance < 1) {
+          information.push({
+            message: `<strong>Vector position: "${v1.name}" and "${v2.name}"</strong> are too close <strong>${distance.toFixed(2)}px.</strong> Use spacing of at least 1px.`,
+            node: frameName,
+          });
+        }
+      }
+    }
+
+    return information;
+  }
+
+  /**
+   * Calculate the minimum distance between two bounding boxes
+   * Returns negative value if boxes overlap
+   */
+  private calculateBoundingBoxDistance(
+    box1: { x: number; y: number; width: number; height: number },
+    box2: { x: number; y: number; width: number; height: number },
+  ): number {
+    // Calculate edges
+    const box1Right = box1.x + box1.width;
+    const box1Bottom = box1.y + box1.height;
+    const box2Right = box2.x + box2.width;
+    const box2Bottom = box2.y + box2.height;
+
+    // Calculate horizontal distance
+    let horizontalDistance = 0;
+    if (box1Right < box2.x) {
+      // box1 is to the left of box2
+      horizontalDistance = box2.x - box1Right;
+    } else if (box2Right < box1.x) {
+      // box2 is to the left of box1
+      horizontalDistance = box1.x - box2Right;
+    } else {
+      // Boxes overlap horizontally
+      horizontalDistance = Math.min(
+        box1Right - box2.x,
+        box2Right - box1.x,
+        box1.x - box2.x + box2.width,
+        box2.x - box1.x + box1.width,
+      );
+      horizontalDistance = -Math.abs(horizontalDistance);
+    }
+
+    // Calculate vertical distance
+    let verticalDistance = 0;
+    if (box1Bottom < box2.y) {
+      // box1 is above box2
+      verticalDistance = box2.y - box1Bottom;
+    } else if (box2Bottom < box1.y) {
+      // box2 is above box1
+      verticalDistance = box1.y - box2Bottom;
+    } else {
+      // Boxes overlap vertically
+      verticalDistance = Math.min(
+        box1Bottom - box2.y,
+        box2Bottom - box1.y,
+        box1.y - box2.y + box2.height,
+        box2.y - box1.y + box1.height,
+      );
+      verticalDistance = -Math.abs(verticalDistance);
+    }
+
+    // If both distances are negative, boxes overlap
+    if (horizontalDistance < 0 && verticalDistance < 0) {
+      // Return the smaller overlap (less negative = smaller overlap)
+      return Math.max(horizontalDistance, verticalDistance);
+    }
+
+    // If one distance is negative, boxes overlap in that direction
+    // Return the positive distance in the other direction
+    if (horizontalDistance < 0) {
+      return verticalDistance;
+    }
+    if (verticalDistance < 0) {
+      return horizontalDistance;
+    }
+
+    // Boxes don't overlap - return minimum distance
+    // Use Pythagorean theorem for diagonal distance
+    return Math.sqrt(
+      horizontalDistance * horizontalDistance +
+        verticalDistance * verticalDistance,
+    );
   }
 }

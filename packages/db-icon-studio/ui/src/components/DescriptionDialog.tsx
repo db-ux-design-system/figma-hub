@@ -64,10 +64,10 @@ export function DescriptionDialog({
    * - German: capitalize after comma (nouns)
    */
   const formatCommaSeparatedValues = (
-    value: string,
+    value: string | undefined,
     language: "en" | "de",
   ): string => {
-    if (!value || !value.includes(",")) return value;
+    if (!value || !value.includes(",")) return value || "";
 
     const parts = value.split(",").map((part) => part.trim());
 

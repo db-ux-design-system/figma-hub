@@ -460,6 +460,46 @@ describe("MasterIconValidator", () => {
       expect(result.isValid).toBe(true);
       expect(result.errors).toHaveLength(0);
     });
+
+    it("should validate vectors directly in container (without frame/group)", () => {
+      const frame = createMockMasterIconFrame(32, true, false, 2);
+      // Add vectors directly to container (no intermediate frame/group)
+      (frame.children[0] as MockFrameNode).children = [
+        {
+          type: "VECTOR",
+          name: "Vector1",
+          id: "vector-1",
+          x: 8,
+          y: 8,
+          width: 8,
+          height: 8,
+          strokeWeight: 2,
+          strokes: [{ type: "SOLID", color: { r: 0, g: 0, b: 0 } }],
+          fills: [],
+        } as any,
+        {
+          type: "VECTOR",
+          name: "Vector2",
+          id: "vector-2",
+          x: 16,
+          y: 8,
+          width: 8,
+          height: 8,
+          strokeWeight: 2,
+          strokes: [{ type: "SOLID", color: { r: 0, g: 0, b: 0 } }],
+          fills: [],
+        } as any,
+      ];
+      const validator = new MasterIconValidator();
+
+      const result = validator.validate(frame as any);
+
+      // Should validate successfully - vectors directly in container are valid
+      expect(result.isValid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+      // Should find both vectors
+      expect(result.vectorPositions?.length).toBe(2);
+    });
   });
 
   describe("Icon Type Detection", () => {

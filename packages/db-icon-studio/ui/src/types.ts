@@ -34,6 +34,7 @@ export interface ValidationResult {
   isValid: boolean;
   errors: ValidationError[];
   warnings?: ValidationWarning[];
+  information?: ValidationInformation[];
   vectorPositions?: VectorPositionInfo[]; // Position information for vectors
 }
 
@@ -46,6 +47,11 @@ export interface ValidationWarning {
   message: string;
   node?: string;
   canProceed: boolean; // If true, user can choose to proceed despite warning;
+}
+
+export interface ValidationInformation {
+  message: string;
+  node?: string;
 }
 
 // Vector Position Information
