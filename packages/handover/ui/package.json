@@ -10,10 +10,10 @@
   },
   "dependencies": {
     "@db-ux/react-core-components": "4.3.2",
-    "@db-ux/db-theme": "5.3.0",
+    "@db-ux/db-theme": "5.3.1",
     "highlight.js": "^11.11.1",
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
     "prettier": "3.8.1"
   },
   "devDependencies": {
