@@ -71,25 +71,38 @@ export function ValidationResults({
                     frame)
                   </li>
                   <li>
-                    <strong>Create component</strong> (⌥ Opt + ⌘ Cmd + K)
+                    <strong>Create component</strong>{" "}
+                    (⌥&nbsp;Opt&nbsp;+&nbsp;⌘&nbsp;Cmd&nbsp;+&nbsp;K)
                   </li>
                   <li>
-                    <strong>Select all black vectors:</strong>
+                    Select all <strong>black vectors:</strong>
                     <ul className="list-disc pl-fix-md mt-1 space-y-1">
-                      <li>Outline stroke (⌥ Opt + ⌘ Cmd + O)</li>
-                      <li>Union black shapes (⌥ Opt + ⇧ Shift + U)</li>
+                      <li>
+                        <strong>Outline stroke</strong>
+                        (⌥&nbsp;Opt&nbsp;+&nbsp;⌘&nbsp;Cmd&nbsp;+&nbsp;O)
+                      </li>
+                      <li>
+                        <strong>Union black shapes</strong>
+                        (⌥&nbsp;Opt&nbsp;+&nbsp;⇧&nbsp;Shift&nbsp;+&nbsp;U)
+                      </li>
                     </ul>
                   </li>
                   <li>
-                    <strong>Select all red vectors:</strong>
+                    Select all <strong>red vectors:</strong>
                     <ul className="list-disc pl-fix-md mt-1 space-y-1">
-                      <li>Outline stroke (⌥ Opt + ⌘ Cmd + O)</li>
-                      <li>Union red shapes (⌥ Opt + ⇧ Shift + U)</li>
+                      <li>
+                        <strong>Outline stroke</strong>
+                        (⌥&nbsp;Opt&nbsp;+&nbsp;⌘&nbsp;Cmd&nbsp;+&nbsp;O)
+                      </li>
+                      <li>
+                        <strong>Union red shapes</strong>
+                        (⌥&nbsp;Opt&nbsp;+&nbsp;⇧&nbsp;Shift&nbsp;+&nbsp;U)
+                      </li>
                     </ul>
                   </li>
                   <li>
-                    <strong>Select both colors:</strong> flatten paths (⌥ Opt +
-                    ⇧ Shift + F)
+                    Select <strong>both colors: flatten</strong> paths
+                    (⌥&nbsp;Opt&nbsp;+&nbsp;⇧&nbsp;Shift&nbsp;+&nbsp;F)
                   </li>
                 </ol>
               ) : (
@@ -99,14 +112,16 @@ export function ValidationResults({
                     container
                   </li>
                   <li>
-                    <strong>Outline stroke</strong> (⌥ Opt + ⌘ Cmd + O)
+                    <strong>Outline stroke</strong>{" "}
+                    (⌥&nbsp;Opt&nbsp;+&nbsp;⌘&nbsp;Cmd&nbsp;+&nbsp;O)
                   </li>
                   <li>
-                    <strong>Union</strong> overlapping shapes (⌥ Opt + ⇧ Shift +
-                    U)
+                    <strong>Union</strong> overlapping shapes
+                    (⌥&nbsp;Opt&nbsp;+&nbsp;⇧&nbsp;Shift&nbsp;+&nbsp;U)
                   </li>
                   <li>
-                    <strong>Flatten</strong> paths (⌥ Opt + ⇧ Shift + F)
+                    <strong>Flatten</strong> paths
+                    (⌥&nbsp;Opt&nbsp;+&nbsp;⇧&nbsp;Shift&nbsp;+&nbsp;F)
                   </li>
                 </ol>
               )}
