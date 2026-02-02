@@ -29,7 +29,7 @@
   "author": "",
   "license": "Apache-2.0",
   "devDependencies": {
-    "@types/node": "^25.0.10",
+    "@types/node": "^25.1.0",
     "adm-zip": "^0.5.16",
     "npm-run-all2": "8.0.4"
   },
