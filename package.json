@@ -29,18 +29,18 @@
     "dev:db-custom-color-importer": "npm run dev -w=@db-ux/custom-color-importer"
   },
   "author": "",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "devDependencies": {
-    "@types/node": "^25.0.10",
+    "@types/node": "^25.1.0",
     "adm-zip": "^0.5.16",
     "npm-run-all2": "8.0.4"
   },
   "dependencies": {
-    "@db-ux/db-theme": "5.3.0",
+    "@db-ux/db-theme": "5.3.1",
     "@db-ux/db-theme-fonts": "2.0.5",
-    "@db-ux/db-theme-icons": "3.4.0",
-    "@db-ux/db-theme-illustrative-icons": "3.0.0",
-    "@db-ux/react-core-components": "4.2.6"
+    "@db-ux/db-theme-icons": "3.5.0",
+    "@db-ux/db-theme-illustrative-icons": "3.1.0",
+    "@db-ux/react-core-components": "4.4.0"
   },
   "engines": {
     "node": ">= 22"
