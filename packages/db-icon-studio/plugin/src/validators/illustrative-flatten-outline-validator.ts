@@ -77,19 +77,20 @@ export class IllustrativeFlattenOutlineValidator {
         // Both issues
         instructions = `<ol class="list-decimal pl-5 ml-8 mt-2 space-y-1">
 <li>Select all vectors</li>
-<li>Outline Stroke (Shift+Cmd+O / Shift+Ctrl+O)</li>
-<li>Flatten Selection (Cmd+E / Ctrl+E)</li>
+<li>Outline Stroke (Opt+Cmd+O / ⌥ ⌘ O)</li>
+<li>Boolean Groups > Union (Opt+Shift+U / ⌥ ⇧ U)</li>
+<li>Flatten Selection (Opt+Shift+F / ⌥ ⇧ F)</li>
 </ol>
 <p class="mt-2"><strong>Note:</strong> Outline BEFORE Flatten to preserve stroke weights!</p>`;
       } else if (hasStrokes) {
         // Only outline needed
         instructions = `<ol class="list-decimal pl-5 ml-8 mt-2 space-y-1">
-<li>Outline Stroke (Shift+Cmd+O / Shift+Ctrl+O) for all vectors</li>
+<li>Outline Stroke (Opt+Cmd+O / ⌥ ⌘ O) for all vectors</li>
 </ol>`;
       } else if (notFlattened) {
         // Only flatten needed
         instructions = `<ol class="list-decimal pl-5 ml-8 mt-2 space-y-1">
-<li>Select all vectors and Flatten Selection (Cmd+E / Ctrl+E)</li>
+<li>Select all vectors and Flatten Selection (Opt+Shift+F / ⌥ ⇧ F)</li>
 </ol>
 <p class="mt-2">Expected: 1 vector (with black and red fills), found: ${vectors.length}</p>`;
       } else if (!hasBlack || !hasRed) {

@@ -337,9 +337,9 @@ export class ComponentReadinessValidator {
       allErrors.unshift({
         message: `<p>Please prepare your icon manually in Figma first:</p><ol class="list-decimal list-inside pl-fix-md my-fix-xs">
 <li><strong>Select all vectors</strong> in the icon</li>
-<li><strong>Outline Stroke</strong> (Shift+Cmd+O / Shift+Ctrl+O)</li>
-<li><strong>Unify</strong> (Cmd+Opt+U / Ctrl+Alt+U)</li>
-<li><strong>Flatten</strong> Selection (Cmd+E / Ctrl+E)</li>
+<li><strong>Outline Stroke</strong> (Opt+Cmd+O / ⌥ ⌘ O)</li>
+<li><strong>Boolean Groups > Union</strong> (Opt+Shift+U / ⌥ ⇧ U)</li>
+<li><strong>Flatten Selection</strong> (Opt+Shift+F / ⌥ ⇧ F)</li>
 </ol>
 <p><strong>Note:</strong> Outline BEFORE Flatten to preserve different stroke widths!</p>`,
         node: componentSet.name,

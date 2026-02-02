@@ -62,20 +62,21 @@ export class FlattenOutlineValidator {
         // Both issues - show correct order: Outline FIRST, then Flatten
         instructions = `<ol class="list-decimal list-inside pl-fix-md my-fix-xs">
 <li>Select all vectors in the icon</li>
-<li>Outline Stroke (Shift+Cmd+O / Shift+Ctrl+O)</li>
-<li>Flatten Selection (Cmd+E / Ctrl+E)</li>
+<li>Outline Stroke (Opt+Cmd+O / ⌥ ⌘ O)</li>
+<li>Boolean Groups > Union (Opt+Shift+U / ⌥ ⇧ U)</li>
+<li>Flatten Selection (Opt+Shift+F / ⌥ ⇧ F)</li>
 </ol>
 <p class="mt-2"><strong>Note:</strong> Outline BEFORE Flatten to preserve different stroke widths!</p>`;
       } else if (hasStrokesCount > 0) {
         // Only outline needed
         instructions = `<ol class="list-decimal list-inside pl-fix-md my-fix-xs">
-<li>Outline Stroke (Shift+Cmd+O / Shift+Ctrl+O)</li>
+<li>Outline Stroke (Opt+Cmd+O / ⌥ ⌘ O)</li>
 </ol>`;
       } else if (notFlattenedCount > 0) {
         // Only flatten needed (strokes already outlined)
         instructions = `<ol class="list-decimal list-inside pl-fix-md my-fix-xs">
 <li>Select all vectors in the icon</li>
-<li>Flatten Selection (Cmd+E / Ctrl+E)</li>
+<li>Flatten Selection (Opt+Shift+F / ⌥ ⇧ F)</li>
 </ol>`;
       }
 
