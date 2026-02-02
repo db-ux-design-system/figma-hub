@@ -136,10 +136,25 @@ export class ComponentReadinessValidator {
       issues.push("No fills found");
     } else if (isNotFlattened) {
       // Case 2 & 3: Already has fills but not flattened
-      // We can't detect if unify was done, so we show both steps
-      issues.push(
-        `<strong>${vectors.length} separate vectors</strong><br>➔ Unify ➔ Flatten`,
-      );
+      // Check if we have exactly 2 vectors with different colors (black and red)
+      // In this case, only flatten is needed (no unify between different colors)
+      if (vectors.length === 2) {
+        const hasBlackAndRed = this.hasBlackAndRedVectors(vectors);
+        if (hasBlackAndRed) {
+          issues.push(
+            `<strong>${vectors.length} separate vectors</strong><br>➔ Flatten`,
+          );
+        } else {
+          issues.push(
+            `<strong>${vectors.length} separate vectors</strong><br>➔ Unify ➔ Flatten`,
+          );
+        }
+      } else {
+        // More than 2 vectors or exactly 1 vector (shouldn't happen here)
+        issues.push(
+          `<strong>${vectors.length} separate vectors</strong><br>➔ Unify ➔ Flatten`,
+        );
+      }
     }
     // Case 4: Already flattened (vectors.length === 1) and has fills
     // This is the desired state, no error needed
@@ -171,6 +186,69 @@ export class ComponentReadinessValidator {
       errors,
       warnings,
     };
+  }
+
+  /**
+   * Check if vectors contain both black (dark gray) and red colors
+   * Used to determine if unify should be skipped (different colors shouldn't be unified)
+   */
+  private hasBlackAndRedVectors(vectors: SceneNode[]): boolean {
+    let hasBlack = false;
+    let hasRed = false;
+
+    for (const vector of vectors) {
+      // Check fills
+      if ("fills" in vector && vector.fills && Array.isArray(vector.fills)) {
+        for (const fill of vector.fills) {
+          if (fill.type === "SOLID" && fill.color) {
+            if (this.isBlackOrDarkGray(fill.color)) {
+              hasBlack = true;
+            }
+            if (this.isRed(fill.color)) {
+              hasRed = true;
+            }
+          }
+        }
+      }
+
+      // Check strokes (though they should be outlined already at this stage)
+      if (
+        "strokes" in vector &&
+        vector.strokes &&
+        Array.isArray(vector.strokes)
+      ) {
+        for (const stroke of vector.strokes) {
+          if (stroke.type === "SOLID" && stroke.color) {
+            if (this.isBlackOrDarkGray(stroke.color)) {
+              hasBlack = true;
+            }
+            if (this.isRed(stroke.color)) {
+              hasRed = true;
+            }
+          }
+        }
+      }
+
+      if (hasBlack && hasRed) {
+        return true; // Found both colors
+      }
+    }
+
+    return hasBlack && hasRed;
+  }
+
+  /**
+   * Check if a color is black or dark gray (r, g, b < 0.2)
+   */
+  private isBlackOrDarkGray(color: RGB): boolean {
+    return color.r < 0.2 && color.g < 0.2 && color.b < 0.2;
+  }
+
+  /**
+   * Check if a color is red (r > 0.7, g < 0.3, b < 0.3)
+   */
+  private isRed(color: RGB): boolean {
+    return color.r > 0.7 && color.g < 0.3 && color.b < 0.3;
   }
 
   /**
@@ -216,8 +294,9 @@ export class ComponentReadinessValidator {
       componentSet.name,
     );
 
-    // Validate that we have exactly 3 base sizes: 32, 24, 20
+    // Validate that we have exactly 3 base sizes: 32, 24, 20 (functional) or 64 (illustrative)
     const baseSizes = [32, 24, 20];
+    const illustrativeSize = 64;
     const foundSizes: { [key: number]: number } = {}; // size -> count
 
     console.log(
@@ -249,6 +328,9 @@ export class ComponentReadinessValidator {
     }
 
     console.log("[ComponentReadinessValidator] All found sizes:", foundSizes);
+
+    // Determine if this is an illustrative icon (has 64px variants)
+    const isIllustrativeIcon = foundSizes[illustrativeSize] !== undefined;
 
     // Check for exact duplicate variant names
     const variantNames: { [key: string]: number } = {};
@@ -334,16 +416,35 @@ export class ComponentReadinessValidator {
 
     // Add preparation steps hint at the beginning if any readiness errors exist
     if (hasReadinessErrors) {
-      allErrors.unshift({
-        message: `<p>Please prepare your icon manually in Figma first:</p><ol class="list-decimal list-inside pl-fix-md my-fix-xs">
+      if (isIllustrativeIcon) {
+        // Illustrative icons: separate processing for black and red
+        allErrors.unshift({
+          message: `<p>Please prepare your icon manually in Figma first:</p><ol class="list-decimal list-inside pl-fix-md my-fix-xs">
+<li><strong>Select all black vectors</strong></li>
+<li><strong>Outline Stroke</strong> (⌥&nbsp;Opt&nbsp;+&nbsp;⌘&nbsp;Cmd&nbsp;+&nbsp;O)</li>
+<li><strong>Boolean Groups > Union</strong> (⌥&nbsp;Opt&nbsp;+&nbsp;⇧&nbsp;Shift&nbsp;+&nbsp;U)</li>
+<li><strong>Select all red vectors</strong></li>
+<li><strong>Outline Stroke</strong> (⌥&nbsp;Opt&nbsp;+&nbsp;⌘&nbsp;Cmd&nbsp;+&nbsp;O)</li>
+<li><strong>Boolean Groups > Union</strong> (⌥&nbsp;Opt&nbsp;+&nbsp;⇧&nbsp;Shift&nbsp;+&nbsp;U)</li>
+<li><strong>Select both color groups</strong></li>
+<li><strong>Flatten Selection</strong> (⌥&nbsp;Opt&nbsp;+&nbsp;⇧&nbsp;Shift&nbsp;+&nbsp;F)</li>
+</ol>
+<p><strong>Note:</strong> Process black and red separately! Only flatten both together at the end.</p>`,
+          node: componentSet.name,
+        });
+      } else {
+        // Functional icons: standard processing
+        allErrors.unshift({
+          message: `<p>Please prepare your icon manually in Figma first:</p><ol class="list-decimal list-inside pl-fix-md my-fix-xs">
 <li><strong>Select all vectors</strong> in the icon</li>
-<li><strong>Outline Stroke</strong> (Opt+Cmd+O / ⌥ ⌘ O)</li>
-<li><strong>Boolean Groups > Union</strong> (Opt+Shift+U / ⌥ ⇧ U)</li>
-<li><strong>Flatten Selection</strong> (Opt+Shift+F / ⌥ ⇧ F)</li>
+<li><strong>Outline Stroke</strong> (⌥&nbsp;Opt&nbsp;+&nbsp;⌘&nbsp;Cmd&nbsp;+&nbsp;O)</li>
+<li><strong>Boolean Groups > Union</strong> (⌥&nbsp;Opt&nbsp;+&nbsp;⇧&nbsp;Shift&nbsp;+&nbsp;U)</li>
+<li><strong>Flatten Selection</strong> (⌥&nbsp;Opt&nbsp;+&nbsp;⇧&nbsp;Shift&nbsp;+&nbsp;F)</li>
 </ol>
 <p><strong>Note:</strong> Outline BEFORE Flatten to preserve different stroke widths!</p>`,
-        node: componentSet.name,
-      });
+          node: componentSet.name,
+        });
+      }
     }
 
     return {

@@ -14,6 +14,7 @@ export interface InternalSelectionInfo {
   isComponentSet: boolean;
   isComponent: boolean;
   isMasterIconFrame: boolean;
+  isHandoverFrame: boolean; // True if this is a Handover frame (64px, not yet a component)
   iconType: "functional" | "illustrative" | null;
   componentSet: ComponentSetNode | null;
   component: ComponentNode | null;
@@ -41,6 +42,7 @@ export function getSelectionInfo(): InternalSelectionInfo {
       isComponentSet: false,
       isComponent: false,
       isMasterIconFrame: false,
+      isHandoverFrame: false,
       iconType: null,
       componentSet: null,
       component: null,
@@ -55,6 +57,7 @@ export function getSelectionInfo(): InternalSelectionInfo {
       isComponentSet: false,
       isComponent: false,
       isMasterIconFrame: false,
+      isHandoverFrame: false,
       iconType: null,
       componentSet: null,
       component: null,
@@ -70,19 +73,25 @@ export function getSelectionInfo(): InternalSelectionInfo {
     `[getSelectionInfo] Selected node type: ${node.type}, name: ${node.name}`,
   );
 
-  // Check for Frame (master icon template)
+  // Check for Frame (master icon template or handover)
   if (node.type === "FRAME") {
     const iconType = detectIconTypeFromFrame(node);
+    const isHandover = isHandoverFrame(node);
     console.log(
-      `[getSelectionInfo] Detected as FRAME with iconType: ${iconType}`,
+      `[getSelectionInfo] Detected as FRAME with iconType: ${iconType}, isHandover: ${isHandover}`,
+    );
+    console.log(`[getSelectionInfo] Frame name: "${node.name}"`);
+    console.log(
+      `[getSelectionInfo] Frame parent: ${node.parent ? `"${node.parent.name}" (type: ${node.parent.type})` : "null"}`,
     );
 
-    // Only treat as master icon frame if it has a valid size
-    if (iconType) {
+    // Only treat as master icon frame if it has a valid size and is NOT a handover frame
+    if (iconType && !isHandover) {
       return {
         isComponentSet: false,
         isComponent: false,
         isMasterIconFrame: true,
+        isHandoverFrame: false,
         iconType,
         componentSet: null,
         component: null,
@@ -91,11 +100,30 @@ export function getSelectionInfo(): InternalSelectionInfo {
       };
     }
 
-    // Frame with invalid size - not a master icon frame
+    // Handover frame (64px, ready for component creation)
+    if (iconType && isHandover) {
+      console.log(
+        `[getSelectionInfo] Returning as HANDOVER FRAME: ${node.name}`,
+      );
+      return {
+        isComponentSet: false,
+        isComponent: false,
+        isMasterIconFrame: false,
+        isHandoverFrame: true,
+        iconType,
+        componentSet: null,
+        component: null,
+        masterIconFrame: node,
+        variants: [],
+      };
+    }
+
+    // Frame with invalid size - not a master icon frame or handover
     return {
       isComponentSet: false,
       isComponent: false,
       isMasterIconFrame: false,
+      isHandoverFrame: false,
       iconType: null,
       componentSet: null,
       component: null,
@@ -115,6 +143,7 @@ export function getSelectionInfo(): InternalSelectionInfo {
       isComponentSet: true,
       isComponent: false,
       isMasterIconFrame: false,
+      isHandoverFrame: false,
       iconType,
       componentSet: node,
       component: null,
@@ -141,6 +170,7 @@ export function getSelectionInfo(): InternalSelectionInfo {
         isComponentSet: false,
         isComponent: true,
         isMasterIconFrame: false,
+        isHandoverFrame: false,
         iconType,
         componentSet: null,
         component: node,
@@ -155,10 +185,33 @@ export function getSelectionInfo(): InternalSelectionInfo {
       `[getSelectionInfo] Standalone component with iconType: ${iconType}`,
     );
 
+    // Check if this component is in a handover context
+    // Component is 64px AND "handover" is in parent hierarchy
+    let isInHandover = false;
+    if (Math.round(node.width) === 64 && parentNode) {
+      // Check parent hierarchy for "handover"
+      let current: BaseNode | null = parentNode;
+      for (let i = 0; i < 3 && current; i++) {
+        if (
+          "name" in current &&
+          current.name.toLowerCase().includes("handover")
+        ) {
+          isInHandover = true;
+          break;
+        }
+        current = "parent" in current ? current.parent : null;
+      }
+    }
+
+    console.log(
+      `[getSelectionInfo] Component is in handover context: ${isInHandover}`,
+    );
+
     return {
       isComponentSet: false,
       isComponent: true,
       isMasterIconFrame: false,
+      isHandoverFrame: isInHandover,
       iconType,
       componentSet: null,
       component: node,
@@ -174,6 +227,7 @@ export function getSelectionInfo(): InternalSelectionInfo {
     isComponentSet: false,
     isComponent: false,
     isMasterIconFrame: false,
+    isHandoverFrame: false,
     iconType: null,
     componentSet: null,
     component: null,
@@ -261,6 +315,83 @@ export function detectIconTypeFromFrame(
 
   // Unknown size
   return null;
+}
+
+/**
+ * Check if a frame is in the "Handover" context
+ * This is a 64px frame where vectors have been copied from the master,
+ * but not yet converted to a component
+ *
+ * @param frame - The frame to check
+ * @returns True if this is a Handover frame
+ */
+export function isHandoverFrame(frame: FrameNode): boolean {
+  const size = Math.round(frame.width);
+
+  console.log(
+    `[isHandoverFrame] Checking frame: "${frame.name}", size: ${size}`,
+  );
+
+  // Must be 64px (illustrative icon size)
+  if (size !== 64) {
+    console.log(`[isHandoverFrame] Size ${size} is not 64px, returning false`);
+    return false;
+  }
+
+  // If frame name is a master icon template name (just a number like "64", "32", etc.),
+  // it's a master frame, NOT a handover frame
+  const frameName = frame.name.trim();
+  if (/^\d+$/.test(frameName)) {
+    console.log(
+      `[isHandoverFrame] Frame name "${frame.name}" is a number (master template), returning false`,
+    );
+    return false;
+  }
+
+  // Check if frame name itself contains "handover"
+  const frameNameLower = frame.name.toLowerCase();
+  if (frameNameLower.includes("handover")) {
+    console.log(
+      `[isHandoverFrame] Frame name "${frame.name}" contains "handover", returning true`,
+    );
+    return true;
+  }
+
+  // Check parent hierarchy for "handover" (up to 3 levels)
+  let currentNode: BaseNode | null = frame.parent;
+  let depth = 0;
+  const maxDepth = 3;
+
+  console.log(`[isHandoverFrame] Checking parent hierarchy...`);
+
+  while (currentNode && depth < maxDepth) {
+    if ("name" in currentNode) {
+      const nodeName = currentNode.name.toLowerCase();
+      console.log(
+        `[isHandoverFrame] Depth ${depth}: "${currentNode.name}" (lowercase: "${nodeName}")`,
+      );
+      if (nodeName.includes("handover")) {
+        console.log(
+          `[isHandoverFrame] Found "handover" in parent "${currentNode.name}" at depth ${depth}`,
+        );
+        return true;
+      }
+    }
+
+    // Move up the hierarchy
+    if ("parent" in currentNode) {
+      currentNode = currentNode.parent;
+    } else {
+      console.log(`[isHandoverFrame] No more parents at depth ${depth}`);
+      break;
+    }
+    depth++;
+  }
+
+  console.log(
+    `[isHandoverFrame] No "handover" found in hierarchy, returning false`,
+  );
+  return false;
 }
 
 /**

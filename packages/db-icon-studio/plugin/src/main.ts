@@ -9,6 +9,7 @@ import type {
   PluginMessage,
   SelectionInfo,
   DescriptionData,
+  ValidationError,
 } from "./types/index.js";
 import { getSelectionInfo, requireComponentSet } from "./utils/selection.js";
 import { ErrorHandler } from "./utils/error-handler.js";
@@ -21,6 +22,8 @@ import { IllustrativeCompletionValidator } from "./validators/illustrative-compl
 import { FlattenOutlineValidator } from "./validators/flatten-outline-validator.js";
 import { IllustrativeFlattenOutlineValidator } from "./validators/illustrative-flatten-outline-validator.js";
 import { MasterIconValidator } from "./validators/master-icon-validator.js";
+import { IllustrativeMasterValidator } from "./validators/illustrative-master-validator.js";
+import { IllustrativeHandoverValidator } from "./validators/illustrative-handover-validator.js";
 import { ComponentReadinessValidator } from "./validators/component-readiness-validator.js";
 import { ColorApplicator } from "./processors/color-applicator.js";
 import { ScaleProcessor } from "./processors/scale-processor.js";
@@ -243,6 +246,7 @@ async function handleGetSelection(): Promise<void> {
       isComponentSet: info.isComponentSet,
       isComponent: info.isComponent,
       isMasterIconFrame: info.isMasterIconFrame,
+      isHandoverFrame: info.isHandoverFrame,
       iconType: info.iconType,
       componentSet: info.componentSet
         ? {
@@ -322,35 +326,38 @@ async function handleGetSelection(): Promise<void> {
     }
 
     // Automatically run validations in background
+    // For handover components, we also need name and size validation to enable the button
     if (info.iconType && !info.isMasterIconFrame) {
-      // Run name validation
-      try {
-        const nameValidator = new NameValidator(info.iconType);
-        let name = "";
+      // Run name validation (only for components/component sets, not for frames)
+      if (info.isComponent || info.isComponentSet) {
+        try {
+          const nameValidator = new NameValidator(info.iconType);
+          let name = "";
 
-        // For functional icon variants, validate the parent ComponentSet name
-        if (
-          info.isComponent &&
-          info.component &&
-          info.iconType === "functional"
-        ) {
-          const parentNode = info.component.parent;
-          if (parentNode && parentNode.type === "COMPONENT_SET") {
-            name = parentNode.name;
+          // For functional icon variants, validate the parent ComponentSet name
+          if (
+            info.isComponent &&
+            info.component &&
+            info.iconType === "functional"
+          ) {
+            const parentNode = info.component.parent;
+            if (parentNode && parentNode.type === "COMPONENT_SET") {
+              name = parentNode.name;
+            } else {
+              name = info.component.name;
+            }
           } else {
-            name = info.component.name;
+            name = info.componentSet?.name || info.component?.name || "";
           }
-        } else {
-          name = info.componentSet?.name || info.component?.name || "";
-        }
 
-        const nameResult = nameValidator.validate(name);
-        sendMessage({
-          type: "name-validation-result",
-          data: nameResult,
-        });
-      } catch (error) {
-        console.warn("Name validation failed:", error);
+          const nameResult = nameValidator.validate(name);
+          sendMessage({
+            type: "name-validation-result",
+            data: nameResult,
+          });
+        } catch (error) {
+          console.warn("Name validation failed:", error);
+        }
       }
 
       // Run size validation
@@ -382,7 +389,7 @@ async function handleGetSelection(): Promise<void> {
         }
       }
 
-      // Run size validation for illustrative icons
+      // Run size validation for illustrative icons (including handover context)
       if (
         info.isComponent &&
         info.component &&
@@ -465,10 +472,14 @@ async function handleGetSelection(): Promise<void> {
     // Automatically run validations for Master Icon Frames
     if (info.isMasterIconFrame && info.masterIconFrame) {
       try {
-        const masterIconValidator = new MasterIconValidator();
-        const masterIconResult = masterIconValidator.validate(
-          info.masterIconFrame,
-        );
+        // Use IllustrativeMasterValidator for illustrative icons (64px)
+        // Use MasterIconValidator for functional icons (32px, 24px, 20px)
+        const isIllustrative = info.iconType === "illustrative";
+        const validator = isIllustrative
+          ? new IllustrativeMasterValidator()
+          : new MasterIconValidator();
+
+        const masterIconResult = validator.validate(info.masterIconFrame);
 
         sendMessage({
           type: "size-validation-result",
@@ -476,6 +487,105 @@ async function handleGetSelection(): Promise<void> {
         });
       } catch (error) {
         console.warn("Master icon validation failed:", error);
+      }
+    }
+
+    // Automatically run validations for Handover Frames (illustrative icons)
+    if (info.isHandoverFrame && info.masterIconFrame) {
+      console.log(
+        "[handleGetSelection] Handover frame detected, running structured validation...",
+      );
+
+      // For frames (not yet components), send dummy name/size validation as valid
+      // so the button logic works correctly
+      if (!info.isComponent) {
+        sendMessage({
+          type: "name-validation-result",
+          data: { isValid: true, errors: [] },
+        });
+        sendMessage({
+          type: "size-validation-result",
+          data: { isValid: true, errors: [], warnings: [] },
+        });
+      }
+
+      try {
+        // Check if the frame contains a component
+        const hasComponent =
+          info.masterIconFrame.children &&
+          info.masterIconFrame.children.some(
+            (child) => child.type === "COMPONENT",
+          );
+
+        console.log(
+          `[handleGetSelection] Handover frame has component: ${hasComponent}`,
+        );
+
+        if (!hasComponent) {
+          // Frame only - use the new structured validator
+          const handoverValidator = new IllustrativeHandoverValidator();
+          const handoverResult = handoverValidator.validate(
+            info.masterIconFrame,
+          );
+
+          console.log(
+            "[handleGetSelection] Handover frame validation result:",
+            handoverResult,
+          );
+
+          sendMessage({
+            type: "component-readiness-result",
+            data: handoverResult,
+          });
+        } else {
+          console.log(
+            "[handleGetSelection] Component found, validating with structured validator",
+          );
+          // Component exists - use the structured validator
+          const component = info.masterIconFrame.children.find(
+            (child) => child.type === "COMPONENT",
+          ) as ComponentNode | undefined;
+
+          if (component) {
+            const handoverValidator = new IllustrativeHandoverValidator();
+            const handoverResult = handoverValidator.validate(component);
+
+            console.log(
+              "[handleGetSelection] Component validation result:",
+              handoverResult,
+            );
+
+            sendMessage({
+              type: "component-readiness-result",
+              data: handoverResult,
+            });
+          }
+        }
+      } catch (error) {
+        console.warn("Handover frame validation failed:", error);
+      }
+    }
+
+    // Automatically run validations for Components in Handover context
+    if (info.isHandoverFrame && info.isComponent && info.component) {
+      console.log(
+        "[handleGetSelection] Component in handover context detected, running structured validation...",
+      );
+      try {
+        const handoverValidator = new IllustrativeHandoverValidator();
+        const handoverResult = handoverValidator.validate(info.component);
+
+        console.log(
+          "[handleGetSelection] Component validation result:",
+          handoverResult,
+        );
+
+        sendMessage({
+          type: "component-readiness-result",
+          data: handoverResult,
+        });
+      } catch (error) {
+        console.warn("Handover component validation failed:", error);
       }
     }
 
@@ -497,12 +607,13 @@ async function handleGetSelection(): Promise<void> {
       }
     }
 
-    // Also run for single components (not Master Icon Frames)
+    // Also run for single components (not Master Icon Frames, not Handover context)
     if (
       info.isComponent &&
       info.component &&
       !info.isComponentSet &&
-      !info.isMasterIconFrame
+      !info.isMasterIconFrame &&
+      !info.isHandoverFrame
     ) {
       try {
         const readinessValidator = new ComponentReadinessValidator();

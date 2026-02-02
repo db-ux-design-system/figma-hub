@@ -29,7 +29,12 @@ export function SelectionStatus({
     );
   }
 
-  if (!info.isComponentSet && !info.isComponent && !info.isMasterIconFrame) {
+  if (
+    !info.isComponentSet &&
+    !info.isComponent &&
+    !info.isMasterIconFrame &&
+    !info.isHandoverFrame
+  ) {
     return (
       <DBNotification
         variant="standalone"
@@ -74,12 +79,13 @@ export function SelectionStatus({
       )}
 
       {/* Master Icon Frame Size */}
-      {info.isMasterIconFrame && info.masterIconFrame && (
-        <DBInfotext showIcon={false} semantic="neutral">
-          <strong>Frame Size:&nbsp;</strong>
-          {info.masterIconFrame.size}px
-        </DBInfotext>
-      )}
+      {(info.isMasterIconFrame || info.isHandoverFrame) &&
+        info.masterIconFrame && (
+          <DBInfotext showIcon={false} semantic="neutral">
+            <strong>Frame Size:&nbsp;</strong>
+            {info.masterIconFrame.size}px
+          </DBInfotext>
+        )}
 
       {/* Variants - only for functional icons */}
       {info.isComponentSet && (
@@ -95,7 +101,7 @@ export function SelectionStatus({
       )}
 
       {/* Icon Name */}
-      {!info.isMasterIconFrame && (
+      {!info.isMasterIconFrame && !info.isHandoverFrame && (
         <DBInfotext
           showIcon={false}
           semantic={hasNameError ? "critical" : "neutral"}
@@ -105,8 +111,8 @@ export function SelectionStatus({
         </DBInfotext>
       )}
 
-      {/* Frame Name - for master icon frames */}
-      {info.isMasterIconFrame && (
+      {/* Frame Name - for master icon frames and handover frames */}
+      {(info.isMasterIconFrame || info.isHandoverFrame) && (
         <DBInfotext showIcon={false} semantic="neutral">
           <strong>Frame Name:&nbsp;</strong>
           {displayName}

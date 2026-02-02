@@ -11,6 +11,8 @@ interface ValidationResultsProps {
   sizeValidation: ValidationResult | null;
   componentReadinessResult?: ValidationResult | null;
   isMasterIconFrame?: boolean;
+  isHandoverFrame?: boolean; // True if this is a Handover frame (64px, not yet a component)
+  masterIconFrameSize?: number; // Size of master icon frame (64 for illustrative, 32/24/20 for functional)
 }
 
 export function ValidationResults({
@@ -18,6 +20,8 @@ export function ValidationResults({
   sizeValidation,
   componentReadinessResult = null,
   isMasterIconFrame = false,
+  isHandoverFrame = false,
+  masterIconFrameSize,
 }: ValidationResultsProps) {
   const hasNameErrors = nameValidation && !nameValidation.isValid;
   const hasSizeErrors = sizeValidation && !sizeValidation.isValid;
@@ -37,8 +41,12 @@ export function ValidationResults({
     componentReadinessResult.warnings.length > 0;
 
   // Show success message for master icon frames without errors (warnings are OK)
+  // Don't show success message for handover frames (they show validation results instead)
   const showSuccessMessage =
-    isMasterIconFrame && !hasNameErrors && !hasSizeErrors;
+    isMasterIconFrame && !isHandoverFrame && !hasNameErrors && !hasSizeErrors;
+
+  // Check if this is an illustrative icon (64px)
+  const isIllustrativeIcon = masterIconFrameSize === 64;
 
   if (showSuccessMessage) {
     return (
@@ -56,21 +64,52 @@ export function ValidationResults({
             </p>
             <div className="mt-fix-sm text-md">
               <strong>Next steps:</strong>
-              <ol className="list-decimal list-inline pl-fix-md mt-2 space-y-1">
-                <li>
-                  <strong>Copy vectors</strong> to icon component set container
-                </li>
-                <li>
-                  <strong>Outline stroke</strong> (⇧ Shift + ⌘ Cmd + O)
-                </li>
-                <li>
-                  <strong>Union</strong> overlapping shapes (⇧ Shift + ⌥ Opt +
-                  U)
-                </li>
-                <li>
-                  <strong>Flatten</strong> paths (⇧ Shift + ⌥ Opt + F)
-                </li>
-              </ol>
+              {isIllustrativeIcon ? (
+                <ol className="list-decimal list-inline pl-fix-md mt-2 space-y-1">
+                  <li>
+                    <strong>Copy vectors</strong> to icon container (Handover
+                    frame)
+                  </li>
+                  <li>
+                    <strong>Create component</strong> (⌥ Opt + ⌘ Cmd + K)
+                  </li>
+                  <li>
+                    <strong>Select all black vectors:</strong>
+                    <ul className="list-disc pl-fix-md mt-1 space-y-1">
+                      <li>Outline stroke (⌥ Opt + ⌘ Cmd + O)</li>
+                      <li>Union black shapes (⌥ Opt + ⇧ Shift + U)</li>
+                    </ul>
+                  </li>
+                  <li>
+                    <strong>Select all red vectors:</strong>
+                    <ul className="list-disc pl-fix-md mt-1 space-y-1">
+                      <li>Outline stroke (⌥ Opt + ⌘ Cmd + O)</li>
+                      <li>Union red shapes (⌥ Opt + ⇧ Shift + U)</li>
+                    </ul>
+                  </li>
+                  <li>
+                    <strong>Select both colors:</strong> flatten paths (⌥ Opt +
+                    ⇧ Shift + F)
+                  </li>
+                </ol>
+              ) : (
+                <ol className="list-decimal list-inline pl-fix-md mt-2 space-y-1">
+                  <li>
+                    <strong>Copy vectors</strong> to icon component set
+                    container
+                  </li>
+                  <li>
+                    <strong>Outline stroke</strong> (⌥ Opt + ⌘ Cmd + O)
+                  </li>
+                  <li>
+                    <strong>Union</strong> overlapping shapes (⌥ Opt + ⇧ Shift +
+                    U)
+                  </li>
+                  <li>
+                    <strong>Flatten</strong> paths (⌥ Opt + ⇧ Shift + F)
+                  </li>
+                </ol>
+              )}
             </div>
           </div>
         </DBNotification>
@@ -208,15 +247,40 @@ export function ValidationResults({
           semantic="critical"
           variant="standalone"
         >
+          {sizeValidation.errors.map((error, index) => {
+            // Check if this is a note (starts with <p>Note:)
+            const isNote = error.message.startsWith("<p>Note:");
+
+            if (isNote) {
+              return (
+                <div
+                  key={index}
+                  className="mb-fix-md"
+                  dangerouslySetInnerHTML={{
+                    __html: error.message,
+                  }}
+                />
+              );
+            }
+
+            // Regular error with bullet point
+            return null;
+          })}
           <ul className="list-disc pl-fix-md space-y-fix-xs">
-            {sizeValidation.errors.map((error, index) => (
-              <li
-                key={index}
-                dangerouslySetInnerHTML={{
-                  __html: formatErrorMessage(error.message),
-                }}
-              />
-            ))}
+            {sizeValidation.errors.map((error, index) => {
+              // Skip notes in the bullet list
+              const isNote = error.message.startsWith("<p>Note:");
+              if (isNote) return null;
+
+              return (
+                <li
+                  key={index}
+                  dangerouslySetInnerHTML={{
+                    __html: formatErrorMessage(error.message),
+                  }}
+                />
+              );
+            })}
           </ul>
         </DBNotification>
       )}

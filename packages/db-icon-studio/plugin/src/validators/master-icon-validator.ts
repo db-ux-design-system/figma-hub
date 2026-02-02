@@ -279,6 +279,21 @@ export class MasterIconValidator {
       information.push(sizeResult.information);
     }
 
+    // If there are position or size errors, add a note at the beginning
+    if (strokeResult.errors.length > 0 || sizeResult.error) {
+      const hasPositionErrors = strokeResult.errors.some((error) =>
+        error.message.includes("Incorrect position"),
+      );
+      const hasSizeErrors = sizeResult.error !== undefined;
+
+      if (hasPositionErrors || hasSizeErrors) {
+        errors.unshift({
+          message: `<p>Note: For strokes, position is measured from path center, not visual edge. Size includes visual outer edge.</p>`,
+          node: frameName,
+        });
+      }
+    }
+
     return { errors, warnings, information, vectorPositions };
   }
 

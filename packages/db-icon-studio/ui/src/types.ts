@@ -8,6 +8,7 @@ export interface SelectionInfo {
   isComponentSet: boolean;
   isComponent: boolean;
   isMasterIconFrame: boolean;
+  isHandoverFrame: boolean; // True if this is a Handover frame (64px, not yet a component)
   iconType: "functional" | "illustrative" | null;
   componentSet: {
     name: string;
