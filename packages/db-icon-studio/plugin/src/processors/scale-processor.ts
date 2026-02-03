@@ -41,7 +41,18 @@ export class ScaleProcessor {
       // Group existing variants by their variant type (Outlined/Filled)
       const variantsByType = this.groupVariantsByType(variants);
 
-      // For each variant type, create missing sizes
+      // Store the parent and position of the old component set
+      const parent = componentSet.parent;
+      const oldX = componentSet.x;
+      const oldY = componentSet.y;
+      const oldName = componentSet.name;
+
+      console.log(`\nCreating new ComponentSet to ensure correct order...`);
+
+      // Collect all variants to add in the correct order
+      const variantsToAdd: ComponentNode[] = [];
+
+      // Process each variant type in order (Outlined first, then Filled)
       for (const variantType of this.variantOrder) {
         const existingVariants = variantsByType.get(variantType) || [];
 
@@ -55,38 +66,133 @@ export class ScaleProcessor {
           `  Existing sizes: ${existingVariants.map((v) => this.getVariantSize(v)).join(", ")}`,
         );
 
-        // Create missing sizes
+        // Create ALL sizes IN ORDER (32, 28, 24, 20, 16, 14, 12)
         for (const targetSize of this.targetSizes) {
           const existing = existingVariants.find(
             (v) => this.getVariantSize(v) === targetSize,
           );
 
+          let variantToAdd: ComponentNode;
+
           if (existing) {
-            console.log(`  ${targetSize}px already exists`);
-            continue;
-          }
+            console.log(`  ${targetSize}px exists, cloning...`);
+            variantToAdd = existing.clone();
+          } else {
+            // Find nearest larger size to scale from
+            const sourceVariant = this.findNearestLargerVariant(
+              existingVariants,
+              targetSize,
+            );
 
-          // Find nearest larger size to scale from
-          const sourceVariant = this.findNearestLargerVariant(
-            existingVariants,
-            targetSize,
-          );
+            if (!sourceVariant) {
+              console.warn(`  No source variant found for ${targetSize}px`);
+              continue;
+            }
 
-          if (sourceVariant) {
-            await this.createScaledVariant(
+            const newVariant = await this.createScaledVariant(
               sourceVariant,
               targetSize,
               variantType,
-              componentSet,
             );
-          } else {
-            console.warn(`  No source variant found for ${targetSize}px`);
+
+            if (!newVariant) {
+              console.warn(`  Could not create ${targetSize}px`);
+              continue;
+            }
+
+            variantToAdd = newVariant;
+            console.log(`  ✓ Created ${targetSize}px ${variantType}`);
           }
+
+          // Set the correct name
+          variantToAdd.name = `Size=${targetSize}, Variant=${variantType}`;
+
+          // Add to parent temporarily
+          if (parent && "appendChild" in parent) {
+            (parent as PageNode | FrameNode | SectionNode).appendChild(
+              variantToAdd,
+            );
+          }
+
+          variantsToAdd.push(variantToAdd);
+          console.log(`  ✓ Prepared ${targetSize}px ${variantType}`);
         }
       }
 
-      // Reorder variants
-      await this.reorderVariants(componentSet);
+      // Create new component set from all variants
+      console.log(
+        `\nCombining ${variantsToAdd.length} variants into ComponentSet...`,
+      );
+      const newComponentSet = figma.combineAsVariants(
+        variantsToAdd,
+        parent as PageNode | FrameNode | GroupNode,
+      );
+      newComponentSet.name = oldName;
+      newComponentSet.x = oldX;
+      newComponentSet.y = oldY;
+
+      // Copy all settings from old component set to new one
+      console.log(`\nCopying settings from old ComponentSet...`);
+
+      // Copy layout settings
+      if (componentSet.layoutMode !== "NONE") {
+        newComponentSet.layoutMode = componentSet.layoutMode;
+        newComponentSet.primaryAxisSizingMode =
+          componentSet.primaryAxisSizingMode;
+        newComponentSet.counterAxisSizingMode =
+          componentSet.counterAxisSizingMode;
+        newComponentSet.primaryAxisAlignItems =
+          componentSet.primaryAxisAlignItems;
+        newComponentSet.counterAxisAlignItems =
+          componentSet.counterAxisAlignItems;
+        newComponentSet.itemSpacing = componentSet.itemSpacing;
+        newComponentSet.paddingLeft = componentSet.paddingLeft;
+        newComponentSet.paddingRight = componentSet.paddingRight;
+        newComponentSet.paddingTop = componentSet.paddingTop;
+        newComponentSet.paddingBottom = componentSet.paddingBottom;
+        newComponentSet.layoutWrap = componentSet.layoutWrap;
+        console.log(`  ✓ Copied auto layout settings`);
+      }
+
+      // Copy appearance settings
+      newComponentSet.opacity = componentSet.opacity;
+      newComponentSet.clipsContent = componentSet.clipsContent;
+
+      if (
+        "cornerRadius" in componentSet &&
+        typeof componentSet.cornerRadius === "number"
+      ) {
+        newComponentSet.cornerRadius = componentSet.cornerRadius;
+      }
+      console.log(`  ✓ Copied appearance settings`);
+
+      // Copy fills
+      if (Array.isArray(componentSet.fills)) {
+        newComponentSet.fills = JSON.parse(JSON.stringify(componentSet.fills));
+        console.log(`  ✓ Copied fills`);
+      }
+
+      // Copy strokes
+      if (Array.isArray(componentSet.strokes)) {
+        newComponentSet.strokes = JSON.parse(
+          JSON.stringify(componentSet.strokes),
+        );
+        newComponentSet.strokeWeight = componentSet.strokeWeight;
+        newComponentSet.strokeAlign = componentSet.strokeAlign;
+        console.log(`  ✓ Copied strokes`);
+      }
+
+      // Copy effects
+      if (Array.isArray(componentSet.effects)) {
+        newComponentSet.effects = JSON.parse(
+          JSON.stringify(componentSet.effects),
+        );
+        console.log(`  ✓ Copied effects`);
+      }
+
+      // Remove old component set
+      componentSet.remove();
+      console.log(`\n✓ Replaced old ComponentSet with new one`);
 
       console.log(`\n✓ Scaling complete\n`);
     } catch (error) {
@@ -185,13 +291,13 @@ export class ScaleProcessor {
 
   /**
    * Create a scaled variant from a source variant
+   * Returns the new variant instead of adding it to the component set
    */
   private async createScaledVariant(
     source: ComponentNode,
     targetSize: number,
     variantType: string,
-    componentSet: ComponentSetNode,
-  ): Promise<void> {
+  ): Promise<ComponentNode | null> {
     try {
       const sourceSize = this.getVariantSize(source);
       const scaleFactor = targetSize / sourceSize;
@@ -269,52 +375,49 @@ export class ScaleProcessor {
       // Update name to reflect new size and variant
       clone.name = `Size=${targetSize}, Variant=${variantType}`;
 
-      // Add to component set
-      componentSet.appendChild(clone);
-
-      console.log(`  ✓ Created ${targetSize}px ${variantType}`);
+      return clone;
     } catch (error) {
       console.warn(
         `Could not create scaled variant ${targetSize}px from ${source.name}:`,
         error,
       );
+      return null;
     }
   }
 
   /**
-   * Reorder variants in the component set
-   *
-   * Order: Outlined (32→12), then Filled (32→12)
+   * Find the correct position to insert a new variant
+   * Variants should be ordered by: Variant type (Outlined, Filled), then Size (descending)
    */
-  private async reorderVariants(componentSet: ComponentSetNode): Promise<void> {
-    console.log(`\nReordering variants...`);
-
+  private findInsertPosition(
+    componentSet: ComponentSetNode,
+    targetSize: number,
+    variantType: string,
+  ): number {
     const variants = Array.from(componentSet.children as ComponentNode[]);
 
-    // Sort variants
-    const sorted = variants.sort((a, b) => {
-      const aType = this.getVariantType(a);
-      const bType = this.getVariantType(b);
-      const aSize = this.getVariantSize(a);
-      const bSize = this.getVariantSize(b);
+    for (let i = 0; i < variants.length; i++) {
+      const variant = variants[i];
+      const vType = this.getVariantType(variant);
+      const vSize = this.getVariantSize(variant);
 
-      // First by variant type (Outlined before Filled)
-      const aTypeIndex = this.variantOrder.indexOf(aType);
-      const bTypeIndex = this.variantOrder.indexOf(bType);
+      const targetTypeIndex = this.variantOrder.indexOf(variantType);
+      const vTypeIndex = this.variantOrder.indexOf(vType);
 
-      if (aTypeIndex !== bTypeIndex) {
-        return aTypeIndex - bTypeIndex;
+      // If we're in a different variant type section
+      if (vTypeIndex > targetTypeIndex) {
+        // Insert before this variant (we're in the next type section)
+        return i;
       }
 
-      // Then by size (descending: 32, 28, 24, ...)
-      return bSize - aSize;
-    });
-
-    // Reorder in component set
-    for (let i = 0; i < sorted.length; i++) {
-      componentSet.insertChild(i, sorted[i]);
+      // Same variant type - check size
+      if (vTypeIndex === targetTypeIndex && vSize < targetSize) {
+        // Insert before this variant (sizes are descending)
+        return i;
+      }
     }
 
-    console.log(`  ✓ Variants reordered`);
+    // Insert at the end
+    return variants.length;
   }
 }
