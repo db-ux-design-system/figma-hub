@@ -1,5 +1,5 @@
 import { ColorData, ImportMessage } from "../types";
-import { MAPPINGS } from "../config";
+import { MAPPINGS, getScopesForMapping, MESSAGES } from "../config";
 import { hexToRgba, areColorsEqual } from "./color";
 import { deleteCollections } from "./cleanup";
 import {
@@ -7,6 +7,16 @@ import {
   setupDisplayModes,
   setupColorModes,
 } from "./collections";
+import { log } from "./logger";
+
+/**
+ * Helper function to ensure family name has the correct prefix
+ */
+function ensurePrefixedFamily(family: string, prefix: string): string {
+  return family.toLowerCase().startsWith(prefix.toLowerCase() + "-")
+    ? family
+    : `${prefix}-${family}`;
+}
 
 export async function getExistingVariablesMap() {
   const existingVars = await figma.variables.getLocalVariablesAsync();
@@ -23,30 +33,31 @@ export async function createBaseVariables(
   varMap: Map<string, Variable>,
   prefix: string,
 ) {
+  log.subsection("Creating Base Variables");
   const baseMap: Record<string, string> = {};
+  let createdCount = 0;
+  let updatedCount = 0;
 
   for (const family of colorFamilies) {
     const tokens = data.colors[family];
     for (const tokenKey in tokens) {
       const token = tokens[tokenKey];
       if (token && token.$value) {
-        // Check if family already starts with prefix to avoid duplication
-        const familyWithPrefix = family
-          .toLowerCase()
-          .startsWith(prefix.toLowerCase() + "-")
-          ? family
-          : `${prefix}-${family}`;
+        const familyWithPrefix = ensurePrefixedFamily(family, prefix);
 
         const varPath = `${prefix}-colors/${familyWithPrefix}/${tokenKey}`;
         let v = varMap.get(varPath);
         const newVal = hexToRgba(token.$value);
 
         if (v) {
-          if (!areColorsEqual(v.valuesByMode[baseModeId], newVal))
+          if (!areColorsEqual(v.valuesByMode[baseModeId], newVal)) {
             v.setValueForMode(baseModeId, newVal);
+            updatedCount++;
+          }
         } else {
           v = figma.variables.createVariable(varPath, baseCol, "COLOR");
           v.setValueForMode(baseModeId, newVal);
+          createdCount++;
         }
         v.scopes = [];
         v.hiddenFromPublishing = true;
@@ -54,6 +65,16 @@ export async function createBaseVariables(
       }
     }
   }
+
+  log.info(`Created ${createdCount} new base variables`, "createBaseVariables");
+  log.info(
+    `Updated ${updatedCount} existing base variables`,
+    "createBaseVariables",
+  );
+  log.success(
+    `Processed ${Object.keys(baseMap).length} base variables`,
+    "createBaseVariables",
+  );
 
   return baseMap;
 }
@@ -67,16 +88,13 @@ export async function createDisplayModeVariables(
   varMap: Map<string, Variable>,
   prefix: string,
 ) {
+  log.subsection("Creating Display Mode Variables");
   const displayVarMap: Record<string, string> = {};
+  let createdCount = 0;
 
   for (const family of colorFamilies) {
     for (const m of MAPPINGS) {
-      // Check if family already starts with prefix to avoid duplication
-      const familyWithPrefix = family
-        .toLowerCase()
-        .startsWith(prefix.toLowerCase() + "-")
-        ? family
-        : `${prefix}-${family}`;
+      const familyWithPrefix = ensurePrefixedFamily(family, prefix);
 
       const varPath = `${familyWithPrefix}/${m.name}`;
       const lId = baseMap[`${prefix}-colors/${familyWithPrefix}/${m.light}`];
@@ -87,28 +105,29 @@ export async function createDisplayModeVariables(
       let v = varMap.get(varPath);
       if (!v) {
         v = figma.variables.createVariable(varPath, displayCol, "COLOR");
+        createdCount++;
       }
       if (lId)
         v.setValueForMode(lightModeId, { type: "VARIABLE_ALIAS", id: lId });
       if (dId)
         v.setValueForMode(darkModeId, { type: "VARIABLE_ALIAS", id: dId });
 
-      // Set scopes based on variable name (same as adaptive variables)
-      if (m.name.startsWith("bg/") || m.name.startsWith("origin/")) {
-        v.scopes = ["FRAME_FILL", "SHAPE_FILL"];
-      } else if (
-        m.name.startsWith("on-bg/") ||
-        m.name.startsWith("on-origin/")
-      ) {
-        v.scopes = ["SHAPE_FILL", "TEXT_FILL", "STROKE_COLOR", "EFFECT_COLOR"];
-      } else {
-        v.scopes = [];
-      }
+      // Set scopes based on variable name
+      v.scopes = getScopesForMapping(m.name);
 
       v.hiddenFromPublishing = true;
       displayVarMap[varPath] = v.id;
     }
   }
+
+  log.info(
+    `Created ${createdCount} new display mode variables`,
+    "createDisplayModeVariables",
+  );
+  log.success(
+    `Processed ${Object.keys(displayVarMap).length} display mode variables`,
+    "createDisplayModeVariables",
+  );
 
   return displayVarMap;
 }
@@ -122,7 +141,12 @@ export async function createAdaptiveColorVariables(
   varMap: Map<string, Variable>,
   prefix: string,
 ) {
-  for (const m of MAPPINGS) {
+  log.subsection("Creating Adaptive Color Variables");
+  let createdCount = 0;
+  let linkedCount = 0;
+
+  // Process all mappings in parallel
+  const processingPromises = MAPPINGS.map(async (m) => {
     // First, try to find existing adaptive variable (with any prefix)
     const adaptivePattern = `-adaptive/${m.name}`;
     let v: Variable | undefined;
@@ -141,16 +165,13 @@ export async function createAdaptiveColorVariables(
       const colorVarPath = `${prefix}-adaptive/${m.name}`;
       v = figma.variables.createVariable(colorVarPath, colorCol, "COLOR");
       isNewVariable = true;
+      createdCount++;
     }
 
     v.hiddenFromPublishing = false;
 
     // Set scopes based on variable name
-    if (m.name.startsWith("bg/") || m.name.startsWith("origin/")) {
-      v.scopes = ["FRAME_FILL", "SHAPE_FILL"];
-    } else if (m.name.startsWith("on-bg/") || m.name.startsWith("on-origin/")) {
-      v.scopes = ["SHAPE_FILL", "TEXT_FILL", "STROKE_COLOR", "EFFECT_COLOR"];
-    }
+    v.scopes = getScopesForMapping(m.name);
 
     // Set db-adaptive mode if variable is new OR if it doesn't have a value yet
     if (m.key) {
@@ -163,20 +184,19 @@ export async function createAdaptiveColorVariables(
             type: "VARIABLE_ALIAS",
             id: ext.id,
           });
+          linkedCount++;
         } catch (e) {
-          console.warn(`Key ${m.key} für ${m.name} nicht gefunden.`);
+          log.warn(
+            MESSAGES.WARNING_KEY_NOT_FOUND(m.key, m.name),
+            "createAdaptiveColorVariables",
+          );
         }
       }
     }
 
     // Add new color family modes to the existing variable
     for (const family of colorFamilies) {
-      // Check if family already starts with prefix to avoid duplication
-      const familyWithPrefix = family
-        .toLowerCase()
-        .startsWith(prefix.toLowerCase() + "-")
-        ? family
-        : `${prefix}-${family}`;
+      const familyWithPrefix = ensurePrefixedFamily(family, prefix);
 
       const sourceId = displayVarMap[`${familyWithPrefix}/${m.name}`];
       if (sourceId) {
@@ -186,16 +206,38 @@ export async function createAdaptiveColorVariables(
         });
       }
     }
-  }
+  });
+
+  // Wait for all mappings to be processed
+  await Promise.all(processingPromises);
+
+  log.info(
+    `Created ${createdCount} new adaptive variables`,
+    "createAdaptiveColorVariables",
+  );
+  log.info(
+    `Linked ${linkedCount} variables to DB adaptive`,
+    "createAdaptiveColorVariables",
+  );
+  log.success(
+    `Processed ${MAPPINGS.length} adaptive color variables`,
+    "createAdaptiveColorVariables",
+  );
 }
 
 export async function handleImportJson(msg: ImportMessage) {
   try {
+    log.section("Starting JSON Import");
+
     const data = msg.data;
     const colorFamilies = Object.keys(data.colors);
     const deleteMissing = msg.deleteMissing;
     const fileName = msg.fileName || "";
     const customPrefix = msg.customPrefix;
+
+    log.info(`File: ${fileName}`, "handleImportJson");
+    log.info(`Color families: ${colorFamilies.join(", ")}`, "handleImportJson");
+    log.info(`Delete existing: ${deleteMissing}`, "handleImportJson");
 
     // Use custom prefix if provided, otherwise extract from filename
     let prefix = "custom";
@@ -205,6 +247,7 @@ export async function handleImportJson(msg: ImportMessage) {
       // Use the prefix confirmed by the user
       prefixOriginal = customPrefix;
       prefix = customPrefix.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+      log.info(`Using custom prefix: ${prefixOriginal}`, "handleImportJson");
     } else if (fileName) {
       // Fallback: Extract prefix from filename (legacy behavior)
       const nameWithoutExt = fileName.replace(/\.json$/i, "");
@@ -228,12 +271,17 @@ export async function handleImportJson(msg: ImportMessage) {
       }
 
       prefix = prefixOriginal.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+      log.info(
+        `Extracted prefix from filename: ${prefixOriginal}`,
+        "handleImportJson",
+      );
     }
 
     // Fallback to "custom" if empty
     if (!prefix) {
       prefix = "custom";
       prefixOriginal = "custom";
+      log.info("Using default prefix: custom", "handleImportJson");
     }
 
     if (deleteMissing) {
@@ -279,20 +327,22 @@ export async function handleImportJson(msg: ImportMessage) {
       prefix,
     );
 
-    figma.notify(
-      deleteMissing
-        ? "All collections newly created"
-        : "Variables synchronized",
-    );
+    const successMessage = deleteMissing
+      ? MESSAGES.SUCCESS_CREATED
+      : MESSAGES.SUCCESS_SYNCED;
 
-    figma.ui.postMessage(
-      deleteMissing
-        ? { feedback: "Success: All collections newly created" }
-        : { feedback: "Success: Variables synchronized" },
-    );
+    log.section("Import Complete");
+    log.success(successMessage, "handleImportJson");
+
+    figma.notify(successMessage);
+
+    figma.ui.postMessage({
+      feedback: `Success: ${successMessage}`,
+    });
   } catch (e) {
-    console.error(e);
-    figma.notify("Error: " + (e as Error).message);
-    figma.ui.postMessage({ feedback: "Error: " + e });
+    log.error("Import failed", e, "handleImportJson");
+    const errorMessage = MESSAGES.ERROR_PREFIX + (e as Error).message;
+    figma.notify(errorMessage);
+    figma.ui.postMessage({ feedback: errorMessage });
   }
 }

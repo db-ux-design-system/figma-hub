@@ -3,43 +3,85 @@ import {
   DISPLAY_MODE_COLLECTION_NAME,
   COLORS_COLLECTION_NAME,
 } from "../config";
+import { log } from "./logger";
 
 export async function deleteCollections() {
+  log.subsection("Deleting Existing Collections");
+
   const localCollections =
     await figma.variables.getLocalVariableCollectionsAsync();
+
+  // Collect all deletion promises
+  const deletionPromises: Promise<boolean>[] = [];
 
   for (const col of localCollections) {
     // Check if collection ends with the expected suffixes
     if (col.name.endsWith(`-${BASE_COLLECTION_NAME}`)) {
-      // For Theme collection, remove all variables
+      // For Theme collection, remove all variables first
       if (Array.isArray(col.variableIds)) {
-        for (const id of col.variableIds) {
-          const v = await figma.variables.getVariableByIdAsync(id);
-          if (v) {
-            try {
+        // Delete all variables in parallel
+        const variableDeletionPromises = col.variableIds.map(async (id) => {
+          try {
+            const v = await figma.variables.getVariableByIdAsync(id);
+            if (v) {
               await v.remove();
-            } catch (e) {
-              console.warn(`Could not remove variable ${v.name}:`, e);
+              return true;
             }
+          } catch (e) {
+            log.warn(
+              `Could not remove variable with id ${id}`,
+              "deleteCollections",
+            );
           }
-        }
+          return false;
+        });
+
+        // Wait for all variables to be deleted
+        await Promise.all(variableDeletionPromises);
       }
-      // Remove the collection itself
-      try {
-        await col.remove();
-      } catch (e) {
-        console.warn(`Could not remove collection ${col.name}:`, e);
-      }
+
+      // Then remove the collection itself
+      deletionPromises.push(
+        (async () => {
+          try {
+            await col.remove();
+            log.info(`Deleted collection: ${col.name}`, "deleteCollections");
+            return true;
+          } catch (e) {
+            log.warn(
+              `Could not remove collection ${col.name}`,
+              "deleteCollections",
+            );
+            return false;
+          }
+        })(),
+      );
     } else if (
       col.name.endsWith(`-${DISPLAY_MODE_COLLECTION_NAME}`) ||
       col.name.endsWith(`-${COLORS_COLLECTION_NAME}`)
     ) {
       // For Mode and Colors collections, remove the entire collection
-      try {
-        await col.remove();
-      } catch (e) {
-        console.warn(`Could not remove collection ${col.name}:`, e);
-      }
+      deletionPromises.push(
+        (async () => {
+          try {
+            await col.remove();
+            log.info(`Deleted collection: ${col.name}`, "deleteCollections");
+            return true;
+          } catch (e) {
+            log.warn(
+              `Could not remove collection ${col.name}`,
+              "deleteCollections",
+            );
+            return false;
+          }
+        })(),
+      );
     }
   }
+
+  // Wait for all collections to be deleted in parallel
+  const results = await Promise.all(deletionPromises);
+  const deletedCount = results.filter((success) => success).length;
+
+  log.success(`Deleted ${deletedCount} collections`, "deleteCollections");
 }

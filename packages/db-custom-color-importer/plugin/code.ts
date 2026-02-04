@@ -1,4 +1,5 @@
 import { handleImportJson } from "./utils/variables";
+import { log } from "./utils/logger";
 
 figma.showUI(__html__, { width: 500, height: 380 });
 
@@ -31,12 +32,16 @@ async function checkExistingPrefix(msg: { proposedPrefix: string }) {
 
       // If prefixes are different, send warning
       if (existingPrefix !== proposedPrefix && existingPrefix !== "custom") {
+        log.warn(
+          `Prefix mismatch: existing="${existingPrefix}", proposed="${proposedPrefix}"`,
+          "checkExistingPrefix",
+        );
         figma.ui.postMessage({
           existingPrefix: existingPrefix,
         });
       }
     }
   } catch (e) {
-    console.error("Error checking existing prefix:", e);
+    log.error("Error checking existing prefix", e, "checkExistingPrefix");
   }
 }

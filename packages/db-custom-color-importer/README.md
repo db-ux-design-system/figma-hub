@@ -46,7 +46,7 @@ The plugin automatically extracts the prefix from your color family names or fil
 
 The plugin creates three variable collections in your Figma file:
 
-#### Collection 1: ❌ Base Variables ❌
+#### Collection 1: Theme
 
 - Contains all raw color values from your JSON
 - Organized by color family (e.g., `colors/blue/1`, `colors/blue/2`, etc.)

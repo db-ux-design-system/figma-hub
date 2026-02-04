@@ -8,7 +8,9 @@
     "build": "esbuild code.ts --bundle --outfile=../dist/index.js  --target=ES6",
     "lint": "eslint --ext .ts,.tsx --ignore-pattern node_modules .",
     "lint:fix": "eslint --ext .ts,.tsx --ignore-pattern node_modules --fix .",
-    "dev": "npm run build -- --watch"
+    "dev": "npm run build -- --watch",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "author": "DB Systel GmbH",
   "license": "Apache-2.0",
@@ -18,7 +20,8 @@
     "@typescript-eslint/eslint-plugin": "^8.23.0",
     "@typescript-eslint/parser": "^8.26.1",
     "eslint": "^8.54.0",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "^2.1.8"
   },
   "eslintConfig": {
     "extends": [
