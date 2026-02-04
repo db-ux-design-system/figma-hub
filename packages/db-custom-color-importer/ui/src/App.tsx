@@ -14,7 +14,6 @@ function App() {
   const [inputKey, setInputKey] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [showPrefixDialog, setShowPrefixDialog] = useState(false);
-  const [detectedPrefix, setDetectedPrefix] = useState("");
   const [prefixInput, setPrefixInput] = useState("");
   const [showPrefixWarning, setShowPrefixWarning] = useState(false);
   const [existingPrefix, setExistingPrefix] = useState("");
@@ -151,7 +150,6 @@ function App() {
       }
 
       // Show prefix confirmation dialog
-      setDetectedPrefix(finalPrefix);
       setPrefixInput(finalPrefix);
       setShowPrefixDialog(true);
       setFeedback("");
@@ -204,7 +202,6 @@ function App() {
     setShowPrefixDialog(false);
     setShowPrefixWarning(false);
     setPrefixInput("");
-    setDetectedPrefix("");
     setExistingPrefix("");
   };
 
@@ -215,7 +212,7 @@ function App() {
   };
 
   return (
-    <div className="p-fix-md flex flex-col gap-fix-md">
+    <div className="p-fix-md flex flex-col gap-fix-md overflow-visible">
       {/* Header area */}
       <header>
         <h1 className="text-2xl">DB Custom Color Importer</h1>
@@ -294,7 +291,7 @@ function App() {
           </div>
         </DBStack>
       ) : (
-        <DBStack gap="medium">
+        <DBStack gap="medium" className="px-fix-xs -mx-fix-xs">
           <DBInfotext semantic="informational">
             The following prefix was detected for your collections, variables,
             and modes. Please confirm or adjust it before importing.

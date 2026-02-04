@@ -27,7 +27,22 @@ Note: **DB Products**: Only use [secondary colors](https://marketingportal.extra
 3. (Optional) Check **"Delete existing color variables"** if you want to start fresh
 4. Click **"Import variables"**
 
-### 3. What Happens During Import
+### 3. Confirm the Prefix
+
+After selecting your file, the plugin will automatically detect and suggest a prefix for your collections, variables, and modes:
+
+1. Review the automatically detected prefix (e.g., "dibe", "custom")
+2. In most cases, you can simply confirm the detected prefix by clicking **"Confirm and Import"**
+3. If needed, you can manually adjust the prefix before importing
+
+**Important:** The prefix must match exactly how you named your color families in the Theme Builder. For example:
+
+- If your Theme Builder colors are named `dibe-br-color-01`, `dibe-br-color-02`, etc., use prefix `dibe`
+- If your colors are named `custom-color-01`, `custom-color-02`, use prefix `custom`
+
+The plugin automatically extracts the prefix from your color family names or filename, so in most cases the suggested prefix is correct and can be used as-is. Keeping the prefix consistent ensures proper mapping between your Theme Builder export and Figma variables.
+
+### 4. What Happens During Import
 
 The plugin creates three variable collections in your Figma file:
 
@@ -59,7 +74,7 @@ The plugin creates three variable collections in your Figma file:
   - `custom-adaptive/origin/*` - Origin colors
   - `custom-adaptive/on-origin/*` - On-origin colors
 
-### 4. Using the Imported Colors
+### 5. Using the Imported Colors
 
 After import, you can use the colors in your designs:
 
@@ -87,7 +102,7 @@ To use your custom colors with DB Components (e.g., DBButton, DBTag), you need t
 
 This approach ensures your custom colors work seamlessly with the DB Design System components while preserving all interactive states and behaviors.
 
-### 5. Import Options
+### 6. Import Options
 
 **Delete existing color variables:**
 
