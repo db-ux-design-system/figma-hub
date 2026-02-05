@@ -1,8 +1,13 @@
 // utils/scanner.ts
 
-import { IconData, ExportRequest } from "../types";
+import { IconData, ExportRequest, PackageFrame } from "../types";
 import { EXCLUDED_PAGES } from "../config";
 import { parseDescription } from "./parser";
+import {
+  detectPackageFrames,
+  assignPackage,
+  assignPackageWithDetails,
+} from "./spatial";
 
 export let globalIconType = "unknown";
 export let globalIconData: IconData[] = [];
@@ -106,6 +111,17 @@ export async function scanIcons() {
     await page.loadAsync();
     console.log(`   ✅ Seite geladen!`);
 
+    // Detect package frames on this page
+    const packageFrames: PackageFrame[] = detectPackageFrames(page);
+
+    if (packageFrames.length === 0) {
+      console.log(`   ℹ️ No package frames found on page "${pageName}"`);
+    } else {
+      console.log(
+        `   📦 Found ${packageFrames.length} package frame(s): ${packageFrames.map((f) => f.name).join(", ")}`,
+      );
+    }
+
     const components = page.findAll(
       (node) => node.type === "COMPONENT_SET" || node.type === "COMPONENT",
     );
@@ -148,6 +164,28 @@ export async function scanIcons() {
 
         console.log(`      📦 Component Set: "${setName}"`);
 
+        // Assign package based on spatial overlap with detailed information
+        const packageDetails = assignPackageWithDetails(
+          componentSet,
+          packageFrames,
+        );
+        const assignedPackage = packageDetails.package;
+
+        // Log warnings and info based on package assignment
+        if (assignedPackage === "unknown") {
+          console.warn(
+            `      ⚠️ Icon "${setName}" on page "${pageName}" does not overlap any package frame`,
+          );
+        } else if (packageDetails.overlappingPackages.length > 1) {
+          // Log info when icon overlaps multiple packages
+          const overlapsInfo = packageDetails.overlappingPackages
+            .map((p) => `${p.name} (${Math.round(p.overlap)}px²)`)
+            .join(", ");
+          console.log(
+            `      ℹ️ Icon "${setName}" overlaps multiple packages: ${overlapsInfo}. Assigned to "${assignedPackage}" (largest overlap: ${Math.round(packageDetails.maxOverlap)}px²)`,
+          );
+        }
+
         const rawDescription = componentSet.description || "";
         const parsedDescription = parseDescription(rawDescription, iconType);
 
@@ -170,6 +208,7 @@ export async function scanIcons() {
             category: pageName,
             description: rawDescription,
             parsedDescription: parsedDescription,
+            package: assignedPackage,
           };
 
           iconData.push(iconEntry);
@@ -185,6 +224,28 @@ export async function scanIcons() {
 
         console.log(`      📦 Component: "${componentName}"`);
 
+        // Assign package based on spatial overlap with detailed information
+        const packageDetails = assignPackageWithDetails(
+          component,
+          packageFrames,
+        );
+        const assignedPackage = packageDetails.package;
+
+        // Log warnings and info based on package assignment
+        if (assignedPackage === "unknown") {
+          console.warn(
+            `      ⚠️ Icon "${componentName}" on page "${pageName}" does not overlap any package frame`,
+          );
+        } else if (packageDetails.overlappingPackages.length > 1) {
+          // Log info when icon overlaps multiple packages
+          const overlapsInfo = packageDetails.overlappingPackages
+            .map((p) => `${p.name} (${Math.round(p.overlap)}px²)`)
+            .join(", ");
+          console.log(
+            `      ℹ️ Icon "${componentName}" overlaps multiple packages: ${overlapsInfo}. Assigned to "${assignedPackage}" (largest overlap: ${Math.round(packageDetails.maxOverlap)}px²)`,
+          );
+        }
+
         const rawDescription = component.description || "";
         const parsedDescription = parseDescription(rawDescription, iconType);
 
@@ -194,6 +255,7 @@ export async function scanIcons() {
           category: pageName,
           description: rawDescription,
           parsedDescription: parsedDescription,
+          package: assignedPackage,
         };
 
         iconData.push(iconEntry);
@@ -218,6 +280,17 @@ export async function scanIcons() {
   console.log(`🗂 Kategorien (${categoryMap.size}):`);
   categoryMap.forEach((count, category) => {
     console.log(`   • ${category}: ${count} Icons`);
+  });
+
+  // Package summary reporting
+  const packageMap = new Map<string, number>();
+  iconData.forEach((icon) => {
+    packageMap.set(icon.package, (packageMap.get(icon.package) || 0) + 1);
+  });
+
+  console.log(`📦 Packages (${packageMap.size}):`);
+  packageMap.forEach((count, packageName) => {
+    console.log(`   • ${packageName}: ${count} Icons`);
   });
 
   console.log(`📤 Sende Scan-Ergebnis an UI...`);

@@ -73,25 +73,29 @@ figma.ui.onmessage = async (msg) => {
 
       await exportPage.loadAsync();
 
-      // Finde GitLab oder Marketing Frame
-      const gitlabFrame = exportPage.findOne(
-        (n) => n.type === "FRAME" && n.name === "GitLab",
+      // Finde Marketing Frame (enthält alle Icons, nicht nach Packages getrennt)
+      const marketingFrame = exportPage.findOne(
+        (n) => n.type === "FRAME" && n.name === "Export_Icon_UPDATE",
       ) as FrameNode;
 
-      console.log("📄 GitLab Frame gefunden:", gitlabFrame?.name);
+      console.log("📄 Marketing Frame gefunden:", marketingFrame?.name);
 
-      if (!gitlabFrame) {
+      if (!marketingFrame) {
         figma.ui.postMessage({
           type: "error",
-          message: "Kein GitLab Frame auf Export-Seite gefunden.",
+          message: "Kein Marketing Frame auf Export-Seite gefunden.",
         });
         return;
       }
 
-      // Sammle alle Icon-IDs von der Export-Seite
+      // Sammle alle Icon-IDs vom Marketing Frame
       const exportIconSetIds = new Set<string>();
       const exportComponentIds = new Set<string>();
-      const instances = gitlabFrame.findAll(
+
+      // Property-Namen die gefiltert werden sollen
+      const propertyNames = ["size", "variant", "state", "type", "color"];
+
+      const instances = marketingFrame.findAll(
         (n) => n.type === "INSTANCE",
       ) as InstanceNode[];
 
@@ -102,7 +106,35 @@ figma.ui.onmessage = async (msg) => {
         if (mainComponent) {
           // Funktionale Icons: Component ist Teil eines Component Sets
           if (mainComponent.parent?.type === "COMPONENT_SET") {
-            exportIconSetIds.add(mainComponent.parent.id);
+            const componentSet = mainComponent.parent as ComponentSetNode;
+            const setName = componentSet.name
+              .split(",")[0]
+              .split("=")[0]
+              .trim();
+
+            // Filtere Property-Definitionen aus
+            const isProperty =
+              propertyNames.includes(setName.toLowerCase()) ||
+              setName.length === 0 ||
+              componentSet.name.trim().startsWith("=") ||
+              componentSet.name
+                .trim()
+                .match(/^(Size|Variant|State|Type|Color)=/i);
+
+            console.log(
+              `🔍 Backend: Prüfe Component Set: "${componentSet.name}" → setName: "${setName}" → isProperty: ${isProperty}`,
+            );
+
+            if (!isProperty) {
+              exportIconSetIds.add(componentSet.id);
+              console.log(
+                `✅ Backend: Component Set hinzugefügt: "${setName}"`,
+              );
+            } else {
+              console.log(
+                `🚫 Backend: Property-Definition übersprungen: "${componentSet.name}"`,
+              );
+            }
           } else {
             // Illustrative Icons: Component ist standalone
             exportComponentIds.add(mainComponent.id);
@@ -117,7 +149,23 @@ figma.ui.onmessage = async (msg) => {
       // Finde alle Varianten dieser Icon-Sets in globalIconData
       const iconsWithData: typeof globalIconData = [];
 
+      // Reuse propertyNames from above scope
       for (const icon of globalIconData) {
+        // Filtere Property-Definitionen bereits hier aus
+        // Bei funktionalen Icons: "SetName/Variant" → prüfe "SetName"
+        // Bei illustrativen Icons: "ComponentName" → prüfe "ComponentName"
+        const iconBaseName = icon.name.split("/")[0].split("=")[0].trim();
+        const isProperty =
+          propertyNames.includes(iconBaseName.toLowerCase()) ||
+          iconBaseName.length === 0;
+
+        if (isProperty) {
+          console.log(
+            `🚫 Backend: Filtere Property-Definition aus: "${icon.name}"`,
+          );
+          continue;
+        }
+
         const node = await figma.getNodeByIdAsync(icon.id);
         if (node) {
           // Funktionale Icons: Prüfe ob Component Set ID dabei ist
@@ -126,6 +174,7 @@ figma.ui.onmessage = async (msg) => {
             exportIconSetIds.has(node.parent.id)
           ) {
             iconsWithData.push(icon);
+            console.log(`✅ Backend: Icon hinzugefügt: "${icon.name}"`);
           }
           // Illustrative Icons: Prüfe ob Component ID dabei ist
           else if (
@@ -133,11 +182,19 @@ figma.ui.onmessage = async (msg) => {
             exportComponentIds.has(node.id)
           ) {
             iconsWithData.push(icon);
+            console.log(`✅ Backend: Icon hinzugefügt: "${icon.name}"`);
           }
         }
       }
 
       console.log("📄 iconsWithData Länge:", iconsWithData.length);
+
+      // Debug: Log alle Icon-Namen die gesendet werden
+      console.log("📋 Backend: Sende folgende Icons an UI:");
+      iconsWithData.forEach((icon, index) => {
+        const setName = icon.name.split("/")[0].split("=")[0].trim();
+        console.log(`   ${index + 1}. "${icon.name}" → Set: "${setName}"`);
+      });
 
       figma.ui.postMessage({
         type: "select-export-page-icons",

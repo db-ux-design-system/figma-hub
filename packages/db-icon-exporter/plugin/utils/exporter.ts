@@ -71,13 +71,20 @@ export async function exportFullWithAssets(
   await figma.setCurrentPageAsync(exportPage);
 
   try {
-    console.log("📦 Erstelle GitLab Frame...");
-    const gitlabFrame = await buildGitLabFrame(
+    console.log("📦 Erstelle GitLab Frames...");
+    const gitlabFrames = await buildGitLabFrame(
       selectedIcons,
       iconType,
       globalIconData,
     );
-    exportPage.appendChild(gitlabFrame);
+
+    // Add all GitLab frames to the export page
+    let currentY = 0;
+    gitlabFrames.forEach((frame, index) => {
+      frame.y = currentY;
+      exportPage.appendChild(frame);
+      currentY += frame.height + 48; // Add spacing between frames
+    });
 
     console.log("📦 Erstelle Marketing Frame...");
     const marketingFrame = await buildMarketingFrame(
@@ -85,23 +92,28 @@ export async function exportFullWithAssets(
       iconType,
       globalIconData,
     );
-    marketingFrame.y = gitlabFrame.height + 48;
+    marketingFrame.y = currentY;
     exportPage.appendChild(marketingFrame);
 
     if (generateOverview && iconStatuses) {
-      const addedIconIds = selectedIconIds.filter(
-        (id) => iconStatuses[id] === "added",
+      // Filter for icons with "feat" status (new icons)
+      const featIconIds = selectedIconIds.filter(
+        (id) => iconStatuses[id] === "feat",
       );
 
-      if (addedIconIds.length > 0) {
-        const addedIcons = addedIconIds
+      if (featIconIds.length > 0) {
+        const featIcons = featIconIds
           .map((id) => globalIconData.find((i) => i.id === id))
           .filter(Boolean);
 
         console.log(
-          `📋 Aktualisiere Overview mit ${addedIcons.length} neuen Icons...`,
+          `📋 Aktualisiere Overview mit ${featIcons.length} neuen Icons (feat)...`,
         );
-        await updateOverviewPage(addedIcons, globalIconData, iconType);
+        await updateOverviewPage(featIcons, globalIconData, iconType);
+      } else {
+        console.log(
+          `ℹ️ Keine Icons mit Status "feat" gefunden - Overview wird nicht aktualisiert`,
+        );
       }
     }
 
@@ -132,12 +144,19 @@ export async function exportFullWithAssets(
       await createChangelogFrame(version, iconsByStatus, globalIconData);
     }
 
-    const gitlabJsonSelected = generateGitLabDescriptions(
+    const gitlabJsonSelectedMap = generateGitLabDescriptions(
       selectedIcons,
       iconType,
     );
-    const gitlabJsonAll = generateGitLabDescriptions(globalIconData, iconType);
+    const gitlabJsonAllMap = generateGitLabDescriptions(
+      globalIconData,
+      iconType,
+    );
     const marketingCsv = generateMarketingPortalCSV(globalIconData, iconType);
+
+    // Convert Maps to plain objects for postMessage
+    const gitlabJsonSelected = Object.fromEntries(gitlabJsonSelectedMap);
+    const gitlabJsonAll = Object.fromEntries(gitlabJsonAllMap);
 
     figma.ui.postMessage({
       type: "export-data-ready",
@@ -178,12 +197,19 @@ export async function exportInfoOnly(
   // TODO: Aktualisierung der Export-Seite basierend auf Icon-Status und Changelog (falls vorhanden)
 
   try {
-    const gitlabJsonSelected = generateGitLabDescriptions(
+    const gitlabJsonSelectedMap = generateGitLabDescriptions(
       selectedIcons,
       iconType,
     );
-    const gitlabJsonAll = generateGitLabDescriptions(globalIconData, iconType);
+    const gitlabJsonAllMap = generateGitLabDescriptions(
+      globalIconData,
+      iconType,
+    );
     const marketingCsv = generateMarketingPortalCSV(globalIconData, iconType);
+
+    // Convert Maps to plain objects for postMessage
+    const gitlabJsonSelected = Object.fromEntries(gitlabJsonSelectedMap);
+    const gitlabJsonAll = Object.fromEntries(gitlabJsonAllMap);
 
     figma.ui.postMessage({
       type: "export-data-ready",

@@ -82,14 +82,14 @@ const App = () => {
     useState<ChangelogStatus | null>("feat");
   const [exportData, setExportData] = useState<{
     mode: "full" | "info-only" | null;
-    gitlabJsonSelected: string;
-    gitlabJsonAll: string;
+    gitlabJsonSelected: Record<string, string>;
+    gitlabJsonAll: Record<string, string>;
     marketingCsv: string;
     iconType: string;
   }>({
     mode: null,
-    gitlabJsonSelected: "",
-    gitlabJsonAll: "",
+    gitlabJsonSelected: {},
+    gitlabJsonAll: {},
     marketingCsv: "",
     iconType: "",
   });
@@ -141,7 +141,18 @@ const App = () => {
         const iconSetMap = new Map<string, IconEntry>();
         msg.icons.forEach((icon: IconEntry) => {
           const setName = icon.name.split("/")[0].split("=")[0].trim();
-          if (!iconSetMap.has(setName)) {
+
+          // Filtere Property-Definitionen aus (z.B. "Size", "Variant")
+          const propertyNames = ["size", "variant", "state", "type", "color"];
+          const isProperty =
+            propertyNames.includes(setName.toLowerCase()) ||
+            setName.length === 0;
+
+          console.log(
+            `🔍 Icon: "${icon.name}" → Set: "${setName}" → isProperty: ${isProperty}`,
+          );
+
+          if (!isProperty && !iconSetMap.has(setName)) {
             iconSetMap.set(setName, icon);
           }
         });
@@ -165,9 +176,11 @@ const App = () => {
         console.log(`✅ App.tsx: Export-Daten erhalten (Mode: ${msg.mode})`);
         console.log(`   Icon Type: ${msg.iconType}`);
         console.log(
-          `   GitLab Selected length: ${msg.gitlabJsonSelected?.length || 0}`,
+          `   GitLab Selected packages: ${Object.keys(msg.gitlabJsonSelected || {}).join(", ")}`,
         );
-        console.log(`   GitLab All length: ${msg.gitlabJsonAll?.length || 0}`);
+        console.log(
+          `   GitLab All packages: ${Object.keys(msg.gitlabJsonAll || {}).join(", ")}`,
+        );
         console.log(
           `   Marketing CSV length: ${msg.marketingCsv?.length || 0}`,
         );
@@ -683,77 +696,83 @@ const App = () => {
         </header>
 
         {/* Scrollbarer Content */}
-        <div className="flex-1 p-4 space-y-6 gap-fix-md p-fix-md">
-          {/* GitLab Descriptions - Selected Icons */}
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <div>
-                <p className="text-sm font-semibold text-gray-900">
-                  📄 GitLab Descriptions (Selected Icons)
-                </p>
-              </div>
-              <DBButton
-                size="small"
-                showIcon
-                icon="copy"
-                variant="filled"
-                onClick={() =>
-                  copyToClipboard(
-                    exportData.gitlabJsonSelected,
-                    "GitLab Descriptions (Selected)",
-                  )
-                }
-              >
-                Copy
-              </DBButton>
-            </div>
-            <DBTextarea
-              label="GitLab Descriptions (Selected)"
-              showLabel={false}
-              value={exportData.gitlabJsonSelected}
-              readOnly
-            ></DBTextarea>
-          </div>
+        <div className="flex-1 p-4 space-y-6 gap-fix-md p-fix-md overflow-y-auto">
+          {/* GitLab Descriptions - Group by package, show Selected and All side-by-side */}
+          {Object.keys(exportData.gitlabJsonSelected).map((filename) => {
+            const selectedContent = exportData.gitlabJsonSelected[filename];
+            const allContent = exportData.gitlabJsonAll[filename];
+            const packageName = filename.replace(".json", "");
 
-          {/* GitLab Descriptions - ALL Icons */}
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <div>
-                <p className="text-sm font-semibold text-gray-900">
-                  📄 GitLab Descriptions (All Icons)
-                </p>
+            return (
+              <div key={`package-${filename}`} className="space-y-2">
+                {/* Package Header */}
+                <h6 className="mb-0 pb-0">📦 Package: {packageName}</h6>
+
+                {/* Selected and All side-by-side */}
+                <div className="grid grid-cols-2 gap-fix-lg">
+                  {/* Selected Icons */}
+                  <div>
+                    <div className="flex justify-between items-center mb-fix-sm">
+                      <p className="text-sm my-0">Selected Icons</p>
+                      <DBButton
+                        size="small"
+                        showIcon
+                        icon="copy"
+                        variant="filled"
+                        onClick={() =>
+                          copyToClipboard(
+                            selectedContent,
+                            `${packageName} - Selected`,
+                          )
+                        }
+                      >
+                        Copy
+                      </DBButton>
+                    </div>
+                    <DBTextarea
+                      label={`${packageName} - Selected`}
+                      showLabel={false}
+                      value={selectedContent}
+                      readOnly
+                    ></DBTextarea>
+                  </div>
+
+                  {/* All Icons */}
+                  <div>
+                    <div className="flex justify-between items-center mb-fix-sm">
+                      <p className="text-sm my-0 ">All Icons</p>
+                      <DBButton
+                        size="small"
+                        showIcon
+                        icon="copy"
+                        variant="filled"
+                        onClick={() =>
+                          copyToClipboard(allContent, `${packageName} - All`)
+                        }
+                      >
+                        Copy
+                      </DBButton>
+                    </div>
+                    <DBTextarea
+                      label={`${packageName} - All`}
+                      showLabel={false}
+                      value={allContent}
+                      readOnly
+                    ></DBTextarea>
+                  </div>
+                </div>
+
+                {/* Divider between packages */}
+                <div className="pt-fix-sm"></div>
               </div>
-              <DBButton
-                size="small"
-                showIcon
-                icon="copy"
-                variant="filled"
-                onClick={() =>
-                  copyToClipboard(
-                    exportData.gitlabJsonAll,
-                    "GitLab Descriptions (All)",
-                  )
-                }
-              >
-                Copy
-              </DBButton>
-            </div>
-            <DBTextarea
-              label="GitLab Descriptions (All)"
-              showLabel={false}
-              value={exportData.gitlabJsonAll}
-              readOnly
-            ></DBTextarea>
-          </div>
+            );
+          })}
 
           {/* Marketing Portal CSV */}
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <div>
-                <p className="text-sm font-semibold text-gray-900">
-                  📊 Marketing Portal Code (All Icons)
-                </p>
-              </div>
+          <div className="mt-6">
+            <div className="flex justify-between items-center mb-fix-sm">
+              <h6>📊 Marketing Portal Code (All Icons)</h6>
+
               <DBButton
                 size="small"
                 variant="filled"

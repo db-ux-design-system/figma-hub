@@ -14,131 +14,162 @@ import {
   bindChangelogHeadlineVariables,
   bindChangelogIconsContainerVariables,
 } from "./variablesBinder";
+import { groupByPackage } from "./generators/gitlab";
+
+// Helper function to recursively detach all variable bindings
+function detachVariables(node: SceneNode) {
+  // For nodes with fills, create new fills without variable bindings
+  if (
+    "fills" in node &&
+    node.fills !== figma.mixed &&
+    Array.isArray(node.fills)
+  ) {
+    const newFills: Paint[] = [];
+    for (const fill of node.fills) {
+      if (fill.type === "SOLID") {
+        newFills.push({
+          type: "SOLID",
+          color: { r: fill.color.r, g: fill.color.g, b: fill.color.b },
+          opacity: fill.opacity !== undefined ? fill.opacity : 1,
+        });
+      } else {
+        newFills.push(fill);
+      }
+    }
+    node.fills = newFills;
+  }
+
+  // For nodes with strokes
+  if (
+    "strokes" in node &&
+    node.strokes !== figma.mixed &&
+    Array.isArray(node.strokes)
+  ) {
+    const newStrokes: Paint[] = [];
+    for (const stroke of node.strokes) {
+      if (stroke.type === "SOLID") {
+        newStrokes.push({
+          type: "SOLID",
+          color: { r: stroke.color.r, g: stroke.color.g, b: stroke.color.b },
+          opacity: stroke.opacity !== undefined ? stroke.opacity : 1,
+        });
+      } else {
+        newStrokes.push(stroke);
+      }
+    }
+    node.strokes = newStrokes;
+  }
+
+  // Recursively process all children
+  if ("children" in node) {
+    for (const child of node.children) {
+      detachVariables(child);
+    }
+  }
+}
 
 export async function buildGitLabFrame(
   selectedIcons: IconData[],
   iconType: string,
   allIcons: IconData[],
-): Promise<FrameNode> {
-  const frame = figma.createFrame();
-  frame.name = "GitLab";
-  frame.layoutMode = "HORIZONTAL";
-  frame.primaryAxisSizingMode = "AUTO";
-  frame.counterAxisSizingMode = "AUTO";
-  frame.itemSpacing = 16;
+): Promise<FrameNode[]> {
+  // Group icons by package
+  const packageGroups = groupByPackage(selectedIcons);
+  const frames: FrameNode[] = [];
 
-  const selectedBaseNames = new Set(
-    selectedIcons.map((icon) => extractIconBaseName(icon.name)),
-  );
+  // Create a frame for each package
+  for (const [packageName, packageIcons] of packageGroups) {
+    const frame = figma.createFrame();
+    frame.name = `GitLab Export - ${packageName}`;
+    frame.layoutMode = "HORIZONTAL";
+    frame.primaryAxisSizingMode = "AUTO";
+    frame.counterAxisSizingMode = "AUTO";
+    frame.itemSpacing = 16;
 
-  const iconSets = new Map<string, IconData[]>();
-  allIcons.forEach((icon) => {
-    const baseName = extractIconBaseName(icon.name);
-    if (selectedBaseNames.has(baseName)) {
-      if (!iconSets.has(baseName)) {
-        iconSets.set(baseName, []);
+    const selectedBaseNames = new Set(
+      packageIcons.map((icon) => extractIconBaseName(icon.name)),
+    );
+
+    const iconSets = new Map<string, IconData[]>();
+    allIcons.forEach((icon) => {
+      const baseName = extractIconBaseName(icon.name);
+      if (selectedBaseNames.has(baseName)) {
+        if (!iconSets.has(baseName)) {
+          iconSets.set(baseName, []);
+        }
+        iconSets.get(baseName)!.push(icon);
       }
-      iconSets.get(baseName)!.push(icon);
-    }
-  });
+    });
 
-  const sizes = iconType === "functional" ? [32, 24, 20] : [64];
+    const sizes = iconType === "functional" ? [32, 24, 20] : [64];
 
-  // Sortiere Icon-Sets alphabetisch
-  const sortedIconSets = Array.from(iconSets.entries()).sort((a, b) =>
-    a[0].localeCompare(b[0]),
-  );
+    // Sortiere Icon-Sets alphabetisch
+    const sortedIconSets = Array.from(iconSets.entries()).sort((a, b) =>
+      a[0].localeCompare(b[0]),
+    );
 
-  for (const [setName, variants] of sortedIconSets) {
-    const category = variants[0].category
-      .toLowerCase()
-      .replace(/\s+/g, "-")
-      .replace(/&/g, "");
-    // Icon-Namen in Figma sind bereits identisch zu GitLab-Namen
-    const iconName = setName;
+    for (const [setName, variants] of sortedIconSets) {
+      const category = variants[0].category
+        .toLowerCase()
+        .replace(/\s+/g, "-")
+        .replace(/&/g, "");
+      const packageName = variants[0].package.toLowerCase();
+      // Icon-Namen in Figma sind bereits identisch zu GitLab-Namen
+      const iconName = setName;
 
-    for (const size of sizes) {
-      if (iconType === "functional") {
-        const outlined = variants.find(
-          (v) => extractIconSize(v.name) === size && !isFilledVariant(v.name),
-        );
-        if (outlined) {
-          const node = await figma.getNodeByIdAsync(outlined.id);
+      for (const size of sizes) {
+        if (iconType === "functional") {
+          const outlined = variants.find(
+            (v) => extractIconSize(v.name) === size && !isFilledVariant(v.name),
+          );
+          if (outlined) {
+            const node = await figma.getNodeByIdAsync(outlined.id);
+            if (node && node.type === "COMPONENT") {
+              const instance = node.createInstance();
+              instance.name = `gitlab/${packageName}/${category}/${iconName}/outlined/${size}`;
+
+              // Detach all variable bindings recursively
+              detachVariables(instance);
+
+              frame.appendChild(instance);
+            }
+          }
+
+          const filled = variants.find(
+            (v) => extractIconSize(v.name) === size && isFilledVariant(v.name),
+          );
+          if (filled) {
+            const node = await figma.getNodeByIdAsync(filled.id);
+            if (node && node.type === "COMPONENT") {
+              const instance = node.createInstance();
+              instance.name = `gitlab/${packageName}/${category}/${iconName}/filled/${size}`;
+
+              // Detach all variable bindings recursively
+              detachVariables(instance);
+
+              frame.appendChild(instance);
+            }
+          }
+        } else {
+          const icon = variants[0];
+          const node = await figma.getNodeByIdAsync(icon.id);
           if (node && node.type === "COMPONENT") {
             const instance = node.createInstance();
-            instance.name = `${category}/${iconName}/outlined/${size}`;
+            instance.name = `gitlab/${packageName}/${category}/${iconName}`;
 
-            // Unbind and set color
-            const fills = JSON.parse(JSON.stringify(instance.fills)) as Paint[];
-            if (fills.length > 0 && fills[0].type === "SOLID") {
-              fills[0].color = { r: 0.086, g: 0.094, b: 0.106 };
-              delete (fills[0] as any).boundVariables;
-              instance.fills = fills;
-            }
+            // Detach all variable bindings recursively
+            detachVariables(instance);
 
             frame.appendChild(instance);
           }
         }
-
-        const filled = variants.find(
-          (v) => extractIconSize(v.name) === size && isFilledVariant(v.name),
-        );
-        if (filled) {
-          const node = await figma.getNodeByIdAsync(filled.id);
-          if (node && node.type === "COMPONENT") {
-            const instance = node.createInstance();
-            instance.name = `${category}/${iconName}/filled/${size}`;
-
-            // Unbind and set color
-            const fills = JSON.parse(JSON.stringify(instance.fills)) as Paint[];
-            if (fills.length > 0 && fills[0].type === "SOLID") {
-              fills[0].color = { r: 0.086, g: 0.094, b: 0.106 };
-              delete (fills[0] as any).boundVariables;
-              instance.fills = fills;
-            }
-
-            frame.appendChild(instance);
-          }
-        }
-      } else {
-        const icon = variants[0];
-        const node = await figma.getNodeByIdAsync(icon.id);
-        if (node && node.type === "COMPONENT") {
-          const instance = node.createInstance();
-          instance.name = `${category}/${iconName}`;
-
-          // Unbind and set colors for Base and Pulse layers
-          const baseLayer = instance.findOne((n) => n.name === "Base");
-          if (baseLayer && "fills" in baseLayer) {
-            const fills = JSON.parse(
-              JSON.stringify(baseLayer.fills),
-            ) as Paint[];
-            if (fills.length > 0 && fills[0].type === "SOLID") {
-              fills[0].color = { r: 0.086, g: 0.094, b: 0.106 };
-              delete (fills[0] as any).boundVariables;
-              baseLayer.fills = fills;
-            }
-          }
-
-          const pulseLayer = instance.findOne((n) => n.name === "Pulse");
-          if (pulseLayer && "fills" in pulseLayer) {
-            const fills = JSON.parse(
-              JSON.stringify(pulseLayer.fills),
-            ) as Paint[];
-            if (fills.length > 0 && fills[0].type === "SOLID") {
-              fills[0].color = { r: 0.925, g: 0, b: 0.086 };
-              delete (fills[0] as any).boundVariables;
-              pulseLayer.fills = fills;
-            }
-          }
-
-          frame.appendChild(instance);
-        }
       }
     }
+
+    frames.push(frame);
   }
 
-  return frame;
+  return frames;
 }
 
 export async function buildMarketingFrame(
@@ -194,15 +225,37 @@ export async function buildMarketingFrame(
           if (node && node.type === "COMPONENT") {
             const instance = node.createInstance();
             let filename = `db_ic_${category}_${iconName}_${size}.svg`;
-            instance.name = cleanFilename(filename);
+            instance.name = `marketingportal/${cleanFilename(filename)}`;
 
-            // Unbind and set color
-            const fills = JSON.parse(JSON.stringify(instance.fills)) as Paint[];
-            if (fills.length > 0 && fills[0].type === "SOLID") {
-              fills[0].color = { r: 0.157, g: 0.176, b: 0.216 };
-              delete (fills[0] as any).boundVariables;
-              instance.fills = fills;
-            }
+            // First detach all variable bindings
+            detachVariables(instance);
+
+            // Then set color to #131821 on all vector nodes
+            const setColor = (node: SceneNode) => {
+              if (
+                "fills" in node &&
+                node.fills !== figma.mixed &&
+                Array.isArray(node.fills)
+              ) {
+                const fills = node.fills.map((fill) => {
+                  if (fill.type === "SOLID") {
+                    return {
+                      type: "SOLID" as const,
+                      color: { r: 0.075, g: 0.094, b: 0.129 }, // #131821
+                      opacity: fill.opacity !== undefined ? fill.opacity : 1,
+                    };
+                  }
+                  return fill;
+                });
+                node.fills = fills;
+              }
+              if ("children" in node) {
+                for (const child of node.children) {
+                  setColor(child);
+                }
+              }
+            };
+            setColor(instance);
 
             frame.appendChild(instance);
           }
@@ -216,15 +269,37 @@ export async function buildMarketingFrame(
           if (node && node.type === "COMPONENT") {
             const instance = node.createInstance();
             let filename = `db_ic_${category}_${iconName}_${size}_filled.svg`;
-            instance.name = cleanFilename(filename);
+            instance.name = `marketingportal/${cleanFilename(filename)}`;
 
-            // Unbind and set color
-            const fills = JSON.parse(JSON.stringify(instance.fills)) as Paint[];
-            if (fills.length > 0 && fills[0].type === "SOLID") {
-              fills[0].color = { r: 0.157, g: 0.176, b: 0.216 };
-              delete (fills[0] as any).boundVariables;
-              instance.fills = fills;
-            }
+            // First detach all variable bindings
+            detachVariables(instance);
+
+            // Then set color to #131821 on all vector nodes
+            const setColor = (node: SceneNode) => {
+              if (
+                "fills" in node &&
+                node.fills !== figma.mixed &&
+                Array.isArray(node.fills)
+              ) {
+                const fills = node.fills.map((fill) => {
+                  if (fill.type === "SOLID") {
+                    return {
+                      type: "SOLID" as const,
+                      color: { r: 0.075, g: 0.094, b: 0.129 }, // #131821
+                      opacity: fill.opacity !== undefined ? fill.opacity : 1,
+                    };
+                  }
+                  return fill;
+                });
+                node.fills = fills;
+              }
+              if ("children" in node) {
+                for (const child of node.children) {
+                  setColor(child);
+                }
+              }
+            };
+            setColor(instance);
 
             frame.appendChild(instance);
           }
@@ -235,29 +310,48 @@ export async function buildMarketingFrame(
         if (node && node.type === "COMPONENT") {
           const instance = node.createInstance();
           let filename = `db_ic_il_${category}_${iconName}.svg`;
-          instance.name = cleanFilename(filename);
+          instance.name = `marketingportal/${cleanFilename(filename)}`;
 
-          // Unbind and set colors for Base and Pulse layers
+          // Detach all variable bindings
+          detachVariables(instance);
+
+          // Set colors for Base (#131821) and Pulse (#ec0016) layers
           const baseLayer = instance.findOne((n) => n.name === "Base");
           if (baseLayer && "fills" in baseLayer) {
-            const fills = JSON.parse(
-              JSON.stringify(baseLayer.fills),
-            ) as Paint[];
-            if (fills.length > 0 && fills[0].type === "SOLID") {
-              fills[0].color = { r: 0.157, g: 0.176, b: 0.216 };
-              delete (fills[0] as any).boundVariables;
+            if (
+              baseLayer.fills !== figma.mixed &&
+              Array.isArray(baseLayer.fills)
+            ) {
+              const fills = baseLayer.fills.map((fill) => {
+                if (fill.type === "SOLID") {
+                  return {
+                    type: "SOLID" as const,
+                    color: { r: 0.075, g: 0.094, b: 0.129 }, // #131821
+                    opacity: fill.opacity !== undefined ? fill.opacity : 1,
+                  };
+                }
+                return fill;
+              });
               baseLayer.fills = fills;
             }
           }
 
           const pulseLayer = instance.findOne((n) => n.name === "Pulse");
           if (pulseLayer && "fills" in pulseLayer) {
-            const fills = JSON.parse(
-              JSON.stringify(pulseLayer.fills),
-            ) as Paint[];
-            if (fills.length > 0 && fills[0].type === "SOLID") {
-              fills[0].color = { r: 0.925, g: 0, b: 0.086 };
-              delete (fills[0] as any).boundVariables;
+            if (
+              pulseLayer.fills !== figma.mixed &&
+              Array.isArray(pulseLayer.fills)
+            ) {
+              const fills = pulseLayer.fills.map((fill) => {
+                if (fill.type === "SOLID") {
+                  return {
+                    type: "SOLID" as const,
+                    color: { r: 0.925, g: 0, b: 0.086 }, // #ec0016
+                    opacity: fill.opacity !== undefined ? fill.opacity : 1,
+                  };
+                }
+                return fill;
+              });
               pulseLayer.fills = fills;
             }
           }

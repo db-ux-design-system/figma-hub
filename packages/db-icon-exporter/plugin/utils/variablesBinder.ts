@@ -139,13 +139,60 @@ export async function bindChangelogHeadlineVariables(
   try {
     const variables = await importChangelogHeadlineVariables();
 
-    await figma.loadFontAsync(text.fontName as FontName);
+    // Hole die Variable-Werte für fontFamily und fontStyle
+    const fontFamilyVar = variables.fontFamily;
+    const fontStyleVar = variables.fontStyle;
+
+    // Versuche die Font-Werte aus den Variablen zu lesen
+    let fontFamily = "Inter";
+    let fontStyle = "Regular";
+
+    try {
+      // Hole den aktuellen Mode (normalerweise der erste Mode)
+      const collection = await figma.variables.getVariableCollectionByIdAsync(
+        fontFamilyVar.variableCollectionId,
+      );
+
+      if (collection && collection.modes.length > 0) {
+        const modeId = collection.modes[0].modeId;
+
+        const familyValue = fontFamilyVar.valuesByMode[modeId];
+        const styleValue = fontStyleVar.valuesByMode[modeId];
+
+        if (typeof familyValue === "string") {
+          fontFamily = familyValue;
+        }
+        if (typeof styleValue === "string") {
+          fontStyle = styleValue;
+        }
+      }
+    } catch (varError) {
+      console.warn(
+        "⚠️ Font-Werte aus Variablen konnten nicht gelesen werden:",
+        varError,
+      );
+    }
+
+    // Lade die Font basierend auf den Variable-Werten
+    try {
+      await figma.loadFontAsync({ family: fontFamily, style: fontStyle });
+      console.log(`✅ Font geladen: ${fontFamily} ${fontStyle}`);
+    } catch (fontError) {
+      console.warn(
+        `⚠️ Font ${fontFamily} ${fontStyle} konnte nicht geladen werden, verwende Fallback`,
+      );
+      await figma.loadFontAsync({ family: "Inter", style: "Regular" });
+    }
+
+    // Jetzt binde alle Variablen
     text.setBoundVariable("fontFamily", variables.fontFamily);
     text.setBoundVariable("fontStyle", variables.fontStyle);
     text.setBoundVariable("fontSize", variables.fontSize);
     text.setBoundVariable("lineHeight", variables.lineHeight);
     text.setBoundVariable("paragraphSpacing", variables.paragraphSpacing);
     text.setBoundVariable("fills", variables.textColor);
+
+    console.log("✅ Changelog Headline Variablen erfolgreich verknüpft");
   } catch (error) {
     console.warn(
       "⚠️ Changelog Headline Variablen konnten nicht verknüpft werden:",

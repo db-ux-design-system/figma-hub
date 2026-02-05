@@ -18,12 +18,32 @@ export type ParsedDescription =
   | ParsedDescriptionFunctional
   | ParsedDescriptionIllustrative;
 
+// Package-related types for spatial detection
+export const PACKAGE_NAMES = ["Core", "RI", "InfraGO", "Movas"] as const;
+export type PackageName = (typeof PACKAGE_NAMES)[number];
+
+export interface Bounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface PackageFrame {
+  name: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface IconData {
   name: string;
   id: string;
   category: string;
   description: string;
   parsedDescription: ParsedDescription;
+  package?: string; // Optional for now, will be populated by scanner in later tasks
 }
 
 export type ChangelogStatus =
