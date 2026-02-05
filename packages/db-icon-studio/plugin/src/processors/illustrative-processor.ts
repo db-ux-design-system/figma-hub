@@ -9,10 +9,15 @@
  */
 
 import { ProcessingError } from "../utils/error-handler.js";
+import {
+  COLOR_VARIABLE_KEYS,
+  isBlack,
+  isRed,
+} from "../utils/color-constants.js";
 
 export class IllustrativeProcessor {
-  private readonly baseColorKey = "497497bca9694f6004d1667de59f1a903b3cd3ef"; // Black
-  private readonly pulseColorKey = "998998d67d3ebef6f2692db932bce69431b3d0cc"; // Red pulse
+  private readonly baseColorKey = COLOR_VARIABLE_KEYS.BASE;
+  private readonly pulseColorKey = COLOR_VARIABLE_KEYS.PULSE;
 
   /**
    * Process an illustrative icon component
@@ -157,14 +162,14 @@ export class IllustrativeProcessor {
                 for (const fill of region.fills) {
                   if (fill.type === "SOLID" && fill.visible !== false) {
                     const { r, g, b } = fill.color;
-                    const isBlack = r < 0.1 && g < 0.1 && b < 0.1;
-                    const isRed = r > 0.5 && g < 0.3 && b < 0.3;
+                    const isBlackFill = isBlack(fill.color);
+                    const isRedFill = isRed(fill.color);
 
                     console.log(
-                      `      Fill: r=${r.toFixed(3)}, g=${g.toFixed(3)}, b=${b.toFixed(3)} -> ${isBlack ? "BLACK" : isRed ? "RED" : "OTHER"}`,
+                      `      Fill: r=${r.toFixed(3)}, g=${g.toFixed(3)}, b=${b.toFixed(3)} -> ${isBlackFill ? "BLACK" : isRedFill ? "RED" : "OTHER"}`,
                     );
 
-                    if (isBlack) {
+                    if (isBlackFill) {
                       newFills.push({
                         type: "SOLID",
                         color: { r: 0, g: 0, b: 0 },
@@ -176,7 +181,7 @@ export class IllustrativeProcessor {
                         },
                       });
                       console.log(`      ✓ Bound to base variable`);
-                    } else if (isRed) {
+                    } else if (isRedFill) {
                       newFills.push({
                         type: "SOLID",
                         color: { r: 1, g: 0, b: 0 },
@@ -259,10 +264,10 @@ export class IllustrativeProcessor {
         for (const fill of fills) {
           if (fill.type === "SOLID" && fill.visible !== false) {
             const { r, g, b } = fill.color;
-            const isBlack = r < 0.1 && g < 0.1 && b < 0.1;
-            const isRed = r > 0.5 && g < 0.3 && b < 0.3;
+            const isBlackFill = isBlack(fill.color);
+            const isRedFill = isRed(fill.color);
 
-            if (isBlack) {
+            if (isBlackFill) {
               newFills.push({
                 type: "SOLID",
                 color: { r: 0, g: 0, b: 0 },
@@ -273,7 +278,7 @@ export class IllustrativeProcessor {
                   },
                 },
               });
-            } else if (isRed) {
+            } else if (isRedFill) {
               newFills.push({
                 type: "SOLID",
                 color: { r: 1, g: 0, b: 0 },

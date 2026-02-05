@@ -10,6 +10,7 @@ import type {
   ValidationError,
   ValidationWarning,
 } from "../types/index.js";
+import { isBlackOrDarkGray, isRed } from "../utils/color-constants.js";
 
 export class IllustrativeHandoverValidator {
   validate(node: FrameNode | ComponentNode): ValidationResult {
@@ -210,7 +211,7 @@ export class IllustrativeHandoverValidator {
         for (const fill of fills) {
           if (fill.type === "SOLID" && fill.visible !== false) {
             const { r, g, b } = fill.color;
-            if (r < 0.2 && g < 0.2 && b < 0.2) return true;
+            if (isBlackOrDarkGray(fill.color)) return true;
           }
         }
       }
@@ -231,7 +232,7 @@ export class IllustrativeHandoverValidator {
         for (const fill of fills) {
           if (fill.type === "SOLID" && fill.visible !== false) {
             const { r, g, b } = fill.color;
-            if (r > 0.5 && g < 0.3 && b < 0.3) return true;
+            if (isRed(fill.color)) return true;
           }
         }
       }
@@ -249,7 +250,7 @@ export class IllustrativeHandoverValidator {
       for (const stroke of node.strokes) {
         if (stroke.type === "SOLID" && stroke.visible !== false) {
           const { r, g, b } = stroke.color;
-          if (r < 0.2 && g < 0.2 && b < 0.2) return true;
+          if (isBlackOrDarkGray(stroke.color)) return true;
         }
       }
     }
@@ -266,7 +267,7 @@ export class IllustrativeHandoverValidator {
       for (const stroke of node.strokes) {
         if (stroke.type === "SOLID" && stroke.visible !== false) {
           const { r, g, b } = stroke.color;
-          if (r > 0.5 && g < 0.3 && b < 0.3) return true;
+          if (isRed(stroke.color)) return true;
         }
       }
     }

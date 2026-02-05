@@ -194,6 +194,10 @@ export class ScaleProcessor {
       componentSet.remove();
       console.log(`\n✓ Replaced old ComponentSet with new one`);
 
+      // Select the new component set so the plugin shows the Edit Icon Set screen
+      figma.currentPage.selection = [newComponentSet];
+      console.log(`✓ Selected new ComponentSet`);
+
       console.log(`\n✓ Scaling complete\n`);
     } catch (error) {
       throw new ProcessingError(

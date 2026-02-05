@@ -11,6 +11,7 @@ import type {
   ValidationError,
   ValidationWarning,
 } from "../types/index.js";
+import { isBlack, isRed } from "../utils/color-constants.js";
 
 export class IllustrativeFlattenOutlineValidator {
   /**
@@ -173,7 +174,7 @@ export class IllustrativeFlattenOutlineValidator {
 
             if (fill.visible !== false) {
               // Black is close to 0,0,0
-              if (r < 0.1 && g < 0.1 && b < 0.1) {
+              if (isBlack(fill.color)) {
                 console.log(`        ✓ Found black fill!`);
                 return true;
               }
@@ -231,7 +232,7 @@ export class IllustrativeFlattenOutlineValidator {
 
             if (fill.visible !== false) {
               // Red is high r, low g and b
-              if (r > 0.5 && g < 0.3 && b < 0.3) {
+              if (isRed(fill.color)) {
                 console.log(`        ✓ Found red fill!`);
                 return true;
               }

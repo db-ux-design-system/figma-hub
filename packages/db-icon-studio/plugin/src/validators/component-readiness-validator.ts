@@ -12,6 +12,7 @@ import type {
   ValidationError,
   ValidationWarning,
 } from "../types/index.js";
+import { isBlackOrDarkGray, isRedStrict } from "../utils/color-constants.js";
 
 export class ComponentReadinessValidator {
   /**
@@ -201,10 +202,10 @@ export class ComponentReadinessValidator {
       if ("fills" in vector && vector.fills && Array.isArray(vector.fills)) {
         for (const fill of vector.fills) {
           if (fill.type === "SOLID" && fill.color) {
-            if (this.isBlackOrDarkGray(fill.color)) {
+            if (isBlackOrDarkGray(fill.color)) {
               hasBlack = true;
             }
-            if (this.isRed(fill.color)) {
+            if (isRedStrict(fill.color)) {
               hasRed = true;
             }
           }
@@ -219,10 +220,10 @@ export class ComponentReadinessValidator {
       ) {
         for (const stroke of vector.strokes) {
           if (stroke.type === "SOLID" && stroke.color) {
-            if (this.isBlackOrDarkGray(stroke.color)) {
+            if (isBlackOrDarkGray(stroke.color)) {
               hasBlack = true;
             }
-            if (this.isRed(stroke.color)) {
+            if (isRedStrict(stroke.color)) {
               hasRed = true;
             }
           }
@@ -235,20 +236,6 @@ export class ComponentReadinessValidator {
     }
 
     return hasBlack && hasRed;
-  }
-
-  /**
-   * Check if a color is black or dark gray (r, g, b < 0.2)
-   */
-  private isBlackOrDarkGray(color: RGB): boolean {
-    return color.r < 0.2 && color.g < 0.2 && color.b < 0.2;
-  }
-
-  /**
-   * Check if a color is red (r > 0.7, g < 0.3, b < 0.3)
-   */
-  private isRed(color: RGB): boolean {
-    return color.r > 0.7 && color.g < 0.3 && color.b < 0.3;
   }
 
   /**

@@ -14,6 +14,7 @@ import type {
 import { getSelectionInfo, requireComponentSet } from "./utils/selection.js";
 import { ErrorHandler } from "./utils/error-handler.js";
 import { WorkflowOrchestrator } from "./utils/workflow-orchestrator.js";
+import { debounce } from "./utils/debounce.js";
 import { VectorValidator } from "./validators/vector-validator.js";
 import { NameValidator } from "./validators/name-validator.js";
 import { SizeValidator } from "./validators/size-validator.js";
@@ -41,11 +42,45 @@ figma.showUI(__html__, {
 
 // Track if we're in the middle of processing to avoid re-validation
 let isProcessing = false;
+let processingTimeout: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Start processing with automatic timeout recovery
+ * If processing doesn't complete within 30 seconds, automatically reset the flag
+ */
+function startProcessing(): void {
+  isProcessing = true;
+
+  // Auto-reset after 30 seconds (safety net for edge cases)
+  processingTimeout = setTimeout(() => {
+    console.warn(
+      "[Safety] Processing timeout - resetting isProcessing flag after 30 seconds",
+    );
+    isProcessing = false;
+    processingTimeout = null;
+  }, 30000);
+}
+
+/**
+ * Stop processing and clear the timeout
+ */
+function stopProcessing(): void {
+  isProcessing = false;
+
+  if (processingTimeout) {
+    clearTimeout(processingTimeout);
+    processingTimeout = null;
+  }
+}
+
+// Debounce selection changes to improve performance
+// Wait 150ms after the last selection change before running validation
+const debouncedHandleGetSelection = debounce(handleGetSelection, 150);
 
 // Listen for selection changes and update UI
 figma.on("selectionchange", () => {
   if (!isProcessing) {
-    handleGetSelection();
+    debouncedHandleGetSelection();
   }
 });
 
@@ -903,7 +938,7 @@ async function handleNameUpdate(newName: string): Promise<void> {
 
 async function handleCreateIconSet(): Promise<void> {
   try {
-    isProcessing = true;
+    startProcessing();
     const info = requireComponentSet();
 
     // Step 0: Clean up structure (remove empty groups)
@@ -944,24 +979,25 @@ async function handleCreateIconSet(): Promise<void> {
     const processor = new ScaleProcessor();
     await processor.scale(info.componentSet!);
 
+    // After workflow completes, allow selection changes again
+    stopProcessing();
+
+    // Refresh selection info to update isComplete status and show Edit Icon Set screen
+    // The ScaleProcessor already selected the new ComponentSet
+    await handleGetSelection();
+
     // Step 4: Open Description Dialog
     sendMessage({
       type: "progress",
       data: "Step 4/4: Opening description editor...",
     });
 
-    // After workflow completes, allow selection changes again
-    isProcessing = false;
-
-    // Refresh selection info to update isComplete status
-    await handleGetSelection();
-
     sendMessage({
       type: "open-description-dialog",
       data: null,
     });
   } catch (error) {
-    isProcessing = false;
+    stopProcessing();
     sendMessage(
       ErrorHandler.handle(
         error instanceof Error ? error : new Error(String(error)),
@@ -973,7 +1009,7 @@ async function handleCreateIconSet(): Promise<void> {
 
 async function handleCreateIllustrativeIcon(): Promise<void> {
   try {
-    isProcessing = true;
+    startProcessing();
     const info = requireComponentSet();
 
     if (!info.component) {
@@ -1011,7 +1047,7 @@ async function handleCreateIllustrativeIcon(): Promise<void> {
     });
 
     // After workflow completes, allow selection changes again
-    isProcessing = false;
+    stopProcessing();
 
     // Refresh selection info
     await handleGetSelection();
@@ -1021,7 +1057,7 @@ async function handleCreateIllustrativeIcon(): Promise<void> {
       data: null,
     });
   } catch (error) {
-    isProcessing = false;
+    stopProcessing();
     sendMessage(
       ErrorHandler.handle(
         error instanceof Error ? error : new Error(String(error)),
