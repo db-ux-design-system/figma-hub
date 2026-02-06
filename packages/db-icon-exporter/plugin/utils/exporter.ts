@@ -118,29 +118,30 @@ export async function exportFullWithAssets(
     }
 
     if (version) {
-      const iconsByStatus = new Map<ChangelogStatus, any[]>();
+      const iconsByStatus = new Map<ChangelogStatus, IconData[]>();
       ["feat", "fix", "refactor", "docs", "chore", "deprecated"].forEach(
         (status) => {
           iconsByStatus.set(status as ChangelogStatus, []);
         },
       );
 
+      // Group icons by status - simplified logic
       selectedIcons.forEach((icon) => {
-        const baseName = icon.name.split("/")[0];
-        const iconId = selectedIconIds.find((id) => {
-          const foundIcon = globalIconData.find((i) => i.id === id);
-          return foundIcon && foundIcon.name.split("/")[0] === baseName;
-        });
-        const status = iconId && iconStatuses?.[iconId];
+        const status = iconStatuses?.[icon.id];
         if (status && iconsByStatus.has(status)) {
+          // Check if this icon set is already added (by base name)
+          const baseName = icon.name.split("/")[0];
           const existing = iconsByStatus.get(status)!;
-          if (!existing.some((i) => i.name.split("/")[0] === baseName)) {
+          const alreadyAdded = existing.some(
+            (i) => i.name.split("/")[0] === baseName,
+          );
+
+          if (!alreadyAdded) {
             iconsByStatus.get(status)!.push(icon);
           }
         }
       });
 
-      console.log(`📋 Erstelle Changelog Frame für v${version}...`);
       await createChangelogFrame(version, iconsByStatus, globalIconData);
     }
 

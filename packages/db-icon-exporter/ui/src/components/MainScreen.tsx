@@ -2,6 +2,7 @@
  * Main screen component showing icon selection interface.
  */
 
+import { useState, useCallback } from "react";
 import { DBStack } from "@db-ux/react-core-components";
 import { IconEntry, SelectedIcon, ChangelogStatus } from "../types";
 import { SearchHeader } from "./SearchHeader";
@@ -61,6 +62,27 @@ export function MainScreen({
   onExportInfoOnly,
   onExportChangelogOnly,
 }: MainScreenProps) {
+  // Track which accordions are open for performance optimization
+  // Initialize with all categories open by default
+  const [openAccordions, setOpenAccordions] = useState<Set<string>>(() => {
+    return new Set(Array.from(iconSetsByCategory.keys()));
+  });
+
+  const handleAccordionToggle = useCallback(
+    (category: string, isOpen: boolean) => {
+      setOpenAccordions((prev) => {
+        const next = new Set(prev);
+        if (isOpen) {
+          next.add(category);
+        } else {
+          next.delete(category);
+        }
+        return next;
+      });
+    },
+    [],
+  );
+
   return (
     <div className="flex flex-col h-screen db-bg-color-basic-level-1 overflow-hidden">
       {/* Header with Search */}
@@ -92,7 +114,7 @@ export function MainScreen({
           {/* Icon Sets List */}
           <div className="m-0 py-fix-md">
             {Array.from(iconSetsByCategory.entries()).map(
-              ([category, sets], categoryIndex) => {
+              ([category, sets]) => {
                 const isCategorySelected =
                   selectedCategories.includes(category);
 
@@ -105,7 +127,8 @@ export function MainScreen({
                     isIconSetSelected={isIconSetSelected}
                     onCategoryToggle={onCategoryToggle}
                     onIconSetToggle={onIconSetToggle}
-                    showDivider={categoryIndex < iconSetsByCategory.size - 1}
+                    isOpen={openAccordions.has(category)}
+                    onAccordionToggle={handleAccordionToggle}
                   />
                 );
               },
