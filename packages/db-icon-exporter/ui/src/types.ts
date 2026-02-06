@@ -45,8 +45,8 @@ export interface SelectedIcon {
 
 export interface ExportData {
   mode: "full" | "info-only" | null;
-  gitlabJsonSelected: string;
-  gitlabJsonAll: string;
+  gitlabJsonSelected: Record<string, string>;
+  gitlabJsonAll: Record<string, string>;
   marketingCsv: string;
   iconType: string;
 }

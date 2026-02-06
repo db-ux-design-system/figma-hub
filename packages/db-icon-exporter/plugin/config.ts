@@ -1,5 +1,43 @@
 // config.ts
 
+/**
+ * UI Configuration
+ * Settings for the Figma plugin UI window
+ */
+export const UI_CONFIG = {
+  /** Width of the plugin window in pixels */
+  WINDOW_WIDTH: 900,
+  /** Height of the plugin window in pixels */
+  WINDOW_HEIGHT: 700,
+  /** Delay in milliseconds before auto-starting scan on timeout */
+  INIT_SCAN_DELAY: 2000,
+} as const;
+
+/**
+ * Property names that should be filtered out during icon scanning.
+ * These are Figma component property definitions, not actual icons.
+ */
+export const PROPERTY_NAMES = [
+  "size",
+  "variant",
+  "state",
+  "type",
+  "color",
+] as const;
+
+export type PropertyName = (typeof PROPERTY_NAMES)[number];
+
+/**
+ * Type guard to check if a string is a property name.
+ */
+export function isPropertyName(name: string): name is PropertyName {
+  return PROPERTY_NAMES.includes(name as PropertyName);
+}
+
+/**
+ * Page names (or partial matches) to exclude from icon scanning.
+ * These pages typically contain documentation or templates, not actual icons.
+ */
 export const EXCLUDED_PAGES = [
   "cover",
   "welcome",
@@ -7,10 +45,28 @@ export const EXCLUDED_PAGES = [
   "changelog",
   "placeholder",
   "template",
-];
+] as const;
 
-export const ALLOWED_SIZES_FUNCTIONAL = [64, 48, 32, 24, 20];
+/**
+ * Allowed icon sizes for functional icons in pixels.
+ * Used for validation and filtering during export.
+ */
+export const ALLOWED_SIZES_FUNCTIONAL = [64, 48, 32, 24, 20] as const;
 
+/**
+ * Frame spacing configuration for export pages.
+ */
+export const FRAME_SPACING = {
+  /** Spacing between major frames on export page */
+  BETWEEN_FRAMES: 48,
+  /** Internal padding within frames */
+  INTERNAL_PADDING: 16,
+} as const;
+
+/**
+ * Status configuration for changelog entries.
+ * Maps status types to their display emoji and label.
+ */
 export const STATUS_CONFIG = {
   feat: { emoji: "⭐️", label: "feat" },
   fix: { emoji: "🪲", label: "fix" },
@@ -18,8 +74,11 @@ export const STATUS_CONFIG = {
   docs: { emoji: "📝", label: "docs" },
   chore: { emoji: "🔧", label: "chore" },
   deprecated: { emoji: "⚠️", label: "deprecated" },
-};
+} as const;
 
+/**
+ * Figma component key for the tag component used in changelog frames.
+ */
 export const TAG_COMPONENT_KEY = "c751d4814029f8e43c7be181c5adf9bd7d9ba8d5";
 
 export const VARIABLE_KEYS = {

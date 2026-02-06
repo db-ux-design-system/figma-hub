@@ -1,7 +1,7 @@
 // utils/spatial.ts
 // Spatial utility functions for package detection
 
-import { Bounds, PackageFrame, PACKAGE_NAMES } from "../types";
+import { Bounds, PackageFrame, isPackageName } from "../types";
 
 /**
  * Calculates the intersection area between two bounding boxes.
@@ -89,7 +89,7 @@ export function detectPackageFrames(page: PageNode): PackageFrame[] {
       const frame = child as FrameNode;
 
       // Check if the frame name exactly matches one of the package names
-      if (PACKAGE_NAMES.includes(frame.name as any)) {
+      if (isPackageName(frame.name)) {
         // Extract spatial bounds
         const packageFrame: PackageFrame = {
           name: frame.name,

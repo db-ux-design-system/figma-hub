@@ -6,9 +6,47 @@ import {
   ParsedDescriptionIllustrative,
 } from "../types";
 
+/**
+ * Parses icon description text into structured data.
+ *
+ * Supports two formats:
+ *
+ * **Functional Icons:**
+ * ```
+ * EN:
+ * Default: Description for default state
+ * Contextual: Description for contextual state
+ * DE:
+ * Default: Beschreibung für Standard
+ * Contextual: Beschreibung für kontextuell
+ * Keywords: keyword1, keyword2
+ * ```
+ *
+ * **Illustrative Icons:**
+ * ```
+ * EN: English description
+ * DE: German description
+ * Keywords: keyword1, keyword2
+ * ```
+ *
+ * @param description - Raw description text from Figma component
+ * @param iconType - Type of icon ("functional" or "illustrative")
+ *
+ * @returns Parsed description object with language-specific fields
+ *
+ * @example
+ * ```typescript
+ * const parsed = parseDescription(
+ *   "EN:\nDefault: Add item\nDE:\nDefault: Element hinzufügen\nKeywords: add, plus",
+ *   "functional"
+ * );
+ * console.log(parsed.enDefault); // "Add item"
+ * console.log(parsed.keywords); // "add, plus"
+ * ```
+ */
 export function parseDescription(
   description: string,
-  iconType: string
+  iconType: string,
 ): ParsedDescription {
   if (!description || !description.trim()) {
     if (iconType === "functional") {
@@ -56,25 +94,47 @@ export function parseDescription(
       }
 
       if (currentLanguage === "EN") {
-        if (lowerLine.startsWith("default:") || lowerLine.startsWith("default")) {
-          const content = line.includes(":") ? line.split(":").slice(1).join(":").trim() : "";
+        if (
+          lowerLine.startsWith("default:") ||
+          lowerLine.startsWith("default")
+        ) {
+          const content = line.includes(":")
+            ? line.split(":").slice(1).join(":").trim()
+            : "";
           parsed.enDefault = content;
-        } else if (lowerLine.startsWith("contextual:") || lowerLine.startsWith("contextual")) {
-          const content = line.includes(":") ? line.split(":").slice(1).join(":").trim() : "";
+        } else if (
+          lowerLine.startsWith("contextual:") ||
+          lowerLine.startsWith("contextual")
+        ) {
+          const content = line.includes(":")
+            ? line.split(":").slice(1).join(":").trim()
+            : "";
           parsed.enContextual = content;
         }
       } else if (currentLanguage === "DE") {
-        if (lowerLine.startsWith("default:") || lowerLine.startsWith("default")) {
-          const content = line.includes(":") ? line.split(":").slice(1).join(":").trim() : "";
+        if (
+          lowerLine.startsWith("default:") ||
+          lowerLine.startsWith("default")
+        ) {
+          const content = line.includes(":")
+            ? line.split(":").slice(1).join(":").trim()
+            : "";
           parsed.deDefault = content;
-        } else if (lowerLine.startsWith("contextual:") || lowerLine.startsWith("contextual")) {
-          const content = line.includes(":") ? line.split(":").slice(1).join(":").trim() : "";
+        } else if (
+          lowerLine.startsWith("contextual:") ||
+          lowerLine.startsWith("contextual")
+        ) {
+          const content = line.includes(":")
+            ? line.split(":").slice(1).join(":").trim()
+            : "";
           parsed.deContextual = content;
         }
       }
 
       if (lowerLine.startsWith("keywords:") || line.startsWith("#")) {
-        const content = line.startsWith("#") ? line.substring(1).trim() : line.split(":").slice(1).join(":").trim();
+        const content = line.startsWith("#")
+          ? line.substring(1).trim()
+          : line.split(":").slice(1).join(":").trim();
         parsed.keywords = content;
       }
     }

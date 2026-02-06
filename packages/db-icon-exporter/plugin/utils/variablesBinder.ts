@@ -1,6 +1,7 @@
 // utils/variablesBinder.ts
 
 import { VARIABLE_KEYS } from "../config";
+import { PaintWithBoundVariables } from "../types";
 
 async function importChangelogVariables(): Promise<{
   gap: Variable;
@@ -110,26 +111,27 @@ export async function bindChangelogFrameVariables(
     frame.setBoundVariable("width", variables.width);
 
     // Bind fills and strokes on paint objects
-    const fills = JSON.parse(JSON.stringify(frame.fills)) as Paint[];
+    const fills = JSON.parse(
+      JSON.stringify(frame.fills),
+    ) as PaintWithBoundVariables[];
     if (fills.length > 0 && fills[0].type === "SOLID") {
-      (fills[0] as any).boundVariables = {
+      fills[0].boundVariables = {
         color: { type: "VARIABLE_ALIAS", id: variables.fillColor.id },
       };
       frame.fills = fills;
     }
 
-    const strokes = JSON.parse(JSON.stringify(frame.strokes)) as Paint[];
+    const strokes = JSON.parse(
+      JSON.stringify(frame.strokes),
+    ) as PaintWithBoundVariables[];
     if (strokes.length > 0 && strokes[0].type === "SOLID") {
-      (strokes[0] as any).boundVariables = {
+      strokes[0].boundVariables = {
         color: { type: "VARIABLE_ALIAS", id: variables.strokeColor.id },
       };
       frame.strokes = strokes;
     }
   } catch (error) {
-    console.warn(
-      "⚠️ Changelog Frame Variablen konnten nicht verknüpft werden:",
-      error,
-    );
+    console.warn("⚠️ Changelog frame variables could not be bound:", error);
   }
 }
 
@@ -139,16 +141,16 @@ export async function bindChangelogHeadlineVariables(
   try {
     const variables = await importChangelogHeadlineVariables();
 
-    // Hole die Variable-Werte für fontFamily und fontStyle
+    // Get the variable values for fontFamily and fontStyle
     const fontFamilyVar = variables.fontFamily;
     const fontStyleVar = variables.fontStyle;
 
-    // Versuche die Font-Werte aus den Variablen zu lesen
+    // Try to read font values from variables
     let fontFamily = "Inter";
     let fontStyle = "Regular";
 
     try {
-      // Hole den aktuellen Mode (normalerweise der erste Mode)
+      // Get the current mode (usually the first mode)
       const collection = await figma.variables.getVariableCollectionByIdAsync(
         fontFamilyVar.variableCollectionId,
       );
@@ -167,37 +169,42 @@ export async function bindChangelogHeadlineVariables(
         }
       }
     } catch (varError) {
-      console.warn(
-        "⚠️ Font-Werte aus Variablen konnten nicht gelesen werden:",
-        varError,
-      );
+      console.warn("⚠️ Could not read font values from variables:", varError);
     }
 
-    // Lade die Font basierend auf den Variable-Werten
+    // Load the font based on variable values
     try {
       await figma.loadFontAsync({ family: fontFamily, style: fontStyle });
-      console.log(`✅ Font geladen: ${fontFamily} ${fontStyle}`);
+      console.log(`✅ Font loaded: ${fontFamily} ${fontStyle}`);
     } catch (fontError) {
       console.warn(
-        `⚠️ Font ${fontFamily} ${fontStyle} konnte nicht geladen werden, verwende Fallback`,
+        `⚠️ Font ${fontFamily} ${fontStyle} could not be loaded, using fallback`,
       );
       await figma.loadFontAsync({ family: "Inter", style: "Regular" });
     }
 
-    // Jetzt binde alle Variablen
+    // Now bind all variables
     text.setBoundVariable("fontFamily", variables.fontFamily);
     text.setBoundVariable("fontStyle", variables.fontStyle);
     text.setBoundVariable("fontSize", variables.fontSize);
     text.setBoundVariable("lineHeight", variables.lineHeight);
     text.setBoundVariable("paragraphSpacing", variables.paragraphSpacing);
-    text.setBoundVariable("fills", variables.textColor);
 
-    console.log("✅ Changelog Headline Variablen erfolgreich verknüpft");
+    // Bind text color variable correctly
+    // For text fills, we need to bind to the paint's color property
+    const fills = JSON.parse(
+      JSON.stringify(text.fills),
+    ) as PaintWithBoundVariables[];
+    if (fills.length > 0 && fills[0].type === "SOLID") {
+      fills[0].boundVariables = {
+        color: { type: "VARIABLE_ALIAS", id: variables.textColor.id },
+      };
+      text.fills = fills;
+    }
+
+    console.log("✅ Changelog headline variables successfully bound");
   } catch (error) {
-    console.warn(
-      "⚠️ Changelog Headline Variablen konnten nicht verknüpft werden:",
-      error,
-    );
+    console.warn("⚠️ Changelog headline variables could not be bound:", error);
   }
 }
 
@@ -210,7 +217,7 @@ export async function bindChangelogStatusFrameVariables(
     frame.setBoundVariable("itemSpacing", variables.gap);
   } catch (error) {
     console.warn(
-      "⚠️ Changelog Status Frame Variablen konnten nicht verknüpft werden:",
+      "⚠️ Changelog status frame variables could not be bound:",
       error,
     );
   }
@@ -226,7 +233,7 @@ export async function bindChangelogIconsContainerVariables(
     frame.setBoundVariable("counterAxisSpacing", variables.gap);
   } catch (error) {
     console.warn(
-      "⚠️ Changelog Icons Container Variablen konnten nicht verknüpft werden:",
+      "⚠️ Changelog icons container variables could not be bound:",
       error,
     );
   }

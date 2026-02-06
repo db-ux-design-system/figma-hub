@@ -39,8 +39,8 @@ export const HeaderControls = ({
           label="Version (optional)"
           placeholder="z.B. 1.2.4"
           value={versionNumber}
-          onInput={(e: any) => {
-            onVersionChange(e.target.value);
+          onInput={(e: React.FormEvent<HTMLInputElement>) => {
+            onVersionChange(e.currentTarget.value);
           }}
           className="w-32"
         />
@@ -48,8 +48,8 @@ export const HeaderControls = ({
           label="Filter Icons"
           placeholder=""
           value={searchTerm}
-          onInput={(e: any) => {
-            onSearchChange(e.target.value);
+          onInput={(e: React.FormEvent<HTMLInputElement>) => {
+            onSearchChange(e.currentTarget.value);
           }}
           className="flex-1"
         />

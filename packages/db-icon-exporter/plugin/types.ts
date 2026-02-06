@@ -22,6 +22,25 @@ export type ParsedDescription =
 export const PACKAGE_NAMES = ["Core", "RI", "InfraGO", "Movas"] as const;
 export type PackageName = (typeof PACKAGE_NAMES)[number];
 
+/**
+ * Type guard to check if a string is a valid package name.
+ */
+export function isPackageName(name: string): name is PackageName {
+  return PACKAGE_NAMES.includes(name as PackageName);
+}
+
+// Extended Paint types with boundVariables support
+export interface VariableAlias {
+  type: "VARIABLE_ALIAS";
+  id: string;
+}
+
+export interface PaintWithBoundVariables extends Paint {
+  boundVariables?: {
+    color?: VariableAlias;
+  };
+}
+
 export interface Bounds {
   x: number;
   y: number;
@@ -54,10 +73,18 @@ export type ChangelogStatus =
   | "chore"
   | "deprecated";
 
+export interface SelectedIconWithStatus {
+  name: string;
+  category: string;
+  status: ChangelogStatus;
+  description: string;
+  parsedDescription: ParsedDescription;
+}
+
 export interface ExportRequest {
-  type: "EXPORT_FULL" | "EXPORT_INFO_ONLY";
+  type: "EXPORT_FULL" | "EXPORT_INFO_ONLY" | "EXPORT_CHANGELOG_ONLY";
   selectedIconIds: string[];
   version: string | null;
-  generateOverview: boolean;
+  generateOverview?: boolean;
   iconStatuses?: Record<string, ChangelogStatus>;
 }

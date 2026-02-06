@@ -20,7 +20,7 @@ export const IconSetList = ({
   if (iconSetsByCategory.size === 0) {
     return (
       <p className="text-sm text-gray-500 text-center py-8">
-        Keine Icon-Sets gefunden
+        No icon sets found
       </p>
     );
   }
@@ -33,7 +33,7 @@ export const IconSetList = ({
 
           return (
             <div key={category}>
-              {/* Kategorie-Header als DBTag mit Checkbox */}
+              {/* Category header as DBTag with Checkbox */}
               <div className="flex items-center gap-fix-sm mb-fix-sm">
                 <DBTag
                   emphasis="strong"
@@ -52,7 +52,7 @@ export const IconSetList = ({
                 </DBTag>
               </div>
 
-              {/* Icon-Sets dieser Kategorie als DBTag Checkboxes */}
+              {/* Icon sets of this category as DBTag Checkboxes */}
               <div className="flex flex-wrap gap-fix-sm mb-fix-sm">
                 {sets.map(([setName, icons]) => {
                   const isSelected = isIconSetSelected(setName);
@@ -83,7 +83,7 @@ export const IconSetList = ({
                 })}
               </div>
 
-              {/* Divider (außer bei letzter Kategorie) */}
+              {/* Divider (except for last category) */}
               {categoryIndex < iconSetsByCategory.size - 1 && (
                 <div className="border-t border-gray-200 my-fix-md"></div>
               )}
