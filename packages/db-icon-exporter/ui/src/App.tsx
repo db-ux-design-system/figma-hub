@@ -11,6 +11,7 @@ import { usePluginMessages } from "./hooks/usePluginMessages";
 import { useExport } from "./hooks/useExport";
 import { useDebounce } from "./hooks/useDebounce";
 import { LoadingState } from "./components/LoadingState";
+import { LoadingOverlay } from "./components/LoadingOverlay";
 import { MainScreen } from "./components/MainScreen";
 import { ExportScreen } from "./components/ExportScreen";
 
@@ -22,6 +23,9 @@ const App = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [versionNumber, setVersionNumber] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isLoadingExportPage, setIsLoadingExportPage] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("Scanning icons...");
   const [currentScreen, setCurrentScreen] = useState<"main" | "export">("main");
   const [exportData, setExportData] = useState<ExportData>({
     mode: null,
@@ -61,16 +65,24 @@ const App = () => {
     },
     onExportPageIconsReceived: (icons: IconEntry[]) => {
       setSelectedIconsFromExportPage(icons);
+      setIsLoadingExportPage(false);
     },
     onExportDataReady: (data: ExportData) => {
       setExportData(data);
+      setIsExporting(false);
       setCurrentScreen("export");
     },
     onError: () => {
       setIsLoading(false);
+      setIsExporting(false);
+      setIsLoadingExportPage(false);
     },
     onExportError: (message: string) => {
+      setIsExporting(false);
       alert(message);
+    },
+    onScanProgress: (message: string) => {
+      setLoadingMessage(message);
     },
   });
 
@@ -151,15 +163,27 @@ const App = () => {
     [selectCategory, iconSets],
   );
 
+  const handleSelectExportPage = useCallback(() => {
+    setIsLoadingExportPage(true);
+    setLoadingMessage("Loading icons from export page...");
+    selectFromExportPage();
+  }, [selectFromExportPage]);
+
   const handleExportFull = useCallback(() => {
+    setIsExporting(true);
+    setLoadingMessage("Exporting icons...");
     exportFull(selectedIcons, versionNumber);
   }, [exportFull, selectedIcons, versionNumber]);
 
   const handleExportInfoOnly = useCallback(() => {
+    setIsExporting(true);
+    setLoadingMessage("Exporting info...");
     exportInfoOnly(selectedIcons, versionNumber);
   }, [exportInfoOnly, selectedIcons, versionNumber]);
 
   const handleExportChangelogOnly = useCallback(() => {
+    setIsExporting(true);
+    setLoadingMessage("Creating changelog...");
     exportChangelogOnly(selectedIcons, versionNumber);
   }, [exportChangelogOnly, selectedIcons, versionNumber]);
 
@@ -173,7 +197,7 @@ const App = () => {
 
   // Render
   if (isLoading) {
-    return <LoadingState />;
+    return <LoadingState message={loadingMessage} />;
   }
 
   if (currentScreen === "export") {
@@ -187,31 +211,38 @@ const App = () => {
   }
 
   return (
-    <MainScreen
-      iconType={iconType}
-      versionNumber={versionNumber}
-      searchTerm={searchTerm}
-      selectedIcons={selectedIcons}
-      selectedCategories={selectedCategories}
-      selectAllStatus={selectAllStatus}
-      iconSetsByCategory={iconSetsByCategory}
-      totalFilteredSets={totalFilteredSets}
-      totalIconSets={iconSets.size}
-      getIconSetName={getIconSetName}
-      isIconSetSelected={isIconSetSelected}
-      onVersionChange={setVersionNumber}
-      onSearchChange={setSearchTerm}
-      onSelectAll={handleSelectAll}
-      onSelectExportPage={selectFromExportPage}
-      onClearSelection={clearSelection}
-      onCategoryToggle={handleCategoryToggle}
-      onIconSetToggle={toggleIconSet}
-      onStatusChange={updateIconStatus}
-      onBulkStatusChange={setAllIconsToStatus}
-      onExportFull={handleExportFull}
-      onExportInfoOnly={handleExportInfoOnly}
-      onExportChangelogOnly={handleExportChangelogOnly}
-    />
+    <>
+      <MainScreen
+        iconType={iconType}
+        versionNumber={versionNumber}
+        searchTerm={searchTerm}
+        selectedIcons={selectedIcons}
+        selectedCategories={selectedCategories}
+        selectAllStatus={selectAllStatus}
+        iconSetsByCategory={iconSetsByCategory}
+        totalFilteredSets={totalFilteredSets}
+        totalIconSets={iconSets.size}
+        getIconSetName={getIconSetName}
+        isIconSetSelected={isIconSetSelected}
+        onVersionChange={setVersionNumber}
+        onSearchChange={setSearchTerm}
+        onSelectAll={handleSelectAll}
+        onSelectExportPage={handleSelectExportPage}
+        onClearSelection={clearSelection}
+        onCategoryToggle={handleCategoryToggle}
+        onIconSetToggle={toggleIconSet}
+        onStatusChange={updateIconStatus}
+        onBulkStatusChange={setAllIconsToStatus}
+        onExportFull={handleExportFull}
+        onExportInfoOnly={handleExportInfoOnly}
+        onExportChangelogOnly={handleExportChangelogOnly}
+      />
+
+      {/* Show overlay for export and select-export-page operations */}
+      {(isExporting || isLoadingExportPage) && (
+        <LoadingOverlay message={loadingMessage} />
+      )}
+    </>
   );
 };
 

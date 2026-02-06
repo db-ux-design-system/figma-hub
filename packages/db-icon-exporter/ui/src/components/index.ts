@@ -3,6 +3,7 @@
  */
 
 export { LoadingState } from "./LoadingState";
+export { LoadingOverlay } from "./LoadingOverlay";
 export { SearchHeader } from "./SearchHeader";
 export { SelectionControls } from "./SelectionControls";
 export { CategorySection } from "./CategorySection";

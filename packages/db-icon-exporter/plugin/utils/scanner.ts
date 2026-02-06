@@ -60,6 +60,12 @@ export function setLastExportRequest(request: ExportRequest | null) {
 export async function scanIcons() {
   const fileName = figma.root.name;
 
+  // Send initial progress
+  figma.ui.postMessage({
+    type: "scan-progress",
+    message: "Detecting icon type...",
+  });
+
   let iconType = "unknown";
 
   // Check file name
@@ -119,6 +125,14 @@ export async function scanIcons() {
     }
 
     scannedPages++;
+
+    // Send progress update
+    figma.ui.postMessage({
+      type: "scan-progress",
+      message: `Scanning page ${scannedPages} of ${totalPages - skippedPages}: ${pageName}`,
+      current: scannedPages,
+      total: totalPages - skippedPages,
+    });
 
     await page.loadAsync();
 

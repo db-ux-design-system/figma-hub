@@ -15,6 +15,7 @@ interface UsePluginMessagesProps {
   onExportDataReady: (data: ExportData) => void;
   onError: () => void;
   onExportError: (message: string) => void;
+  onScanProgress?: (message: string) => void;
 }
 
 export function usePluginMessages({
@@ -23,6 +24,7 @@ export function usePluginMessages({
   onExportDataReady,
   onError,
   onExportError,
+  onScanProgress,
 }: UsePluginMessagesProps) {
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -32,7 +34,9 @@ export function usePluginMessages({
         return;
       }
 
-      if (msg.type === "scan-result") {
+      if (msg.type === "scan-progress") {
+        onScanProgress?.(msg.message);
+      } else if (msg.type === "scan-result") {
         const categoryMap = new Map<string, number>();
         msg.icons.forEach((icon: IconEntry) => {
           categoryMap.set(
@@ -77,6 +81,7 @@ export function usePluginMessages({
     onExportDataReady,
     onError,
     onExportError,
+    onScanProgress,
   ]);
 
   const selectFromExportPage = () => {

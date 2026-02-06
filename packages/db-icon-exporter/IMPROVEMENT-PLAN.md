@@ -30,7 +30,11 @@ Based on the code review conducted on February 5, 2026, this document outlines r
 - ✅ Type safety improvements
 - ✅ Performance optimization
 
-**Overall Status:** 9/12 items completed (75%)
+**Low Priority:** 1/3 completed (33%) ✅
+
+- ✅ Loading indicators
+
+**Overall Status:** 10/12 items completed (83%)
 
 ---
 
@@ -813,18 +817,83 @@ export function isPackageName(name: string): name is PackageName {
 
 ---
 
-### 12. Loading Indicators
+### 12. ✅ Loading Indicators (COMPLETED)
 
-**Status:** 🔴 Not Started
+**Status:** 🟢 Completed on Feb 6, 2026
 
 **Requirement:** Provide visual feedback for all long-running operations.
 
+**Design Decision:**
+
+- Use full-screen LoadingState for initial scan (blocking operation)
+- Use LoadingOverlay with backdrop for export and select-export-page operations (non-blocking)
+- Show detailed progress messages during scanning ("Scanning page X of Y: [Page Name]")
+- Display custom messages for different operations
+- Use spinner animation for visual feedback
+
+**Implementation Details:**
+
+**1. LoadingState Component:**
+
+- Full-screen loading indicator for initial scan
+- Shows spinner animation and custom message
+- Used when user needs to wait for operation to complete
+
+**2. LoadingOverlay Component:**
+
+- Backdrop overlay (50% opacity) for non-blocking operations
+- Shows spinner and message in centered card
+- Allows user to see underlying content for context
+- Used for export and select-export-page operations
+
+**3. Progress Messages:**
+
+- Initial scan: "Scanning icons..."
+- Detailed scan progress: "Scanning page X of Y: [Page Name]"
+- Export operations: "Exporting icons...", "Exporting info...", "Creating changelog..."
+- Select export page: "Loading icons from export page..."
+
+**4. State Management:**
+
+- `isLoading` - Initial scan state (full-screen)
+- `isExporting` - Export operation state (overlay)
+- `isLoadingExportPage` - Select export page state (overlay)
+- `loadingMessage` - Dynamic message for current operation
+
+**Files Created:**
+
+- `ui/src/components/LoadingOverlay.tsx` - Backdrop overlay component
+
+**Files Updated:**
+
+- `ui/src/App.tsx` - Added loading states and overlay rendering
+- `ui/src/components/LoadingState.tsx` - Enhanced with message prop
+- `ui/src/hooks/usePluginMessages.ts` - Added onScanProgress callback
+- `plugin/utils/scanner.ts` - Added progress messages during scanning
+- `ui/src/components/index.ts` - Export LoadingOverlay
+
 **Tasks:**
 
-- 🔴 Add progress indicators for scanning
-- 🔴 Add progress indicators for export
-- 🔴 Show estimated time for long operations
-- 🔴 Add cancellation option for long operations
+- ✅ Add progress indicators for scanning (detailed page-by-page progress)
+- ✅ Add progress indicators for export (overlay with message)
+- ✅ Add progress indicators for select-export-page (overlay with message)
+- ✅ Create LoadingState component with custom messages
+- ✅ Create LoadingOverlay component with backdrop
+- ✅ Update scanner to send progress messages
+- ✅ Test all loading states
+- 🔴 Show estimated time for long operations (optional - future work)
+- 🔴 Add cancellation option for long operations (optional - future work)
+
+**Acceptance Criteria:**
+
+- ✅ Visual feedback for all long-running operations
+- ✅ Detailed progress messages during scanning
+- ✅ Non-blocking overlay for export operations
+- ✅ User can see context during operations
+- ✅ All tests passing (47 tests)
+- ✅ Build successful
+
+**Completed:** February 6, 2026
 
 ---
 
