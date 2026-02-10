@@ -224,7 +224,7 @@ export async function buildMarketingFrame(
           const node = await figma.getNodeByIdAsync(outlined.id);
           if (node && node.type === "COMPONENT") {
             const instance = node.createInstance();
-            let filename = `db_ic_${category}_${iconName}_${size}.svg`;
+            let filename = `db_ic_${category}_${iconName}_${size}`;
             instance.name = `marketingportal/${cleanFilename(filename)}`;
 
             // First detach all variable bindings
@@ -268,7 +268,7 @@ export async function buildMarketingFrame(
           const node = await figma.getNodeByIdAsync(filled.id);
           if (node && node.type === "COMPONENT") {
             const instance = node.createInstance();
-            let filename = `db_ic_${category}_${iconName}_${size}_filled.svg`;
+            let filename = `db_ic_${category}_${iconName}_${size}_filled`;
             instance.name = `marketingportal/${cleanFilename(filename)}`;
 
             // First detach all variable bindings
@@ -309,7 +309,7 @@ export async function buildMarketingFrame(
         const node = await figma.getNodeByIdAsync(icon.id);
         if (node && node.type === "COMPONENT") {
           const instance = node.createInstance();
-          let filename = `db_ic_il_${category}_${iconName}.svg`;
+          let filename = `db_ic_il_${category}_${iconName}`;
           instance.name = `marketingportal/${cleanFilename(filename)}`;
 
           // Detach all variable bindings
