@@ -19,7 +19,8 @@ export interface ImportMessage {
   data: ColorData;
   deleteMissing: boolean;
   fileName?: string;
-  customPrefix?: string;
+  themePrefix?: string;
+  variablePrefix?: string;
 }
 
 export interface ColorData {

@@ -13,10 +13,16 @@ function App() {
   const [feedback, setFeedback] = useState<string>("");
   const [inputKey, setInputKey] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [showPrefixDialog, setShowPrefixDialog] = useState(false);
   const [prefixInput, setPrefixInput] = useState("");
   const [showPrefixWarning, setShowPrefixWarning] = useState(false);
   const [existingPrefix, setExistingPrefix] = useState("");
+  const [detectedPrefixes, setDetectedPrefixes] = useState<
+    Array<{ value: string; source: string }>
+  >([]);
+  const [showPrefixButtons, setShowPrefixButtons] = useState(true);
+  const [showThemeBuilderInfo, setShowThemeBuilderInfo] = useState(false);
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -24,6 +30,7 @@ function App() {
       if (pluginMessage?.feedback) {
         setFeedback(pluginMessage.feedback);
         setIsLoading(false);
+        setIsProcessing(false);
         setDeleteMissing(false);
         setJsonInput("");
         setInputKey((k) => k + 1);
@@ -91,29 +98,32 @@ function App() {
     // Remove .json extension
     const nameWithoutExt = filename.replace(/\.json$/i, "");
 
-    // Known prefixes at the start that should be ignored
+    // Known prefixes at the start that should be ignored (only DB in this case)
     const knownPrefixes = ["DB", "Whitelabel", "S-Bahn", "sab", "SAB"];
 
     // Try to match pattern: [KnownPrefix][-\s][Something]Theme-figma
-    // or: [KnownPrefix][-\s]Theme-figma
+    // Example: "DB-RITheme-figma" -> extract "RI"
     const regexWithMiddle = new RegExp(
       `^(${knownPrefixes.join("|")})[-\\s]+(.+?)Theme-figma`,
       "i",
     );
-    const regexDirect = new RegExp(
-      `^(${knownPrefixes.join("|")})[-\\s]+Theme-figma`,
-      "i",
-    );
+
+    // Try to match pattern: [Something]Theme-figma (without known prefix)
+    // Example: "RITheme-figma" -> extract "RI"
+    const regexDirect = /^(.+?)Theme-figma/i;
 
     const matchWithMiddle = nameWithoutExt.match(regexWithMiddle);
-    const matchDirect = nameWithoutExt.match(regexDirect);
 
     let prefixOriginal = "";
     if (matchWithMiddle && matchWithMiddle[2]) {
+      // Found pattern with known prefix in front
       prefixOriginal = matchWithMiddle[2].trim();
-    } else if (matchDirect && matchDirect[1]) {
-      // Direct match with known prefix - ignore it
-      prefixOriginal = "";
+    } else {
+      // Try direct pattern without known prefix
+      const matchDirect = nameWithoutExt.match(regexDirect);
+      if (matchDirect && matchDirect[1]) {
+        prefixOriginal = matchDirect[1].trim();
+      }
     }
 
     // Remove special characters and convert to lowercase
@@ -135,23 +145,74 @@ function App() {
       // Extract prefix from JSON variables (color family names)
       const jsonPrefix = extractPrefixFromJson(parsed);
 
-      // Extract prefix from filename
+      // Extract prefix from filename (theme prefix)
       const filenamePrefix = extractPrefixFromFilename(fileName);
 
-      // Determine which prefix to use
-      let finalPrefix = "custom";
+      // DEBUG: Log the detected prefixes
+      console.log("DEBUG - Filename:", fileName);
+      console.log("DEBUG - Filename prefix:", filenamePrefix);
+      console.log("DEBUG - JSON prefix:", jsonPrefix);
 
-      if (jsonPrefix) {
-        // JSON has a prefix - use it (color families already have it)
-        finalPrefix = jsonPrefix;
+      // Determine theme prefix and whether to show dialog
+      let themePrefix = "";
+      let showThemeBuilderHint = false;
+
+      if (filenamePrefix && jsonPrefix) {
+        // Both prefixes found - proceed directly without dialog
+        themePrefix = filenamePrefix;
+
+        console.log("DEBUG - Both prefixes found, proceeding with auto-import");
+
+        // Proceed directly with import
+        setIsProcessing(true);
+        setFeedback("");
+
+        parent.postMessage(
+          {
+            pluginMessage: {
+              type: "import-json",
+              data: parsed,
+              deleteMissing,
+              fileName,
+              themePrefix: filenamePrefix,
+              variablePrefix: jsonPrefix,
+            },
+          },
+          "*",
+        );
+        return;
       } else if (filenamePrefix) {
-        // No JSON prefix, but filename has one - use it
-        finalPrefix = filenamePrefix;
+        // Only theme prefix found - use it for both (Fall 2)
+        themePrefix = filenamePrefix;
+        showThemeBuilderHint = true; // Show hint about variable prefix
+      } else if (jsonPrefix) {
+        // Only variable prefix found - ask user to confirm as theme prefix (Fall 3)
+        themePrefix = jsonPrefix;
+        showThemeBuilderHint = false;
+      } else {
+        // No prefix found - user must enter manually (Fall 4)
+        themePrefix = "custom";
+        showThemeBuilderHint = true; // Show hint about theme setup
       }
 
+      // Store detected prefixes for display
+      const prefixes: Array<{ value: string; source: string }> = [];
+      if (filenamePrefix) {
+        prefixes.push({
+          value: filenamePrefix,
+          source: "from filename (Theme)",
+        });
+      }
+      if (jsonPrefix && jsonPrefix !== filenamePrefix) {
+        prefixes.push({ value: jsonPrefix, source: "from color variables" });
+      }
+      setDetectedPrefixes(prefixes);
+      setShowThemeBuilderInfo(showThemeBuilderHint);
+
       // Show prefix confirmation dialog
-      setPrefixInput(finalPrefix);
+      setPrefixInput(themePrefix);
       setShowPrefixDialog(true);
+      setShowPrefixButtons(prefixes.length > 0);
       setFeedback("");
 
       // Check for existing collections with different prefix
@@ -159,7 +220,7 @@ function App() {
         {
           pluginMessage: {
             type: "check-existing-prefix",
-            proposedPrefix: finalPrefix,
+            proposedPrefix: themePrefix,
           },
         },
         "*",
@@ -173,10 +234,13 @@ function App() {
   const handleConfirmImport = () => {
     try {
       const parsed = JSON.parse(jsonInput);
-      setIsLoading(true);
+      setIsProcessing(true);
       setShowPrefixDialog(false);
       setShowPrefixWarning(false);
       setFeedback("");
+
+      // Always use the prefix from the input field
+      const finalPrefix = prefixInput.trim() || "custom";
 
       parent.postMessage(
         {
@@ -185,14 +249,14 @@ function App() {
             data: parsed,
             deleteMissing,
             fileName,
-            customPrefix: prefixInput.trim() || "custom",
+            customPrefix: finalPrefix,
           },
         },
         "*",
       );
     } catch (e) {
       setFeedback("The selected file does not appear to be a valid JSON.");
-      setIsLoading(false);
+      setIsProcessing(false);
       setShowPrefixDialog(false);
       setShowPrefixWarning(false);
     }
@@ -203,6 +267,8 @@ function App() {
     setShowPrefixWarning(false);
     setPrefixInput("");
     setExistingPrefix("");
+    setDetectedPrefixes([]);
+    setShowPrefixButtons(true);
   };
 
   const handleProceedWithWarning = () => {
@@ -216,7 +282,7 @@ function App() {
       {/* Header area */}
       <header>
         <h1 className="text-2xl">DB Custom Color Importer</h1>
-        {!showPrefixDialog && (
+        {!showPrefixDialog && !isProcessing && (
           <p className="text-sm">
             Select the JSON file with custom colors that you created and
             exported in the{" "}
@@ -233,7 +299,24 @@ function App() {
         )}
       </header>
 
-      {!showPrefixDialog ? (
+      {isProcessing ? (
+        <DBStack gap="medium" className="items-center justify-center py-fix-lg">
+          <div className="flex flex-col items-center gap-fix-md">
+            {/* Spinner */}
+            <div className="relative w-16 h-16">
+              <div className="absolute inset-0 rounded-full border-4 border-gray-200"></div>
+              <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-red-500 animate-spin"></div>
+            </div>
+            <DBInfotext semantic="informational">
+              <div className="text-center">
+                <strong>Processing...</strong>
+                <br />
+                Importing color variables. This may take a moment.
+              </div>
+            </DBInfotext>
+          </div>
+        </DBStack>
+      ) : !showPrefixDialog ? (
         <>
           <DBStack gap="medium">
             <DBInput
@@ -274,16 +357,30 @@ function App() {
         </>
       ) : showPrefixWarning ? (
         <DBStack gap="medium">
-          <DBInfotext semantic="warning">
+          <DBInfotext semantic="informational">
             Collections with prefix "{existingPrefix}" already exist in this
             file. Your new colors with prefix "{prefixInput}" will be added to
             the existing collections. This means both color families will be
             available in the same collections.
           </DBInfotext>
 
+          <DBInfotext semantic="informational">
+            If you want to use another prefix for your new colors, click "Change
+            Prefix" and change it.
+          </DBInfotext>
+
           <div className="flex gap-fix-sm">
             <DBButton variant="brand" onClick={handleProceedWithWarning}>
               Proceed with Import
+            </DBButton>
+            <DBButton
+              variant="secondary"
+              onClick={() => {
+                setShowPrefixWarning(false);
+                setShowPrefixButtons(false);
+              }}
+            >
+              Change Prefix
             </DBButton>
             <DBButton variant="secondary" onClick={handleCancelImport}>
               Cancel
@@ -293,15 +390,75 @@ function App() {
       ) : (
         <DBStack gap="medium" className="px-fix-xs -mx-fix-xs">
           <DBInfotext semantic="informational">
-            The following prefix was detected for your collections, variables,
-            and modes. Please confirm or adjust it before importing.
+            Please specify a prefix for your collections, variables, and modes.
+            This prefix will be used to organize your color variables into
+            groups. For example, "db-poi-db-services" will be organized as
+            "db-poi/db-services".
           </DBInfotext>
 
+          {/* Show Theme Builder recommendation if prefixes are missing */}
+          {showThemeBuilderInfo && (
+            <DBInfotext semantic="warning">
+              <strong>Recommendation:</strong> For best results, create your
+              theme properly in the{" "}
+              <a
+                href="https://design-system.deutschebahn.com/theme-builder/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline"
+              >
+                DB UX Theme Builder
+              </a>
+              . For DB users, base your theme on the DB Theme and specify:
+              <ul className="list-disc ml-fix-md mt-fix-xs">
+                <li>A clear theme name (e.g., "RI", "MyProduct")</li>
+                <li>
+                  Optionally, a prefix for your color variables (e.g., "db",
+                  "custom")
+                </li>
+              </ul>
+              This ensures proper organization and naming consistency.
+            </DBInfotext>
+          )}
+
+          {/* Show detected prefixes as options if available */}
+          {detectedPrefixes.length > 0 && showPrefixButtons && (
+            <div className="flex flex-col gap-fix-xs">
+              <label className="text-sm font-semibold">
+                Detected prefixes - select one:
+              </label>
+              <div className="flex flex-col gap-fix-2xs">
+                {detectedPrefixes.map((prefix, index) => (
+                  <DBButton
+                    key={index}
+                    variant={
+                      prefixInput === prefix.value ? "brand" : "secondary"
+                    }
+                    onClick={() => setPrefixInput(prefix.value)}
+                    className="justify-start"
+                  >
+                    <span className="flex items-center gap-fix-xs">
+                      <span className="font-mono">{prefix.value}</span>
+                      <span className="text-xs opacity-70">
+                        ({prefix.source})
+                      </span>
+                    </span>
+                  </DBButton>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Manual input field */}
           <DBInput
-            label="Prefix"
+            label={
+              detectedPrefixes.length > 0 && showPrefixButtons
+                ? "Or enter custom prefix"
+                : "Enter prefix"
+            }
             value={prefixInput}
             onChange={(e) => setPrefixInput(e.target.value)}
-            placeholder="Enter prefix"
+            placeholder="Enter prefix (e.g., db-poi, RI)"
           />
 
           <div className="flex gap-fix-sm">

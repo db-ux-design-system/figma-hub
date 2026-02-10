@@ -20,7 +20,12 @@ describe("color utils", () => {
 
     it("should handle 8-digit hex with alpha channel", () => {
       const result = hexToRgba("#FF000080");
-      expect(result).toEqual({ r: 1, g: 0, b: 0, a: 0.5 });
+      expect(result.r).toBe(1);
+      expect(result.g).toBe(0);
+      expect(result.b).toBe(0);
+      // Alpha should be rounded to 2 decimal places
+      // 0x80 / 255 = 0.5019... → 0.50
+      expect(result.a).toBe(0.5);
     });
 
     it("should handle full opacity with 8-digit hex", () => {
@@ -33,12 +38,26 @@ describe("color utils", () => {
       expect(result).toEqual({ r: 0, g: 0, b: 1, a: 0 });
     });
 
-    it("should round values to 2 decimal places", () => {
-      // #808080 = 128/255 = 0.5019... should round to 0.5
+    it("should preserve precision without rounding", () => {
+      // #808080 = 128/255 = 0.5019607843137255
       const result = hexToRgba("#808080");
-      expect(result.r).toBeCloseTo(0.5, 2);
-      expect(result.g).toBeCloseTo(0.5, 2);
-      expect(result.b).toBeCloseTo(0.5, 2);
+      expect(result.r).toBe(128 / 255);
+      expect(result.g).toBe(128 / 255);
+      expect(result.b).toBe(128 / 255);
+    });
+
+    it("should preserve exact values for #001110", () => {
+      // Test case from bug report: #001110 should not become #00120F
+      // R=0, G=17, B=16
+      const result = hexToRgba("#001110");
+      expect(result.r).toBe(0 / 255);
+      expect(result.g).toBe(17 / 255);
+      expect(result.b).toBe(16 / 255);
+
+      // Verify that converting back gives the same values
+      expect(Math.round(result.r * 255)).toBe(0);
+      expect(Math.round(result.g * 255)).toBe(17);
+      expect(Math.round(result.b * 255)).toBe(16);
     });
   });
 

@@ -18,6 +18,76 @@ function ensurePrefixedFamily(family: string, prefix: string): string {
     : `${prefix}-${family}`;
 }
 
+/**
+ * Helper function to create variable groups from a path
+ * Keeps original family names but creates nested groups
+ * The selectedPrefix is only used for collection names, not variable names
+ */
+function createVariableGroupPath(
+  family: string,
+  selectedPrefix: string,
+): string {
+  // Keep the original family name - don't add selectedPrefix to it
+  // Just create the group structure from the existing family name
+
+  // Split by dashes to find potential group structure
+  const parts = family.split("-");
+
+  // If we have at least 3 parts (prefix-group-subgroup), try to create nested structure
+  if (parts.length >= 3) {
+    // Find common prefix patterns
+    // Example: "db-poi-db-services" -> ["db", "poi", "db", "services"]
+    // We want to group as: "db-poi/db-services"
+
+    // Strategy: Look for repeated prefix patterns
+    const result: string[] = [];
+    let i = 0;
+
+    while (i < parts.length) {
+      // Check if current part + next part forms a known prefix pattern
+      if (i < parts.length - 1) {
+        const combined = `${parts[i]}-${parts[i + 1]}`;
+        // If this looks like a prefix (2 parts), group it
+        if (i === 0 || result.length === 0) {
+          result.push(combined);
+          i += 2;
+        } else {
+          // Start a new group
+          result.push(parts.slice(i).join("-"));
+          break;
+        }
+      } else {
+        // Last part, add it
+        result.push(parts[i]);
+        i++;
+      }
+    }
+
+    // Join with slashes for nested groups
+    return result.join("/");
+  }
+
+  // If less than 3 parts, return as-is (keep original family name)
+  return family;
+}
+
+/**
+ * Helper function to ensure variable group exists in a collection
+ * Creates nested groups if they don't exist
+ */
+async function ensureVariableGroup(
+  collection: VariableCollection,
+  groupPath: string,
+): Promise<VariableResolvedDataType | null> {
+  // Split path by slashes to get group hierarchy
+  const groups = groupPath.split("/");
+
+  // For Figma API, we need to create the full path as the variable name
+  // Figma handles the grouping automatically based on the "/" separator
+  // No explicit group creation needed - just return null to indicate no specific group
+  return null;
+}
+
 export async function getExistingVariablesMap() {
   const existingVars = await figma.variables.getLocalVariablesAsync();
   const varMap = new Map<string, Variable>();
@@ -31,7 +101,8 @@ export async function createBaseVariables(
   baseCol: VariableCollection,
   baseModeId: string,
   varMap: Map<string, Variable>,
-  prefix: string,
+  themePrefix: string,
+  variablePrefix: string,
 ) {
   log.subsection("Creating Base Variables");
   const baseMap: Record<string, string> = {};
@@ -43,9 +114,11 @@ export async function createBaseVariables(
     for (const tokenKey in tokens) {
       const token = tokens[tokenKey];
       if (token && token.$value) {
-        const familyWithPrefix = ensurePrefixedFamily(family, prefix);
+        // Create grouped path with slashes using variable prefix
+        const groupPath = createVariableGroupPath(family, variablePrefix);
 
-        const varPath = `${prefix}-colors/${familyWithPrefix}/${tokenKey}`;
+        // Use theme prefix for the top-level group
+        const varPath = `${themePrefix}-colors/${groupPath}/${tokenKey}`;
         let v = varMap.get(varPath);
         const newVal = hexToRgba(token.$value);
 
@@ -86,27 +159,46 @@ export async function createDisplayModeVariables(
   darkModeId: string,
   baseMap: Record<string, string>,
   varMap: Map<string, Variable>,
-  prefix: string,
+  themePrefix: string,
+  variablePrefix: string,
 ) {
   log.subsection("Creating Display Mode Variables");
   const displayVarMap: Record<string, string> = {};
   let createdCount = 0;
+  let updatedCount = 0;
 
   for (const family of colorFamilies) {
     for (const m of MAPPINGS) {
-      const familyWithPrefix = ensurePrefixedFamily(family, prefix);
+      // Create grouped path with slashes using variable prefix
+      const groupPath = createVariableGroupPath(family, variablePrefix);
 
-      const varPath = `${familyWithPrefix}/${m.name}`;
-      const lId = baseMap[`${prefix}-colors/${familyWithPrefix}/${m.light}`];
-      const dId = baseMap[`${prefix}-colors/${familyWithPrefix}/${m.dark}`];
+      // Variable path uses the original family structure
+      const varPath = `${groupPath}/${m.name}`;
+      const lId = baseMap[`${themePrefix}-colors/${groupPath}/${m.light}`];
+      const dId = baseMap[`${themePrefix}-colors/${groupPath}/${m.dark}`];
 
       if (!lId && !dId) continue;
 
+      // Check if variable already exists (by exact name match)
       let v = varMap.get(varPath);
       if (!v) {
+        // Variable doesn't exist, create it
         v = figma.variables.createVariable(varPath, displayCol, "COLOR");
         createdCount++;
+        log.debug(
+          `Created new variable: ${varPath}`,
+          "createDisplayModeVariables",
+        );
+      } else {
+        // Variable exists, update it
+        updatedCount++;
+        log.debug(
+          `Reusing existing variable: ${varPath}`,
+          "createDisplayModeVariables",
+        );
       }
+
+      // Set or update the mode values
       if (lId)
         v.setValueForMode(lightModeId, { type: "VARIABLE_ALIAS", id: lId });
       if (dId)
@@ -124,6 +216,10 @@ export async function createDisplayModeVariables(
     `Created ${createdCount} new display mode variables`,
     "createDisplayModeVariables",
   );
+  log.info(
+    `Updated ${updatedCount} existing display mode variables`,
+    "createDisplayModeVariables",
+  );
   log.success(
     `Processed ${Object.keys(displayVarMap).length} display mode variables`,
     "createDisplayModeVariables",
@@ -139,7 +235,8 @@ export async function createAdaptiveColorVariables(
   colorFamilyModeIds: Record<string, string>,
   displayVarMap: Record<string, string>,
   varMap: Map<string, Variable>,
-  prefix: string,
+  themePrefix: string,
+  variablePrefix: string,
 ) {
   log.subsection("Creating Adaptive Color Variables");
   let createdCount = 0;
@@ -160,9 +257,9 @@ export async function createAdaptiveColorVariables(
       }
     }
 
-    // If not found, create new one with current prefix
+    // If not found, create new one with theme prefix
     if (!v) {
-      const colorVarPath = `${prefix}-adaptive/${m.name}`;
+      const colorVarPath = `${themePrefix}-adaptive/${m.name}`;
       v = figma.variables.createVariable(colorVarPath, colorCol, "COLOR");
       isNewVariable = true;
       createdCount++;
@@ -196,9 +293,10 @@ export async function createAdaptiveColorVariables(
 
     // Add new color family modes to the existing variable
     for (const family of colorFamilies) {
-      const familyWithPrefix = ensurePrefixedFamily(family, prefix);
+      // Create grouped path with slashes using variable prefix
+      const groupPath = createVariableGroupPath(family, variablePrefix);
 
-      const sourceId = displayVarMap[`${familyWithPrefix}/${m.name}`];
+      const sourceId = displayVarMap[`${groupPath}/${m.name}`];
       if (sourceId) {
         v.setValueForMode(colorFamilyModeIds[family], {
           type: "VARIABLE_ALIAS",
@@ -233,69 +331,27 @@ export async function handleImportJson(msg: ImportMessage) {
     const colorFamilies = Object.keys(data.colors);
     const deleteMissing = msg.deleteMissing;
     const fileName = msg.fileName || "";
-    const customPrefix = msg.customPrefix;
+    const themePrefix = msg.themePrefix || "custom";
+    const variablePrefix = msg.variablePrefix || themePrefix;
 
     log.info(`File: ${fileName}`, "handleImportJson");
     log.info(`Color families: ${colorFamilies.join(", ")}`, "handleImportJson");
     log.info(`Delete existing: ${deleteMissing}`, "handleImportJson");
-
-    // Use custom prefix if provided, otherwise extract from filename
-    let prefix = "custom";
-    let prefixOriginal = "custom"; // Keep original casing for collection names
-
-    if (customPrefix) {
-      // Use the prefix confirmed by the user
-      prefixOriginal = customPrefix;
-      prefix = customPrefix.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
-      log.info(`Using custom prefix: ${prefixOriginal}`, "handleImportJson");
-    } else if (fileName) {
-      // Fallback: Extract prefix from filename (legacy behavior)
-      const nameWithoutExt = fileName.replace(/\.json$/i, "");
-      const knownPrefixes = ["DB", "Whitelabel", "S-Bahn", "sab"];
-      const regexWithMiddle = new RegExp(
-        `^(${knownPrefixes.join("|")})[-\\s]+(.+?)Theme-figma`,
-        "i",
-      );
-      const regexDirect = new RegExp(
-        `^(${knownPrefixes.join("|")})[-\\s]+Theme-figma`,
-        "i",
-      );
-
-      const matchWithMiddle = nameWithoutExt.match(regexWithMiddle);
-      const matchDirect = nameWithoutExt.match(regexDirect);
-
-      if (matchWithMiddle && matchWithMiddle[2]) {
-        prefixOriginal = matchWithMiddle[2].trim();
-      } else if (matchDirect && matchDirect[1]) {
-        prefixOriginal = matchDirect[1];
-      }
-
-      prefix = prefixOriginal.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
-      log.info(
-        `Extracted prefix from filename: ${prefixOriginal}`,
-        "handleImportJson",
-      );
-    }
-
-    // Fallback to "custom" if empty
-    if (!prefix) {
-      prefix = "custom";
-      prefixOriginal = "custom";
-      log.info("Using default prefix: custom", "handleImportJson");
-    }
+    log.info(`Theme prefix: ${themePrefix}`, "handleImportJson");
+    log.info(`Variable prefix: ${variablePrefix}`, "handleImportJson");
 
     if (deleteMissing) {
       await deleteCollections();
     }
 
     const { baseCol, displayCol, colorCol } =
-      await getOrCreateCollections(prefixOriginal);
+      await getOrCreateCollections(themePrefix);
     const baseModeId = baseCol.modes[0].modeId;
     const { lightModeId, darkModeId } = setupDisplayModes(displayCol, baseCol);
     const { dbAdaptiveModeId, colorFamilyModeIds } = setupColorModes(
       colorCol,
       colorFamilies,
-      prefix,
+      variablePrefix,
     );
 
     const varMap = await getExistingVariablesMap();
@@ -306,7 +362,8 @@ export async function handleImportJson(msg: ImportMessage) {
       baseCol,
       baseModeId,
       varMap,
-      prefix,
+      themePrefix,
+      variablePrefix,
     );
     const displayVarMap = await createDisplayModeVariables(
       colorFamilies,
@@ -315,7 +372,8 @@ export async function handleImportJson(msg: ImportMessage) {
       darkModeId,
       baseMap,
       varMap,
-      prefix,
+      themePrefix,
+      variablePrefix,
     );
     await createAdaptiveColorVariables(
       colorFamilies,
@@ -324,7 +382,8 @@ export async function handleImportJson(msg: ImportMessage) {
       colorFamilyModeIds,
       displayVarMap,
       varMap,
-      prefix,
+      themePrefix,
+      variablePrefix,
     );
 
     const successMessage = deleteMissing

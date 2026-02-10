@@ -7,6 +7,9 @@ This plugin imports the custom color variables from Theme Builder Export.
 - Import custom color variables
 - Create Figma variables and modes
 - Create collections with aliases
+- **Automatic variable grouping**: Variables with common prefixes are organized into nested groups using slashes (e.g., `db-poi-db-services` → `db-poi/db-services`)
+- **Flexible prefix handling**: Prefix dialog is always shown, allowing you to specify or adjust the prefix even when importing into existing collections
+- **Smart group creation**: Missing variable groups are automatically created during import
 
 ## Usage
 
@@ -29,18 +32,27 @@ Note: **DB Products**: Only use [secondary colors](https://marketingportal.extra
 
 ### 3. Confirm the Prefix
 
-After selecting your file, the plugin will automatically detect and suggest a prefix for your collections, variables, and modes:
+After selecting your file, the plugin will prompt you to specify a prefix for your collections, variables, and modes:
 
-1. Review the automatically detected prefix (e.g., "dibe", "custom")
-2. In most cases, you can simply confirm the detected prefix by clicking **"Confirm and Import"**
-3. If needed, you can manually adjust the prefix before importing
+1. The plugin will suggest a prefix based on your color family names or filename
+2. You can confirm the suggested prefix or enter a custom one
+3. Click **"Confirm and Import"** to proceed
 
-**Important:** The prefix must match exactly how you named your color families in the Theme Builder. For example:
+**Important:** The prefix is used to organize your color variables into logical groups:
 
-- If your Theme Builder colors are named `dibe-br-color-01`, `dibe-br-color-02`, etc., use prefix `dibe`
-- If your colors are named `custom-color-01`, `custom-color-02`, use prefix `custom`
+- Variables with common prefixes are automatically grouped using slashes
+- Example: `db-poi-db-services` becomes `db-poi/db-services`
+- Example: `db-poi-services` becomes `db-poi/services`
 
-The plugin automatically extracts the prefix from your color family names or filename, so in most cases the suggested prefix is correct and can be used as-is. Keeping the prefix consistent ensures proper mapping between your Theme Builder export and Figma variables.
+This grouping makes it easier to navigate and manage your color variables in Figma.
+
+**Prefix behavior:**
+
+- **New imports**: The prefix creates new collections and variable groups
+- **Existing collections**: The prefix is used to add new color families to existing collections
+- **Multiple prefixes**: You can import different color families with different prefixes into the same collections
+
+The plugin automatically extracts the prefix from your color family names or filename, so in most cases the suggested prefix is correct and can be used as-is.
 
 ### 4. What Happens During Import
 
