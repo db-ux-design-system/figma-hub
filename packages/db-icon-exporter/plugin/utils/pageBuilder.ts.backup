@@ -27,7 +27,6 @@ function detachVariables(node: SceneNode) {
     const newFills: Paint[] = [];
     for (const fill of node.fills) {
       if (fill.type === "SOLID") {
-        // Create a completely new paint object without any bindings
         newFills.push({
           type: "SOLID",
           color: { r: fill.color.r, g: fill.color.g, b: fill.color.b },
@@ -37,8 +36,6 @@ function detachVariables(node: SceneNode) {
         newFills.push(fill);
       }
     }
-    // Set to empty first to break bindings, then set new fills
-    node.fills = [];
     node.fills = newFills;
   }
 
@@ -60,7 +57,6 @@ function detachVariables(node: SceneNode) {
         newStrokes.push(stroke);
       }
     }
-    node.strokes = [];
     node.strokes = newStrokes;
   }
 
@@ -81,9 +77,10 @@ function detachAndSetColors(
     | "gitlab-illustrative"
     | "marketing-illustrative",
 ) {
-  // First, try to unbind variables at the node level
+  // First, try to unbind variables at the node level (for instances with selection colors)
   if ("setBoundVariable" in node) {
     try {
+      // Unbind fills variable
       (node as any).setBoundVariable("fills", null);
     } catch (e) {
       // Ignore if not supported
@@ -94,21 +91,13 @@ function detachAndSetColors(
   if ("fills" in node) {
     try {
       const currentFills = node.fills;
-      if (
-        currentFills !== figma.mixed &&
-        Array.isArray(currentFills) &&
-        currentFills.length > 0
-      ) {
+      if (currentFills !== figma.mixed && Array.isArray(currentFills) && currentFills.length > 0) {
         const newFills: SolidPaint[] = [];
 
         for (const fill of currentFills) {
           if (fill.type === "SOLID") {
             const actualColor = fill.color;
-            let targetColor = {
-              r: actualColor.r,
-              g: actualColor.g,
-              b: actualColor.b,
-            };
+            let targetColor = { r: actualColor.r, g: actualColor.g, b: actualColor.b };
 
             // For functional icons, always use black
             if (colorMode === "gitlab-functional") {
@@ -120,9 +109,7 @@ function detachAndSetColors(
               if (colorMode === "gitlab-illustrative") {
                 if (isColorClose(actualColor, { r: 0.925, g: 0, b: 0.086 })) {
                   targetColor = { r: 0.925, g: 0, b: 0.086 }; // #EC0016
-                } else if (
-                  isColorClose(actualColor, { r: 0.388, g: 0.651, b: 0.082 })
-                ) {
+                } else if (isColorClose(actualColor, { r: 0.388, g: 0.651, b: 0.082 })) {
                   targetColor = { r: 0.376, g: 0.631, b: 0.078 }; // #60A114
                 } else {
                   targetColor = { r: 0.086, g: 0.094, b: 0.106 }; // #16181B
@@ -130,9 +117,7 @@ function detachAndSetColors(
               } else if (colorMode === "marketing-illustrative") {
                 if (isColorClose(actualColor, { r: 0.925, g: 0, b: 0.086 })) {
                   targetColor = { r: 0.925, g: 0, b: 0.086 }; // #EC0016
-                } else if (
-                  isColorClose(actualColor, { r: 0.388, g: 0.651, b: 0.082 })
-                ) {
+                } else if (isColorClose(actualColor, { r: 0.388, g: 0.651, b: 0.082 })) {
                   targetColor = { r: 0.388, g: 0.651, b: 0.082 }; // #63A615
                 } else {
                   targetColor = { r: 0.075, g: 0.094, b: 0.129 }; // #131821
@@ -150,40 +135,17 @@ function detachAndSetColors(
           }
         }
 
-        // Try to break variable bindings
-        try {
-          if ("boundVariables" in node && node.boundVariables) {
-            try {
-              // @ts-ignore
-              node.boundVariables = {};
-            } catch (e) {
-              // Ignore
-            }
-          }
-
-          node.fills = [];
-          node.fills = newFills;
-
-          if ("boundVariables" in node && node.boundVariables) {
-            try {
-              // @ts-ignore
-              node.boundVariables = {};
-            } catch (e) {
-              // Ignore
-            }
-          }
-        } catch (e) {
-          // Ignore
-        }
+        node.fills = newFills;
       }
     } catch (e) {
-      // Ignore
+      console.log("Error processing fills:", e);
     }
   }
 
   // Process strokes
   if ("strokes" in node) {
     try {
+      // Try to unbind strokes variable
       if ("setBoundVariable" in node) {
         try {
           (node as any).setBoundVariable("strokes", null);
@@ -208,9 +170,7 @@ function detachAndSetColors(
               if (colorMode === "gitlab-illustrative") {
                 if (isColorClose(stroke.color, { r: 0.925, g: 0, b: 0.086 })) {
                   targetColor = { r: 0.925, g: 0, b: 0.086 };
-                } else if (
-                  isColorClose(stroke.color, { r: 0.388, g: 0.651, b: 0.082 })
-                ) {
+                } else if (isColorClose(stroke.color, { r: 0.388, g: 0.651, b: 0.082 })) {
                   targetColor = { r: 0.376, g: 0.631, b: 0.078 };
                 } else {
                   targetColor = { r: 0.086, g: 0.094, b: 0.106 };
@@ -218,9 +178,7 @@ function detachAndSetColors(
               } else if (colorMode === "marketing-illustrative") {
                 if (isColorClose(stroke.color, { r: 0.925, g: 0, b: 0.086 })) {
                   targetColor = { r: 0.925, g: 0, b: 0.086 };
-                } else if (
-                  isColorClose(stroke.color, { r: 0.388, g: 0.651, b: 0.082 })
-                ) {
+                } else if (isColorClose(stroke.color, { r: 0.388, g: 0.651, b: 0.082 })) {
                   targetColor = { r: 0.388, g: 0.651, b: 0.082 };
                 } else {
                   targetColor = { r: 0.075, g: 0.094, b: 0.129 };
@@ -241,7 +199,7 @@ function detachAndSetColors(
         node.strokes = newStrokes;
       }
     } catch (e) {
-      // Ignore
+      console.log("Error processing strokes:", e);
     }
   }
 
@@ -271,34 +229,203 @@ export async function buildGitLabFrame(
   iconType: string,
   allIcons: IconData[],
 ): Promise<FrameNode[]> {
-  console.log(
-    `🚀 buildGitLabFrame called with ${selectedIcons.length} icons, type: ${iconType}`,
-  );
+      const currentFills = node.fills;
+      if (currentFills !== figma.mixed && Array.isArray(currentFills)) {
+        // Check if there are any bound variables
+        if ("boundVariables" in node && node.boundVariables) {
+          const boundVars = node.boundVariables as any;
+          if (boundVars.fills) {
+            console.log(
+              `Node ${node.name} has bound fill variables, attempting to unbind...`,
+            );
+          }
+        }
 
+        const newFills: SolidPaint[] = [];
+
+        for (let i = 0; i < currentFills.length; i++) {
+          const fill = currentFills[i];
+          if (fill.type === "SOLID") {
+            let targetColor = {
+              r: fill.color.r,
+              g: fill.color.g,
+              b: fill.color.b,
+            };
+
+            // For functional icons, always use black
+            if (colorMode === "gitlab-functional") {
+              targetColor = { r: 0.086, g: 0.094, b: 0.106 }; // #16181B
+            } else if (colorMode === "marketing-functional") {
+              targetColor = { r: 0.075, g: 0.094, b: 0.129 }; // #131821
+            } else {
+              // For illustrative icons, map based on current color value
+              if (colorMode === "gitlab-illustrative") {
+                // Map to GitLab colors
+                if (isColorClose(fill.color, { r: 0.925, g: 0, b: 0.086 })) {
+                  // Red (Pulse)
+                  targetColor = { r: 0.925, g: 0, b: 0.086 }; // #EC0016
+                } else if (
+                  isColorClose(fill.color, { r: 0.388, g: 0.651, b: 0.082 })
+                ) {
+                  // Green (Pulse Sustainability)
+                  targetColor = { r: 0.376, g: 0.631, b: 0.078 }; // #60A114
+                } else {
+                  // Black (default)
+                  targetColor = { r: 0.086, g: 0.094, b: 0.106 }; // #16181B
+                }
+              } else if (colorMode === "marketing-illustrative") {
+                // Map to Marketing colors
+                if (isColorClose(fill.color, { r: 0.925, g: 0, b: 0.086 })) {
+                  // Red (Pulse)
+                  targetColor = { r: 0.925, g: 0, b: 0.086 }; // #EC0016
+                } else if (
+                  isColorClose(fill.color, { r: 0.388, g: 0.651, b: 0.082 })
+                ) {
+                  // Green (Pulse Sustainability)
+                  targetColor = { r: 0.388, g: 0.651, b: 0.082 }; // #63A615
+                } else {
+                  // Black (default)
+                  targetColor = { r: 0.075, g: 0.094, b: 0.129 }; // #131821
+                }
+              }
+            }
+
+            // Create completely new paint object with explicit properties
+            newFills.push({
+              type: "SOLID",
+              color: targetColor,
+              opacity: fill.opacity ?? 1,
+              visible: fill.visible ?? true,
+              blendMode: fill.blendMode ?? "NORMAL",
+            });
+          }
+        }
+
+        // Try multiple approaches to break the binding
+        try {
+          // Approach 1: Direct assignment
+          (node as any).fills = newFills;
+        } catch (e1) {
+          console.log("Direct assignment failed, trying alternative...");
+          try {
+            // Approach 2: Set via property
+            Object.defineProperty(node, "fills", {
+              value: newFills,
+              writable: true,
+              configurable: true,
+            });
+          } catch (e2) {
+            console.log("Property definition failed");
+          }
+        }
+      }
+    } catch (e) {
+      console.log("Error processing fills:", e);
+    }
+  }
+
+  // Process strokes
+  if ("strokes" in node) {
+    try {
+      const currentStrokes = node.strokes;
+      if (currentStrokes !== figma.mixed && Array.isArray(currentStrokes)) {
+        const newStrokes: Paint[] = [];
+
+        for (const stroke of currentStrokes) {
+          if (stroke.type === "SOLID") {
+            let targetColor = { ...stroke.color };
+
+            // For functional icons, always use black
+            if (colorMode === "gitlab-functional") {
+              targetColor = { r: 0.086, g: 0.094, b: 0.106 }; // #16181B
+            } else if (colorMode === "marketing-functional") {
+              targetColor = { r: 0.075, g: 0.094, b: 0.129 }; // #131821
+            } else {
+              // For illustrative icons, map based on current color value
+              if (colorMode === "gitlab-illustrative") {
+                if (isColorClose(stroke.color, { r: 0.925, g: 0, b: 0.086 })) {
+                  targetColor = { r: 0.925, g: 0, b: 0.086 }; // #EC0016
+                } else if (
+                  isColorClose(stroke.color, { r: 0.388, g: 0.651, b: 0.082 })
+                ) {
+                  targetColor = { r: 0.376, g: 0.631, b: 0.078 }; // #60A114
+                } else {
+                  targetColor = { r: 0.086, g: 0.094, b: 0.106 }; // #16181B
+                }
+              } else if (colorMode === "marketing-illustrative") {
+                if (isColorClose(stroke.color, { r: 0.925, g: 0, b: 0.086 })) {
+                  targetColor = { r: 0.925, g: 0, b: 0.086 }; // #EC0016
+                } else if (
+                  isColorClose(stroke.color, { r: 0.388, g: 0.651, b: 0.082 })
+                ) {
+                  targetColor = { r: 0.388, g: 0.651, b: 0.082 }; // #63A615
+                } else {
+                  targetColor = { r: 0.075, g: 0.094, b: 0.129 }; // #131821
+                }
+              }
+            }
+
+            // Create completely new paint object
+            const newPaint: SolidPaint = {
+              type: "SOLID",
+              color: { r: targetColor.r, g: targetColor.g, b: targetColor.b },
+              opacity: stroke.opacity !== undefined ? stroke.opacity : 1,
+              visible: stroke.visible !== undefined ? stroke.visible : true,
+            };
+            newStrokes.push(newPaint);
+          } else {
+            newStrokes.push({ ...stroke } as Paint);
+          }
+        }
+
+        // CRITICAL: Set to empty array first to break variable bindings
+        node.strokes = [];
+        // Then set the new strokes
+        node.strokes = newStrokes;
+      }
+    } catch (e) {
+      console.log("Error processing strokes:", e);
+    }
+  }
+
+  // Recursively process all children
+  if ("children" in node) {
+    for (const child of node.children) {
+      detachAndSetColors(child, colorMode);
+    }
+  }
+}
+
+// Helper to check if two colors are close (within tolerance)
+function isColorClose(
+  color1: RGB,
+  color2: RGB,
+  tolerance: number = 0.05,
+): boolean {
+  return (
+    Math.abs(color1.r - color2.r) < tolerance &&
+    Math.abs(color1.g - color2.g) < tolerance &&
+    Math.abs(color1.b - color2.b) < tolerance
+  );
+}
+
+export async function buildGitLabFrame(
+  selectedIcons: IconData[],
+  iconType: string,
+  allIcons: IconData[],
+): Promise<FrameNode[]> {
   // Group icons by package
   const packageGroups = groupByPackage(selectedIcons);
   const frames: FrameNode[] = [];
 
   // Create a frame for each package
   for (const [packageName, packageIcons] of packageGroups) {
-    console.log(`📦 Creating frame for package: ${packageName}`);
     const frame = figma.createFrame();
-
-    // Add package name to frame title for functional icons
-    if (iconType === "functional") {
-      frame.name = `GitLab Export - ${packageName.charAt(0).toUpperCase() + packageName.slice(1)}`;
-    } else {
-      frame.name = `GitLab Export`;
-    }
-
+    frame.name = `GitLab Export - ${packageName}`;
     frame.layoutMode = "HORIZONTAL";
     frame.primaryAxisSizingMode = "AUTO";
     frame.counterAxisSizingMode = "AUTO";
     frame.itemSpacing = 16;
-
-    // Remove background
-    frame.fills = [];
-    frame.backgrounds = [];
 
     const selectedBaseNames = new Set(
       packageIcons.map((icon) => extractIconBaseName(icon.name)),
@@ -317,22 +444,10 @@ export async function buildGitLabFrame(
 
     const sizes = iconType === "functional" ? [32, 24, 20] : [64];
 
-    // Sortiere Icon-Sets alphabetisch nach Kategorie, dann nach Icon-Name
-    const sortedIconSets = Array.from(iconSets.entries()).sort((a, b) => {
-      const categoryA = a[1][0].category
-        .toLowerCase()
-        .replace(/\s+/g, "-")
-        .replace(/&/g, "");
-      const categoryB = b[1][0].category
-        .toLowerCase()
-        .replace(/\s+/g, "-")
-        .replace(/&/g, "");
-
-      if (categoryA !== categoryB) {
-        return categoryA.localeCompare(categoryB);
-      }
-      return a[0].localeCompare(b[0]);
-    });
+    // Sortiere Icon-Sets alphabetisch
+    const sortedIconSets = Array.from(iconSets.entries()).sort((a, b) =>
+      a[0].localeCompare(b[0]),
+    );
 
     for (const [setName, variants] of sortedIconSets) {
       if (variants.length === 0) continue;
@@ -341,7 +456,7 @@ export async function buildGitLabFrame(
         .toLowerCase()
         .replace(/\s+/g, "-")
         .replace(/&/g, "");
-      const packageNameLower = variants[0].package.toLowerCase();
+      const packageName = variants[0].package.toLowerCase();
       // Icon-Namen in Figma sind bereits identisch zu GitLab-Namen
       const iconName = setName;
 
@@ -354,7 +469,7 @@ export async function buildGitLabFrame(
             const node = await figma.getNodeByIdAsync(outlined.id);
             if (node && node.type === "COMPONENT") {
               const instance = node.createInstance();
-              instance.name = `gitlab/${packageNameLower}/${category}/${iconName}/outlined/${size}`;
+              instance.name = `gitlab/${packageName}/${category}/${iconName}/outlined/${size}`;
 
               // Detach variables and set all colors to #16181B
               detachAndSetColors(instance, "gitlab-functional");
@@ -370,7 +485,7 @@ export async function buildGitLabFrame(
             const node = await figma.getNodeByIdAsync(filled.id);
             if (node && node.type === "COMPONENT") {
               const instance = node.createInstance();
-              instance.name = `gitlab/${packageNameLower}/${category}/${iconName}/filled/${size}`;
+              instance.name = `gitlab/${packageName}/${category}/${iconName}/filled/${size}`;
 
               // Detach variables and set all colors to #16181B
               detachAndSetColors(instance, "gitlab-functional");
@@ -383,7 +498,7 @@ export async function buildGitLabFrame(
           const node = await figma.getNodeByIdAsync(icon.id);
           if (node && node.type === "COMPONENT") {
             const instance = node.createInstance();
-            instance.name = `gitlab/${category}/${iconName}`;
+            instance.name = `gitlab/${packageName}/${category}/${iconName}`;
 
             // Detach variables and map colors for illustrative icons
             detachAndSetColors(instance, "gitlab-illustrative");
@@ -433,18 +548,10 @@ export async function buildMarketingFrame(
 
   const sizes = iconType === "functional" ? [64, 48, 32, 24, 20] : [64];
 
-  // Sortiere Icon-Sets alphabetisch nach vollständigem Namen (Kategorie + Icon-Name)
-  const sortedIconSets = Array.from(iconSets.entries()).sort((a, b) => {
-    const categoryA =
-      a[1][0]?.category.toLowerCase().replace(/\s+/g, "_").replace(/&/g, "") ||
-      "";
-    const categoryB =
-      b[1][0]?.category.toLowerCase().replace(/\s+/g, "_").replace(/&/g, "") ||
-      "";
-    const fullNameA = `${categoryA}_${a[0]}`;
-    const fullNameB = `${categoryB}_${b[0]}`;
-    return fullNameA.localeCompare(fullNameB);
-  });
+  // Sortiere Icon-Sets alphabetisch
+  const sortedIconSets = Array.from(iconSets.entries()).sort((a, b) =>
+    a[0].localeCompare(b[0]),
+  );
 
   for (const [setName, variants] of sortedIconSets) {
     if (variants.length === 0) continue;
@@ -467,7 +574,7 @@ export async function buildMarketingFrame(
           if (node && node.type === "COMPONENT") {
             const instance = node.createInstance();
             let filename = `db_ic_${category}_${iconName}_${size}`;
-            instance.name = `Export_Icon/${cleanFilename(filename)}`;
+            instance.name = `marketingportal/${cleanFilename(filename)}`;
 
             // Detach variables and set all colors to #131821
             detachAndSetColors(instance, "marketing-functional");
@@ -484,7 +591,7 @@ export async function buildMarketingFrame(
           if (node && node.type === "COMPONENT") {
             const instance = node.createInstance();
             let filename = `db_ic_${category}_${iconName}_${size}_filled`;
-            instance.name = `Export_Icon/${cleanFilename(filename)}`;
+            instance.name = `marketingportal/${cleanFilename(filename)}`;
 
             // Detach variables and set all colors to #131821
             detachAndSetColors(instance, "marketing-functional");
@@ -498,9 +605,7 @@ export async function buildMarketingFrame(
         if (node && node.type === "COMPONENT") {
           const instance = node.createInstance();
           let filename = `db_ic_il_${category}_${iconName}`;
-          const targetName = `Export_Icon/${cleanFilename(filename)}`;
-
-          instance.name = targetName;
+          instance.name = `marketingportal/${cleanFilename(filename)}`;
 
           // Detach variables and map colors for illustrative icons
           detachAndSetColors(instance, "marketing-illustrative");
