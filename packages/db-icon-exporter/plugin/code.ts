@@ -60,7 +60,7 @@ figma.ui.onmessage = async (msg) => {
 
       // Find Marketing Frame (contains all icons, not separated by packages)
       const marketingFrame = exportPage.findOne(
-        (n) => n.type === "FRAME" && n.name === "Export_Icon_UPDATE",
+        (n) => n.type === "FRAME" && n.name === "Marketingportal",
       ) as FrameNode;
 
       if (!marketingFrame) {
