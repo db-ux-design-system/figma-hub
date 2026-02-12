@@ -78,15 +78,10 @@ export function generateMarketingPortalCSV(
           let filename = `db_ic_${categorySlug}_${nameSlug}_${size}.svg`;
           filename = cleanFilename(filename);
 
-          let title: string;
-          if (size === 64 || size === 48) {
-            title = `${size}dp`;
-          } else {
-            const titleWords = setName
-              .split(/[\s-_]+/)
-              .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
-            title = `${titleWords.join(" ")} ${size}dp`;
-          }
+          const titleWords = setName
+            .split(/[\s-_]+/)
+            .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+          const title = `${titleWords.join(" ")} ${size}dp`;
 
           const tags: string[] = [category];
           if (parsed.enDefault) tags.push(parsed.enDefault);
@@ -129,15 +124,10 @@ export function generateMarketingPortalCSV(
           let filename = `db_ic_${categorySlug}_${nameSlug}_${size}_filled.svg`;
           filename = cleanFilename(filename);
 
-          let title: string;
-          if (size === 64 || size === 48) {
-            title = `${size}dp Filled`;
-          } else {
-            const titleWords = setName
-              .split(/[\s-_]+/)
-              .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
-            title = `${titleWords.join(" ")} Filled ${size}dp`;
-          }
+          const titleWords = setName
+            .split(/[\s-_]+/)
+            .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+          const title = `${titleWords.join(" ")} Filled ${size}dp`;
 
           const tags: string[] = [category];
           if (parsed.enDefault) tags.push(parsed.enDefault);
@@ -221,10 +211,10 @@ export function generateMarketingPortalCSV(
   if (iconType === "illustrative") {
     const header =
       '"Original filename","Width","Title","Short Description","Categories","Free Tags","Realm"';
-    return header + "\n" + csvRows.map((item) => item.row).join("\n");
+    return header + "\n" + csvRows.map((item) => item.row).join("\n") + "\n";
   }
 
-  const result = csvRows.map((item) => item.row).join("\n");
+  const result = csvRows.map((item) => item.row).join("\n") + "\n";
   console.log(`🔧 Marketing CSV Result length: ${result.length}`);
   return result;
 }
