@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@db-ux/react-core-components": "4.4.1",
-    "@db-ux/db-theme": "5.3.1",
+    "@db-ux/db-theme": "5.4.0",
     "highlight.js": "^11.11.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",

@@ -34,7 +34,7 @@
     "npm-run-all2": "8.0.4"
   },
   "dependencies": {
-    "@db-ux/db-theme": "5.3.1",
+    "@db-ux/db-theme": "5.4.0",
     "@db-ux/db-theme-fonts": "2.0.5",
     "@db-ux/db-theme-icons": "3.6.0",
     "@db-ux/db-theme-illustrative-icons": "3.1.0",
