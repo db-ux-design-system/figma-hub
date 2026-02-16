@@ -10,13 +10,13 @@
   },
   "dependencies": {
     "@db-ux/db-theme": "5.3.1",
-    "@db-ux/react-core-components": "4.4.1",
+    "@db-ux/react-core-components": "4.4.2",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
   "devDependencies": {
     "@eslint/js": "^9.31.0",
-    "@types/react": "19.2.13",
+    "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "^4.6.0",
     "autoprefixer": "^10.4.24",
