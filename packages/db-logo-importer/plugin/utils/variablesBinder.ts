@@ -10,7 +10,7 @@ import { CONFIG } from "../config";
 export function bindFillVariable(
   component: ComponentNode,
   layerName: string,
-  variable: Variable
+  variable: Variable,
 ): void {
   const target = component.findOne((node) => node.name === layerName);
 
@@ -22,7 +22,7 @@ export function bindFillVariable(
   const paint = figma.variables.setBoundVariableForPaint(
     { type: "SOLID", color: { r: 0, g: 0, b: 0 } },
     "color",
-    variable
+    variable,
   );
 
   target.fills = [paint];
@@ -37,28 +37,26 @@ export function bindFillVariable(
 async function importVariables(): Promise<{
   dbLogo: Variable;
   logoAddition: Variable;
-  componentHeight: Variable;
 }> {
-  const [dbLogo, logoAddition, componentHeight] = await Promise.all([
+  const [dbLogo, logoAddition] = await Promise.all([
     figma.variables.importVariableByKeyAsync(CONFIG.keys.dbLogo),
     figma.variables.importVariableByKeyAsync(CONFIG.keys.logoAddition),
-    figma.variables.importVariableByKeyAsync(CONFIG.keys.componentHeight),
   ]);
 
-  return { dbLogo, logoAddition, componentHeight };
+  return { dbLogo, logoAddition };
 }
 
 /**
  * Binds design system variables to component layers and properties
  * - Binds color variables to "DB Logo" and "Logo Addition" layers
- * - Binds height variable to component and SVG Container
- * - Locks component and SVG Container aspect ratio
+ * - Sets fixed height of 24px to component and SVG Container
+ * - Locks component aspect ratio
  *
  * @param component - The component to bind variables to
  * @throws Error if variables cannot be imported or bound
  */
 export async function bindDesignVariables(
-  component: ComponentNode
+  component: ComponentNode,
 ): Promise<void> {
   try {
     const variables = await importVariables();
@@ -67,16 +65,16 @@ export async function bindDesignVariables(
     bindFillVariable(component, "DB Logo", variables.dbLogo);
     bindFillVariable(component, "Logo Addition", variables.logoAddition);
 
-    // Bind height variable to SVG Container
+    // Set fixed height to SVG Container
     const svgContainer = component.findOne(
-      (node) => node.name === "SVG Container"
+      (node) => node.name === "SVG Container",
     );
-    if (svgContainer && "setBoundVariable" in svgContainer) {
-      svgContainer.setBoundVariable("height", variables.componentHeight);
+    if (svgContainer && "resize" in svgContainer) {
+      svgContainer.resize(svgContainer.width, 24);
     }
 
-    // Bind height variable to component and lock aspect ratio
-    component.setBoundVariable("height", variables.componentHeight);
+    // Set fixed height to component and lock aspect ratio
+    component.resize(component.width, 24);
     component.lockAspectRatio();
 
     component.constraints = {
