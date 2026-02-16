@@ -29,7 +29,7 @@
   "author": "",
   "license": "Apache-2.0",
   "devDependencies": {
-    "@types/node": "^25.2.2",
+    "@types/node": "^25.2.3",
     "adm-zip": "^0.5.16",
     "npm-run-all2": "8.0.4"
   },
@@ -37,8 +37,8 @@
     "@db-ux/db-theme": "5.3.1",
     "@db-ux/db-theme-fonts": "2.0.5",
     "@db-ux/db-theme-icons": "3.6.0",
-    "@db-ux/db-theme-illustrative-icons": "3.1.0",
-    "@db-ux/react-core-components": "4.4.1"
+    "@db-ux/db-theme-illustrative-icons": "3.1.1",
+    "@db-ux/react-core-components": "4.4.2"
   },
   "engines": {
     "node": ">= 22"
