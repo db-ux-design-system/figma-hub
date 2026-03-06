@@ -7,6 +7,9 @@ This plugin imports the custom color variables from Theme Builder Export.
 - Import custom color variables
 - Create Figma variables and modes
 - Create collections with aliases
+- **Automatic variable grouping**: Variables with common prefixes are organized into nested groups using slashes (e.g., `db-poi-db-services` → `db-poi/db-services`)
+- **Flexible prefix handling**: Prefix dialog is always shown, allowing you to specify or adjust the prefix even when importing into existing collections
+- **Smart group creation**: Missing variable groups are automatically created during import
 
 ## Usage
 
@@ -27,11 +30,35 @@ Note: **DB Products**: Only use [secondary colors](https://marketingportal.extra
 3. (Optional) Check **"Delete existing color variables"** if you want to start fresh
 4. Click **"Import variables"**
 
-### 3. What Happens During Import
+### 3. Confirm the Prefix
+
+After selecting your file, the plugin will prompt you to specify a prefix for your collections, variables, and modes:
+
+1. The plugin will suggest a prefix based on your color family names or filename
+2. You can confirm the suggested prefix or enter a custom one
+3. Click **"Confirm and Import"** to proceed
+
+**Important:** The prefix is used to organize your color variables into logical groups:
+
+- Variables with common prefixes are automatically grouped using slashes
+- Example: `db-poi-db-services` becomes `db-poi/db-services`
+- Example: `db-poi-services` becomes `db-poi/services`
+
+This grouping makes it easier to navigate and manage your color variables in Figma.
+
+**Prefix behavior:**
+
+- **New imports**: The prefix creates new collections and variable groups
+- **Existing collections**: The prefix is used to add new color families to existing collections
+- **Multiple prefixes**: You can import different color families with different prefixes into the same collections
+
+The plugin automatically extracts the prefix from your color family names or filename, so in most cases the suggested prefix is correct and can be used as-is.
+
+### 4. What Happens During Import
 
 The plugin creates three variable collections in your Figma file:
 
-#### Collection 1: ❌ Base Variables ❌
+#### Collection 1: Theme
 
 - Contains all raw color values from your JSON
 - Organized by color family (e.g., `colors/blue/1`, `colors/blue/2`, etc.)
@@ -59,7 +86,7 @@ The plugin creates three variable collections in your Figma file:
   - `custom-adaptive/origin/*` - Origin colors
   - `custom-adaptive/on-origin/*` - On-origin colors
 
-### 4. Using the Imported Colors
+### 5. Using the Imported Colors
 
 After import, you can use the colors in your designs:
 
@@ -87,7 +114,7 @@ To use your custom colors with DB Components (e.g., DBButton, DBTag), you need t
 
 This approach ensures your custom colors work seamlessly with the DB Design System components while preserving all interactive states and behaviors.
 
-### 5. Import Options
+### 6. Import Options
 
 **Delete existing color variables:**
 
