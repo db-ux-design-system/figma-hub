@@ -39,7 +39,7 @@ jobs:
 
       - name: ⏫ Upload Release Assets
         id: upload-release-asset
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           result-encoding: json
           script: |
