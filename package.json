@@ -38,7 +38,7 @@
     "@db-ux/db-theme-fonts": "2.0.5",
     "@db-ux/db-theme-icons": "3.7.0",
     "@db-ux/db-theme-illustrative-icons": "3.2.1",
-    "@db-ux/react-core-components": "4.5.4"
+    "@db-ux/react-core-components": "4.6.0"
   },
   "engines": {
     "node": ">= 22"
