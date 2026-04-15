@@ -1,16 +1,11 @@
 /** Definiert den Vertrag, den jedes Modul erfüllen muss */
 export interface PluginModule {
-  /** Eindeutiger Bezeichner des Moduls */
   id: string;
-  /** Anzeigename für die UI */
   name: string;
-  /** Kurzbeschreibung der Funktionalität */
   description: string;
-  /** Verarbeitet eine Aktion mit optionalem Payload */
   execute(action: string, payload?: unknown): Promise<ModuleResult>;
 }
 
-/** Ergebnis einer Modul-Ausführung */
 export interface ModuleResult {
   success: boolean;
   data?: unknown;
@@ -25,7 +20,7 @@ export interface ModuleError {
 
 /** Nachricht von UI an Plugin */
 export interface UIToPluginMessage {
-  type: "execute" | "getModules" | "getStorage";
+  type: "execute" | "getModules" | "getStorage" | "setStorage";
   module?: string;
   action?: string;
   payload?: unknown;
@@ -33,12 +28,18 @@ export interface UIToPluginMessage {
 
 /** Nachricht von Plugin an UI */
 export interface PluginToUIMessage {
-  type: "modules" | "result" | "progress" | "error" | "storage";
+  type:
+    | "modules"
+    | "result"
+    | "progress"
+    | "error"
+    | "storage"
+    | "selectionVersion"
+    | "publishStatus";
   module?: string;
   data?: unknown;
 }
 
-/** Fortschritts-Update während einer Operation */
 export interface ProgressUpdate {
   processed: number;
   total: number;

@@ -1,68 +1,72 @@
 /**
- * Pure functions for reading, writing, and removing stamp markers
- * in Figma component descriptions.
+ * Stamping — dual storage:
  *
- * These functions have NO Figma API dependencies and satisfy:
- * - Round-Trip: readStampMarker(writeStampMarker(desc, ver)) === ver
- * - Idempotence: writeStampMarker(writeStampMarker(desc, ver), ver) === writeStampMarker(desc, ver)
- * - Reversibility: removeStampMarker(writeStampMarker(desc, ver)) === desc (when desc has no marker)
+ * 1. sharedPluginData on each component/set: so consumer plugins can read
+ *    the version via instance.getMainComponentAsync()
+ * 2. Root-map on figma.root: { componentName: version } as a lightweight
+ *    reference for which version each component group is at.
+ *    Keyed by name (not key), so "Button" covers all 4 Button sets.
+ *
+ * Version format: MAJOR.MINOR (no patch).
  */
 
-/** Regex pattern matching a stamp marker like [version: 1.2.3] */
-export const STAMP_PATTERN = /\[version:\s*(\d+\.\d+\.\d+)\]/;
+export const PLUGIN_NAMESPACE = "db_ux";
+export const VERSION_KEY = "version";
+export const VERSION_MAP_KEY = "version_map";
 
-/** Regex for validating a semantic version string */
-const SEMVER_PATTERN = /^\d+\.\d+\.\d+$/;
+const VERSION_PATTERN = /^\d+\.\d+$/;
 
-/**
- * Extracts the version string from a stamp marker in the description.
- * Returns null if no stamp marker is found.
- */
-export function readStampMarker(description: string): string | null {
-  const match = description.match(STAMP_PATTERN);
-  return match ? match[1] : null;
+export type VersionMap = Record<string, string>;
+
+// --- Component-level ---
+
+export function readComponentVersion(
+  node: ComponentNode | ComponentSetNode,
+): string | null {
+  const v = node.getSharedPluginData(PLUGIN_NAMESPACE, VERSION_KEY);
+  return v || null;
 }
 
-/**
- * Writes or replaces a stamp marker in the description.
- * - If a marker already exists, it is replaced in-place.
- * - If no marker exists and the description is empty, returns just the marker.
- * - If no marker exists and the description is non-empty, appends a newline + marker.
- */
-export function writeStampMarker(description: string, version: string): string {
-  const marker = `[version: ${version}]`;
-
-  if (STAMP_PATTERN.test(description)) {
-    return description.replace(STAMP_PATTERN, marker);
-  }
-
-  if (description === "") {
-    return marker;
-  }
-
-  return `${description}\n${marker}`;
+export function writeComponentVersion(
+  node: ComponentNode | ComponentSetNode,
+  version: string,
+): void {
+  node.setSharedPluginData(PLUGIN_NAMESPACE, VERSION_KEY, version);
 }
 
-/**
- * Removes the stamp marker from the description and cleans up
- * the preceding newline if present.
- * Returns the original content without the marker.
- */
-export function removeStampMarker(description: string): string {
-  // Remove marker preceded by a newline
-  let result = description.replace(/\n\[version:\s*\d+\.\d+\.\d+\]/, "");
+// --- Root-level name-based map ---
 
-  // If that didn't change anything, remove a standalone marker (no preceding newline)
-  if (result === description) {
-    result = description.replace(STAMP_PATTERN, "");
+export function readVersionMap(): VersionMap {
+  const raw = figma.root.getSharedPluginData(PLUGIN_NAMESPACE, VERSION_MAP_KEY);
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw) as VersionMap;
+  } catch {
+    return {};
   }
-
-  return result;
 }
 
+export function writeVersionMap(map: VersionMap): void {
+  figma.root.setSharedPluginData(
+    PLUGIN_NAMESPACE,
+    VERSION_MAP_KEY,
+    JSON.stringify(map),
+  );
+}
+
+// --- Helpers ---
+
 /**
- * Validates whether a string is a valid semantic version (MAJOR.MINOR.PATCH).
+ * Extracts the base component name from a node name.
+ * E.g. "💻 Prefix=DB, 💻 Component=Button, ..." → uses the full node.name
+ * but for COMPONENT_SET the name is typically just "Button" etc.
  */
-export function isValidSemver(version: string): boolean {
-  return SEMVER_PATTERN.test(version);
+export function getComponentGroupName(
+  node: ComponentNode | ComponentSetNode,
+): string {
+  return node.name;
+}
+
+export function isValidVersion(version: string): boolean {
+  return VERSION_PATTERN.test(version);
 }

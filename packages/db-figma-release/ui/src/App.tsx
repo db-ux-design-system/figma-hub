@@ -3,33 +3,41 @@ import { DBButton, DBCard } from "@db-ux/react-core-components";
 import { sendMessage, usePluginMessage } from "./hooks/usePluginMessage";
 import type {
   ModuleInfo,
-  ModuleViewProps,
   ModuleViewRegistry,
   PluginToUIMessage,
 } from "./types";
 
-// Placeholder until Task 7.1
-const StampingViewPlaceholder = ({ moduleId }: ModuleViewProps) => (
-  <div className="p-fix-md text-center">
-    Stamping Module (ID: {moduleId}) — wird in Task 7 implementiert
-  </div>
-);
+import StampingView from "./modules/stamping/StampingView";
 
 const moduleViewRegistry: ModuleViewRegistry = {
-  stamping: StampingViewPlaceholder,
+  stamping: StampingView,
 };
 
 function App() {
   const [modules, setModules] = useState<ModuleInfo[]>([]);
   const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
+  const [selectionVersion, setSelectionVersion] = useState<
+    string | undefined
+  >();
 
   useEffect(() => {
     sendMessage("getModules");
+    sendMessage("getStorage");
   }, []);
 
   const handleMessage = useCallback((msg: PluginToUIMessage) => {
     if (msg.type === "modules") {
       setModules(msg.data as ModuleInfo[]);
+    }
+    if (msg.type === "storage") {
+      const storageData = msg.data as { lastModule?: string } | undefined;
+      if (storageData?.lastModule) {
+        setActiveModuleId(storageData.lastModule);
+      }
+    }
+    if (msg.type === "selectionVersion") {
+      const data = msg.data as { version: string | null } | undefined;
+      setSelectionVersion(data?.version ?? undefined);
     }
   }, []);
 
@@ -67,6 +75,7 @@ function App() {
           <ActiveView
             moduleId={activeModuleId!}
             sendMessage={moduleSendMessage}
+            initialVersion={selectionVersion}
           />
         </>
       ) : (
@@ -80,7 +89,12 @@ function App() {
               <DBCard
                 key={mod.id}
                 className="cursor-pointer"
-                onClick={() => setActiveModuleId(mod.id)}
+                onClick={() => {
+                  setActiveModuleId(mod.id);
+                  sendMessage("setStorage", undefined, undefined, {
+                    lastModule: mod.id,
+                  });
+                }}
               >
                 <h2 className="text-lg font-semibold">{mod.name}</h2>
                 <p className="text-sm">{mod.description}</p>
