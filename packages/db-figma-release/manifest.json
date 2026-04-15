@@ -1,0 +1,13 @@
+{
+  "name": "🚅 DB Figma Release",
+  "id": "0000000000000000000",
+  "api": "1.0.0",
+  "main": "dist/index.js",
+  "ui": "dist/index.html",
+  "editorType": ["figma"],
+  "capabilities": [],
+  "enableProposedApi": false,
+  "permissions": [],
+  "documentAccess": "dynamic-page",
+  "networkAccess": { "allowedDomains": ["none"] }
+}
