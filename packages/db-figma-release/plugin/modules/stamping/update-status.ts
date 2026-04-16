@@ -3,7 +3,7 @@
  * Groups components by their page name with section headers.
  */
 
-import { readComponentVersion } from "./stamp";
+import { readUpdatedWith, readVersionMap } from "./stamp";
 
 const UPDATE_STATUS_FRAME = "Update status";
 const TABLE_NODE = "Table";
@@ -20,10 +20,10 @@ export async function updateStatusFrame(
   await figma.loadAllPagesAsync();
 
   const overviewPage = figma.root.children.find((p) =>
-    p.name.includes("Overview"),
+    p.name.includes("Changelog"),
   );
   if (!overviewPage) {
-    console.log("updateStatusFrame: 'Overview' page not found");
+    console.log("updateStatusFrame: 'Changelog' page not found");
     return;
   }
 
@@ -35,25 +35,38 @@ export async function updateStatusFrame(
     return;
   }
 
-  // Update header text with highest version and date
-  const headerNode = statusFrame.findOne(
-    (n) => n.type === "TEXT",
-  ) as TextNode | null;
+  // Update header text — use first direct TEXT child of the status frame
+  const headerNode = statusFrame.children.find((n) => n.type === "TEXT") as
+    | TextNode
+    | undefined;
   if (headerNode) {
-    await figma.loadFontAsync(headerNode.fontName as FontName);
+    // Determine highest version from the root version map (authoritative after Stamp All)
+    const versionMap = readVersionMap();
     let highestVersion = "0.0";
-    for (const node of components) {
-      const v = readComponentVersion(node);
-      if (v) {
-        const [major, minor] = v.split(".").map(Number);
-        const [hMajor, hMinor] = highestVersion.split(".").map(Number);
-        if (major > hMajor || (major === hMajor && minor > hMinor)) {
-          highestVersion = v;
-        }
+    for (const v of Object.values(versionMap)) {
+      const [major, minor] = v.split(".").map(Number);
+      const [hMajor, hMinor] = highestVersion.split(".").map(Number);
+      if (major > hMajor || (major === hMajor && minor > hMinor)) {
+        highestVersion = v;
       }
     }
-    const date = new Date().toLocaleDateString("de-DE");
-    headerNode.characters = `Library: v${highestVersion}, ${date}\nComponents last updated with version:`;
+    const now = new Date();
+    const date = `${String(now.getDate()).padStart(2, "0")}.${String(now.getMonth() + 1).padStart(2, "0")}.${now.getFullYear()}`;
+    const newText = `Library: v${highestVersion}, ${date}`;
+    try {
+      // Load all fonts used in the text node (handles mixed styles)
+      const len = headerNode.characters.length;
+      if (len > 0) {
+        const fonts = headerNode.getRangeAllFontNames(0, len);
+        for (const font of fonts) {
+          await figma.loadFontAsync(font);
+        }
+      }
+      headerNode.characters = newText;
+      console.log("updateStatusFrame: header updated to:", newText);
+    } catch (e) {
+      console.log("updateStatusFrame: FAILED to update header:", e);
+    }
   }
 
   const tableNode = statusFrame.findOne(
@@ -76,7 +89,7 @@ export async function updateStatusFrame(
 
     rows.push({
       name: node.name,
-      version: readComponentVersion(node) ?? "—",
+      version: readUpdatedWith(node) ?? "—",
       pageName,
     });
   }
@@ -133,7 +146,7 @@ export async function updateStatusFrame(
       const text = figma.createText();
       text.fontName = font;
       text.fontSize = fontSize;
-      text.characters = `- ${row.name} - v${row.version}`;
+      text.characters = `- ${row.name} - updated with v${row.version}`;
       tableNode.appendChild(text);
     }
   }

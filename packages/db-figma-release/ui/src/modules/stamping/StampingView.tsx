@@ -1,5 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { DBButton, DBInfotext, DBInput } from "@db-ux/react-core-components";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  DBAccordion,
+  DBAccordionItem,
+  DBBadge,
+  DBButton,
+  DBCheckbox,
+  DBInput,
+  DBNotification,
+} from "@db-ux/react-core-components";
 import { usePluginMessage } from "../../hooks/usePluginMessage";
 import type {
   ModuleError,
@@ -17,12 +25,17 @@ interface ComponentEntry {
   version: string | null;
   key: string;
   publishStatus: "UNPUBLISHED" | "CURRENT" | "CHANGED" | "UNKNOWN" | "SCANNING";
+  pageName: string;
 }
 
 function StampingView({
   moduleId,
+  moduleName,
+  moduleDescription,
   sendMessage,
+  onBack,
   initialVersion,
+  hasCanvasSelection,
 }: ModuleViewProps) {
   const [version, setVersion] = useState("");
   const [isRunning, setIsRunning] = useState(false);
@@ -147,6 +160,29 @@ function StampingView({
     );
   };
 
+  const toggleGroup = (groupComponents: ComponentEntry[]) => {
+    const groupIds = groupComponents.map((c) => c.id);
+    const allSelected = groupIds.every((id) => selectedIds.has(id));
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      for (const id of groupIds) {
+        if (allSelected) next.delete(id);
+        else next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const groupedComponents = useMemo(() => {
+    const groups = new Map<string, ComponentEntry[]>();
+    for (const comp of components) {
+      const group = groups.get(comp.pageName) ?? [];
+      group.push(comp);
+      groups.set(comp.pageName, group);
+    }
+    return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, [components]);
+
   const stampedCount =
     result?.success && result.data
       ? (result.data as { stamped: number }).stamped
@@ -159,74 +195,104 @@ function StampingView({
 
   return (
     <div className="flex flex-col gap-fix-md">
-      <DBInput
-        label="Version (Major.Minor)"
-        placeholder="1.0"
-        value={version}
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-          setVersion(e.target.value)
-        }
-      />
+      <div className="sticky top-0 z-10 bg-[var(--db-adaptive-bg-basic-level-1-default)] pb-fix-sm flex flex-col gap-fix-sm">
+        <div>
+          <DBButton icon="arrow_left" variant="ghost" onClick={onBack}>
+            Back
+          </DBButton>
+          <h1 className="text-2xl">{moduleName}</h1>
+          <p className="text-sm">{moduleDescription}</p>
+        </div>
 
-      {hasInput && (
-        <DBInfotext semantic={isValid ? "successful" : "critical"}>
-          {isValid
-            ? `Version ${version} ist gültig`
-            : "Ungültiges Format — erwartet: MAJOR.MINOR (z.B. 5.2)"}
-        </DBInfotext>
-      )}
+        <div className="flex gap-fix-sm items-start">
+          <DBInput
+            label="Release"
+            placeholder="1.0"
+            value={version}
+            showLabel={false}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setVersion(e.target.value)
+            }
+            validation={hasInput && !isValid ? "invalid" : "no-validation"}
+            invalidMessage="MAJOR.MINOR"
+          />
+          <DBButton
+            variant="brand"
+            disabled={!isValid || isRunning}
+            onClick={stampAll}
+            width="full"
+          >
+            Stamp All
+          </DBButton>
+          <DBButton
+            variant="outlined"
+            disabled={
+              !isValid ||
+              isRunning ||
+              (selectedIds.size === 0 && !hasCanvasSelection)
+            }
+            width="full"
+            onClick={() => {
+              if (selectedIds.size > 0) {
+                stampSelected();
+              } else {
+                pendingActionRef.current = "stamp-selection";
+                setIsRunning(true);
+                setResult(null);
+                setProgress(null);
+                sendMessage("stamp-selection", { version });
+              }
+            }}
+          >
+            {selectedIds.size > 0
+              ? `Stamp ${selectedIds.size} component${selectedIds.size !== 1 ? "s" : ""}`
+              : "Stamp Selection"}
+          </DBButton>
+        </div>
+        <div className="flex gap-fix-sm">
+          <DBButton
+            variant="outlined"
+            disabled={isRunning}
+            onClick={loadComponents}
+            width="full"
+            size="small"
+          >
+            Select components
+          </DBButton>
+          <DBButton
+            variant="outlined"
+            disabled={isRunning}
+            width="full"
+            size="small"
+            onClick={() => {
+              pendingActionRef.current = "update-status";
+              setIsRunning(true);
+              setResult(null);
+              sendMessage("update-status", {});
+            }}
+          >
+            Update table
+          </DBButton>
+          <DBButton
+            variant="outlined"
+            disabled={isRunning}
+            width="full"
+            size="small"
+            onClick={() => {
+              pendingActionRef.current = "clear-all";
+              setIsRunning(true);
+              setResult(null);
+              sendMessage("clear-all", {});
+            }}
+          >
+            Delete all stamps
+          </DBButton>
+        </div>
 
-      <div className="flex flex-col gap-fix-sm">
-        <DBButton
-          variant="brand"
-          disabled={!isValid || isRunning}
-          onClick={stampAll}
-          width="full"
-        >
-          Stamp All Components
-        </DBButton>
-        <DBButton
-          variant="outlined"
-          disabled={!isValid || isRunning}
-          width="full"
-          onClick={() => {
-            pendingActionRef.current = "stamp-selection";
-            setIsRunning(true);
-            setResult(null);
-            setProgress(null);
-            sendMessage("stamp-selection", { version });
-          }}
-        >
-          Stamp Figma Selection
-        </DBButton>
-        <DBButton
-          variant="outlined"
-          disabled={isRunning}
-          onClick={loadComponents}
-          width="full"
-        >
-          Komponenten auswählen…
-        </DBButton>
-        <DBButton
-          variant="outlined"
-          disabled={isRunning}
-          width="full"
-          onClick={() => {
-            pendingActionRef.current = "update-status";
-            setIsRunning(true);
-            setResult(null);
-            sendMessage("update-status", {});
-          }}
-        >
-          Tabelle aktualisieren
-        </DBButton>
-      </div>
-
-      {showList && components.length > 0 && (
-        <div className="flex flex-col gap-fix-sm border rounded p-fix-sm max-h-64 overflow-y-auto">
+        {showList && components.length > 0 && (
           <div className="flex items-center justify-between gap-fix-xs">
             <span className="text-sm font-semibold">
-              {selectedIds.size} / {components.length} ausgewählt
+              {selectedIds.size} / {components.length} selected
             </span>
             <div className="flex gap-fix-xs">
               <DBButton
@@ -235,84 +301,124 @@ function StampingView({
                 disabled={isRunning}
                 onClick={detectChanged}
               >
-                Geänderte erkennen
+                Select changed
               </DBButton>
               <DBButton variant="ghost" size="small" onClick={toggleAll}>
-                {selectedIds.size === components.length ? "Keine" : "Alle"}
+                {selectedIds.size === components.length
+                  ? "Select none"
+                  : "Select all"}
               </DBButton>
             </div>
           </div>
+        )}
+      </div>
 
-          {components.map((comp) => (
-            <label
-              key={comp.id}
-              className="flex items-center gap-fix-xs cursor-pointer text-sm"
-            >
-              <input
-                type="checkbox"
-                checked={selectedIds.has(comp.id)}
-                onChange={() => toggleComponent(comp.id)}
-              />
-              <span className="flex-1">
-                {comp.name}
-                {comp.publishStatus === "SCANNING" && (
-                  <span className="ml-1 text-xs opacity-60">⏳</span>
-                )}
-                {comp.publishStatus === "CHANGED" && (
-                  <span className="ml-1 text-xs text-[color:var(--db-warning)]">
-                    ● geändert
-                  </span>
-                )}
-                {comp.publishStatus === "CURRENT" && (
-                  <span className="ml-1 text-xs opacity-40">✓</span>
-                )}
-                {comp.publishStatus === "UNPUBLISHED" && (
-                  <span className="ml-1 text-xs opacity-40">neu</span>
-                )}
-              </span>
-              {comp.version && (
-                <span className="text-xs opacity-60">v{comp.version}</span>
-              )}
-            </label>
-          ))}
+      {showList && components.length > 0 && (
+        <DBAccordion variant="divider" behavior="multiple">
+          {groupedComponents.map(([pageName, groupComps]) => {
+            const groupIds = groupComps.map((c) => c.id);
+            const selectedInGroup = groupIds.filter((id) =>
+              selectedIds.has(id),
+            ).length;
+            return (
+              <DBAccordionItem
+                key={pageName}
+                headline={
+                  <div className="flex items-center justify-between w-full gap-fix-xs">
+                    <span>
+                      <strong>{pageName}</strong> ({selectedInGroup}/
+                      {groupComps.length})
+                    </span>
+                    <DBButton
+                      variant="ghost"
+                      size="small"
+                      onClick={(e: React.MouseEvent) => {
+                        e.stopPropagation();
+                        toggleGroup(groupComps);
+                      }}
+                    >
+                      {selectedInGroup === groupComps.length
+                        ? "Deselect all"
+                        : "Select all"}
+                    </DBButton>
+                  </div>
+                }
+              >
+                <div className="flex flex-col gap-fix-xs">
+                  {groupComps.map((comp) => (
+                    <div
+                      key={comp.id}
+                      className="flex items-center gap-fix-xs text-sm"
+                    >
+                      <DBCheckbox
+                        onChange={() => toggleComponent(comp.id)}
+                        checked={selectedIds.has(comp.id)}
+                        size="small"
+                      >
+                        {comp.name}
+                      </DBCheckbox>
+                      <span className="flex-1">
+                        {comp.publishStatus === "SCANNING" && (
+                          <span className="ml-1 text-xs opacity-60">⏳</span>
+                        )}
+                        {comp.publishStatus === "CHANGED" && (
+                          <DBBadge semantic="warning">changed</DBBadge>
+                        )}
+                        {comp.publishStatus === "UNPUBLISHED" && (
+                          <DBBadge semantic="successful">new</DBBadge>
+                        )}
+                      </span>
+                      {comp.version && (
+                        <span className="text-xs opacity-60">
+                          v{comp.version}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </DBAccordionItem>
+            );
+          })}
+        </DBAccordion>
+      )}
 
-          <DBButton
-            variant="brand"
-            disabled={!isValid || isRunning || selectedIds.size === 0}
-            onClick={stampSelected}
-            width="full"
+      <div className="fixed top-fix-md right-fix-md z-50 w-72">
+        {isRunning && (
+          <DBNotification variant="overlay" semantic="informational">
+            {progress
+              ? `Stamping ${progress.processed} / ${progress.total}`
+              : "Processing"}
+            {/* {progress?.currentComponent} */}
+          </DBNotification>
+        )}
+
+        {result && result.success && (
+          <DBNotification
+            variant="overlay"
+            semantic="successful"
+            closeable
+            onClose={() => setResult(null)}
           >
-            Stamp {selectedIds.size} Komponente
-            {selectedIds.size !== 1 ? "n" : ""}
-          </DBButton>
-        </div>
-      )}
+            {resultMessage || `${stampedCount} components stamped`}
+          </DBNotification>
+        )}
 
-      {isRunning && progress && (
-        <DBInfotext semantic="informational">
-          Verarbeite {progress.processed} von {progress.total} Komponenten
-          {progress.currentComponent ? ` — ${progress.currentComponent}` : ""}
-        </DBInfotext>
-      )}
-
-      {result && result.success && (
-        <DBInfotext semantic="successful">
-          {resultMessage || `Fertig — ${stampedCount} Komponenten gestampt.`}
-        </DBInfotext>
-      )}
-
-      {errors.length > 0 && (
-        <div className="flex flex-col gap-fix-xs">
-          <DBInfotext semantic="critical">{errors.length} Fehler:</DBInfotext>
-          <ul className="list-disc pl-fix-md text-sm">
+        {errors.length > 0 && (
+          <DBNotification
+            variant="overlay"
+            semantic="critical"
+            closeable
+            onClose={() => setResult(null)}
+            headline={`${errors.length} Error${errors.length !== 1 ? "s" : ""}`}
+          >
             {errors.map((err) => (
-              <li key={err.componentId}>
-                <strong>{err.componentName}</strong>: {err.message}
-              </li>
+              <div key={err.componentId}>
+                {err.componentName}: {err.message}
+              </div>
             ))}
-          </ul>
-        </div>
-      )}
+          </DBNotification>
+        )}
+      </div>
     </div>
   );
 }

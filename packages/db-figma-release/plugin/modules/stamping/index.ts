@@ -5,16 +5,18 @@ import type {
   ProgressUpdate,
 } from "../../types";
 import {
-  readComponentVersion,
-  writeComponentVersion,
+  readUpdatedWith,
+  writeUpdatedWith,
   readVersionMap,
   writeVersionMap,
   getComponentGroupName,
+  clearNodePluginData,
+  clearRootPluginData,
 } from "./stamp";
 import { updateStatusFrame } from "./update-status";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-const BATCH_SIZE = 50;
+const BATCH_SIZE = 10;
 
 export interface ComponentListEntry {
   id: string;
@@ -22,12 +24,13 @@ export interface ComponentListEntry {
   version: string | null;
   key: string;
   publishStatus: string;
+  pageName: string;
 }
 
 export class StampingModule implements PluginModule {
   id = "stamping";
   name = "Stamping";
-  description = "Versionsnummern in Komponenten verwalten";
+  description = "Manage update version nummer";
 
   private sendProgress: (data: ProgressUpdate) => void;
 
@@ -47,6 +50,8 @@ export class StampingModule implements PluginModule {
         return this.listComponents();
       case "update-status":
         return this.executeUpdateStatus();
+      case "clear-all":
+        return this.clearAll();
       default:
         return this.err(`Unknown action: "${action}"`);
     }
@@ -54,13 +59,18 @@ export class StampingModule implements PluginModule {
 
   private async listComponents(): Promise<ModuleResult> {
     const nodes = await this.findAllComponents();
-    const components: ComponentListEntry[] = nodes.map((n) => ({
-      id: n.id,
-      name: n.name,
-      version: readComponentVersion(n),
-      key: n.key,
-      publishStatus: "UNKNOWN",
-    }));
+    const components: ComponentListEntry[] = nodes.map((n) => {
+      let parent: BaseNode | null = n;
+      while (parent && parent.type !== "PAGE") parent = parent.parent;
+      return {
+        id: n.id,
+        name: n.name,
+        version: readUpdatedWith(n),
+        key: n.key,
+        publishStatus: "UNKNOWN",
+        pageName: parent?.name ?? "Unknown",
+      };
+    });
     return { success: true, data: { components } };
   }
 
@@ -79,6 +89,27 @@ export class StampingModule implements PluginModule {
           : "Fehler beim Aktualisieren der Tabelle",
       );
     }
+  }
+
+  private async clearAll(): Promise<ModuleResult> {
+    const components = await this.findAllComponents();
+    let cleared = 0;
+    for (const node of components) {
+      try {
+        clearNodePluginData(node);
+        cleared++;
+      } catch {
+        /* skip */
+      }
+    }
+    clearRootPluginData();
+    return {
+      success: true,
+      data: {
+        cleared,
+        message: `Plugin-Daten von ${cleared} Komponenten gelöscht.`,
+      },
+    };
   }
 
   private async stampByIds(payload: unknown): Promise<ModuleResult> {
@@ -131,10 +162,18 @@ export class StampingModule implements PluginModule {
     const errors: ModuleError[] = [];
     let stamped = 0;
 
+    // Send initial progress so the UI can show it before the loop starts
+    this.sendProgress({
+      processed: 0,
+      total: components.length,
+      currentComponent: components[0].name,
+    });
+    await delay(50);
+
     for (let i = 0; i < components.length; i++) {
       const node = components[i];
       try {
-        writeComponentVersion(node, version);
+        writeUpdatedWith(node, version);
         stamped++;
       } catch (e) {
         errors.push({
@@ -149,11 +188,11 @@ export class StampingModule implements PluginModule {
           total: components.length,
           currentComponent: node.name,
         });
-        await delay(0);
+        await delay(50);
       }
     }
 
-    this.updateRootMap(components, version);
+    this.updateRootMap(components, version, mode === "all");
 
     // Update the "Update status" frame on the Overview page
     try {
@@ -179,7 +218,7 @@ export class StampingModule implements PluginModule {
     let stamped = 0;
     for (const node of nodes) {
       try {
-        writeComponentVersion(node, version);
+        writeUpdatedWith(node, version);
         stamped++;
       } catch (e) {
         errors.push({
@@ -195,9 +234,10 @@ export class StampingModule implements PluginModule {
   private updateRootMap(
     nodes: (ComponentNode | ComponentSetNode)[],
     version: string,
+    replace = false,
   ): void {
     try {
-      const map = readVersionMap();
+      const map = replace ? {} : readVersionMap();
       for (const node of nodes) {
         map[getComponentGroupName(node)] = version;
       }

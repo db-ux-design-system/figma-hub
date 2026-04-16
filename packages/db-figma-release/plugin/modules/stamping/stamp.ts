@@ -11,7 +11,7 @@
  */
 
 export const PLUGIN_NAMESPACE = "db_ux";
-export const VERSION_KEY = "version";
+export const UPDATED_WITH_KEY = "updated_with";
 export const VERSION_MAP_KEY = "version_map";
 
 const VERSION_PATTERN = /^\d+\.\d+$/;
@@ -20,18 +20,28 @@ export type VersionMap = Record<string, string>;
 
 // --- Component-level ---
 
-export function readComponentVersion(
+export function readUpdatedWith(
   node: ComponentNode | ComponentSetNode,
 ): string | null {
-  const v = node.getSharedPluginData(PLUGIN_NAMESPACE, VERSION_KEY);
+  const v = node.getSharedPluginData(PLUGIN_NAMESPACE, UPDATED_WITH_KEY);
   return v || null;
 }
 
-export function writeComponentVersion(
+export function writeUpdatedWith(
   node: ComponentNode | ComponentSetNode,
   version: string,
 ): void {
-  node.setSharedPluginData(PLUGIN_NAMESPACE, VERSION_KEY, version);
+  node.setSharedPluginData(PLUGIN_NAMESPACE, UPDATED_WITH_KEY, version);
+
+  // If this is a component set, also stamp all child components
+  // so instances can read the version via getMainComponentAsync()
+  if (node.type === "COMPONENT_SET") {
+    for (const child of node.children) {
+      if (child.type === "COMPONENT") {
+        child.setSharedPluginData(PLUGIN_NAMESPACE, UPDATED_WITH_KEY, version);
+      }
+    }
+  }
 }
 
 // --- Root-level name-based map ---
@@ -69,4 +79,29 @@ export function getComponentGroupName(
 
 export function isValidVersion(version: string): boolean {
   return VERSION_PATTERN.test(version);
+}
+
+// --- Clear all plugin data ---
+
+export function clearNodePluginData(
+  node: ComponentNode | ComponentSetNode,
+): void {
+  for (const key of node.getSharedPluginDataKeys(PLUGIN_NAMESPACE)) {
+    node.setSharedPluginData(PLUGIN_NAMESPACE, key, "");
+  }
+  if (node.type === "COMPONENT_SET") {
+    for (const child of node.children) {
+      if (child.type === "COMPONENT") {
+        for (const key of child.getSharedPluginDataKeys(PLUGIN_NAMESPACE)) {
+          child.setSharedPluginData(PLUGIN_NAMESPACE, key, "");
+        }
+      }
+    }
+  }
+}
+
+export function clearRootPluginData(): void {
+  for (const key of figma.root.getSharedPluginDataKeys(PLUGIN_NAMESPACE)) {
+    figma.root.setSharedPluginData(PLUGIN_NAMESPACE, key, "");
+  }
 }

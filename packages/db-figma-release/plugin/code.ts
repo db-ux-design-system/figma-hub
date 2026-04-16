@@ -1,6 +1,6 @@
 import { ModuleRegistry } from "./module-registry";
 import { StampingModule } from "./modules/stamping/index";
-import { PLUGIN_NAMESPACE, VERSION_KEY } from "./modules/stamping/stamp";
+import { PLUGIN_NAMESPACE, UPDATED_WITH_KEY } from "./modules/stamping/stamp";
 import type {
   UIToPluginMessage,
   PluginToUIMessage,
@@ -150,9 +150,11 @@ async function detectChangedComponents(): Promise<void> {
 
 function sendSelectionVersion(): void {
   let version: string | null = null;
+  let hasComponents = false;
   for (const node of figma.currentPage.selection) {
     if (node.type === "COMPONENT" || node.type === "COMPONENT_SET") {
-      const v = node.getSharedPluginData(PLUGIN_NAMESPACE, VERSION_KEY);
+      hasComponents = true;
+      const v = node.getSharedPluginData(PLUGIN_NAMESPACE, UPDATED_WITH_KEY);
       if (v) {
         version = v;
         break;
@@ -161,7 +163,7 @@ function sendSelectionVersion(): void {
   }
   figma.ui.postMessage({
     type: "selectionVersion",
-    data: { version },
+    data: { version, hasComponents },
   } as PluginToUIMessage);
 }
 

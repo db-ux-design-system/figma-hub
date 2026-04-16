@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { DBButton, DBCard } from "@db-ux/react-core-components";
+import { DBCard } from "@db-ux/react-core-components";
 import { sendMessage, usePluginMessage } from "./hooks/usePluginMessage";
 import type {
   ModuleInfo,
@@ -19,6 +19,7 @@ function App() {
   const [selectionVersion, setSelectionVersion] = useState<
     string | undefined
   >();
+  const [hasCanvasSelection, setHasCanvasSelection] = useState(false);
 
   useEffect(() => {
     sendMessage("getModules");
@@ -36,8 +37,11 @@ function App() {
       }
     }
     if (msg.type === "selectionVersion") {
-      const data = msg.data as { version: string | null } | undefined;
+      const data = msg.data as
+        | { version: string | null; hasComponents?: boolean }
+        | undefined;
       setSelectionVersion(data?.version ?? undefined);
+      setHasCanvasSelection(data?.hasComponents ?? false);
     }
   }, []);
 
@@ -58,31 +62,20 @@ function App() {
   return (
     <div className="p-fix-md flex flex-col gap-fix-md">
       {activeModule && ActiveView ? (
-        <>
-          <div className="flex items-center gap-fix-sm">
-            <DBButton
-              icon="arrow_left"
-              variant="ghost"
-              onClick={() => setActiveModuleId(null)}
-            >
-              Zurück
-            </DBButton>
-          </div>
-          <header>
-            <h1 className="text-2xl">{activeModule.name}</h1>
-            <p className="text-sm">{activeModule.description}</p>
-          </header>
-          <ActiveView
-            moduleId={activeModuleId!}
-            sendMessage={moduleSendMessage}
-            initialVersion={selectionVersion}
-          />
-        </>
+        <ActiveView
+          moduleId={activeModuleId!}
+          moduleName={activeModule.name}
+          moduleDescription={activeModule.description}
+          sendMessage={moduleSendMessage}
+          onBack={() => setActiveModuleId(null)}
+          initialVersion={selectionVersion}
+          hasCanvasSelection={hasCanvasSelection}
+        />
       ) : (
         <>
           <header>
             <h1 className="text-2xl">DB Figma Release</h1>
-            <p className="text-sm">Wähle ein Modul, um loszulegen.</p>
+            <p className="text-sm">Choose a option to start</p>
           </header>
           <div className="flex flex-col gap-fix-sm">
             {modules.map((mod) => (

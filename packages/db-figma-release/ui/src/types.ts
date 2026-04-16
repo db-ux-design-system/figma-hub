@@ -8,8 +8,12 @@ export interface ModuleInfo {
 
 export interface ModuleViewProps {
   moduleId: string;
+  moduleName: string;
+  moduleDescription: string;
   sendMessage: (action: string, payload?: unknown) => void;
+  onBack: () => void;
   initialVersion?: string;
+  hasCanvasSelection?: boolean;
 }
 
 export type ModuleViewRegistry = Record<
