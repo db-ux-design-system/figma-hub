@@ -105,12 +105,7 @@ figma.ui.onmessage = async (msg: UIToPluginMessage) => {
 // --- Detect changed: uses traversal (not getNodeById) for dynamic-page compat ---
 
 function isPublishable(node: { key: string; name: string }): boolean {
-  return (
-    !!node.key &&
-    !node.name.startsWith(".") &&
-    !node.name.startsWith("↳") &&
-    !node.name.startsWith("🛟")
-  );
+  return !!node.key && !node.name.startsWith(".");
 }
 
 async function detectChangedComponents(): Promise<void> {

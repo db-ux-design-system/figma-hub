@@ -11,6 +11,7 @@ import {
   writeVersionMap,
   getComponentGroupName,
 } from "./stamp";
+import { updateStatusFrame } from "./update-status";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const BATCH_SIZE = 50;
@@ -44,6 +45,8 @@ export class StampingModule implements PluginModule {
         return this.stampByIds(payload);
       case "list-components":
         return this.listComponents();
+      case "update-status":
+        return this.executeUpdateStatus();
       default:
         return this.err(`Unknown action: "${action}"`);
     }
@@ -61,6 +64,23 @@ export class StampingModule implements PluginModule {
     return { success: true, data: { components } };
   }
 
+  private async executeUpdateStatus(): Promise<ModuleResult> {
+    try {
+      const allComponents = await this.findAllComponents();
+      await updateStatusFrame(allComponents);
+      return {
+        success: true,
+        data: { message: "Update Status Tabelle aktualisiert." },
+      };
+    } catch (e) {
+      return this.err(
+        e instanceof Error
+          ? e.message
+          : "Fehler beim Aktualisieren der Tabelle",
+      );
+    }
+  }
+
   private async stampByIds(payload: unknown): Promise<ModuleResult> {
     const { version, ids } =
       (payload as { version: string; ids: string[] }) ?? {};
@@ -73,6 +93,13 @@ export class StampingModule implements PluginModule {
 
     const { stamped, errors } = this.writeVersions(targets, version);
     this.updateRootMap(targets, version);
+
+    // Update the "Update status" frame on the Overview page
+    try {
+      await updateStatusFrame(allComponents);
+    } catch (e) {
+      console.log("updateStatusFrame error:", e);
+    }
 
     return {
       success: errors.length === 0,
@@ -128,6 +155,13 @@ export class StampingModule implements PluginModule {
 
     this.updateRootMap(components, version);
 
+    // Update the "Update status" frame on the Overview page
+    try {
+      await updateStatusFrame(components);
+    } catch (e) {
+      console.log("updateStatusFrame error:", e);
+    }
+
     return {
       success: errors.length === 0,
       data: { stamped, total: components.length },
@@ -174,12 +208,7 @@ export class StampingModule implements PluginModule {
   }
 
   private isPublishable(node: ComponentNode | ComponentSetNode): boolean {
-    return (
-      !!node.key &&
-      !node.name.startsWith(".") &&
-      !node.name.startsWith("↳") &&
-      !node.name.startsWith("🛟")
-    );
+    return !!node.key && !node.name.startsWith(".");
   }
 
   private getSelectedComponents(): (ComponentNode | ComponentSetNode)[] {

@@ -207,6 +207,19 @@ function StampingView({
         >
           Komponenten auswählen…
         </DBButton>
+        <DBButton
+          variant="outlined"
+          disabled={isRunning}
+          width="full"
+          onClick={() => {
+            pendingActionRef.current = "update-status";
+            setIsRunning(true);
+            setResult(null);
+            sendMessage("update-status", {});
+          }}
+        >
+          Tabelle aktualisieren
+        </DBButton>
       </div>
 
       {showList && components.length > 0 && (
