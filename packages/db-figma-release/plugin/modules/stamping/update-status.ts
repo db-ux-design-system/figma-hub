@@ -5,7 +5,7 @@
 
 import { readUpdatedWith, readVersionMap } from "./stamp";
 
-const UPDATE_STATUS_FRAME = "Update status";
+const UPDATE_STATUS_FRAME = "Component update status";
 const TABLE_NODE = "Table";
 
 interface TableRow {

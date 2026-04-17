@@ -14,6 +14,9 @@ export interface ModuleViewProps {
   onBack: () => void;
   initialVersion?: string;
   hasCanvasSelection?: boolean;
+  fileKey?: string;
+  figmaToken?: string;
+  onSaveToken: (token: string) => void;
 }
 
 export type ModuleViewRegistry = Record<

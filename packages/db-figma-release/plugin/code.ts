@@ -1,5 +1,6 @@
 import { ModuleRegistry } from "./module-registry";
 import { StampingModule } from "./modules/stamping/index";
+import { ChangelogModule } from "./modules/changelog/index";
 import { PLUGIN_NAMESPACE, UPDATED_WITH_KEY } from "./modules/stamping/stamp";
 import type {
   UIToPluginMessage,
@@ -23,6 +24,9 @@ function sendError(message: string): void {
 
 const registry = new ModuleRegistry();
 registry.register(new StampingModule((data) => sendProgress("stamping", data)));
+registry.register(
+  new ChangelogModule((data) => sendProgress("changelog", data)),
+);
 
 figma.ui.onmessage = async (msg: UIToPluginMessage) => {
   try {
@@ -70,15 +74,28 @@ figma.ui.onmessage = async (msg: UIToPluginMessage) => {
         } catch {
           /* ok */
         }
+        let figmaToken: string | undefined;
+        try {
+          figmaToken = await figma.clientStorage.getAsync(
+            "db-release.figmaToken",
+          );
+        } catch {
+          /* ok */
+        }
+        let fileKey: string | undefined;
+        const fk = figma.root.getSharedPluginData(PLUGIN_NAMESPACE, "file_key");
+        if (fk) fileKey = fk;
         figma.ui.postMessage({
           type: "storage",
-          data: { lastModule },
+          data: { lastModule, figmaToken, fileKey },
         } as PluginToUIMessage);
         break;
       }
 
       case "setStorage": {
-        const p = msg.payload as { lastModule?: string } | undefined;
+        const p = msg.payload as
+          | { lastModule?: string; figmaToken?: string; fileKey?: string }
+          | undefined;
         if (p?.lastModule) {
           try {
             await figma.clientStorage.setAsync(
@@ -88,6 +105,23 @@ figma.ui.onmessage = async (msg: UIToPluginMessage) => {
           } catch {
             /* ok */
           }
+        }
+        if (p?.figmaToken !== undefined) {
+          try {
+            await figma.clientStorage.setAsync(
+              "db-release.figmaToken",
+              p.figmaToken,
+            );
+          } catch {
+            /* ok */
+          }
+        }
+        if (p?.fileKey !== undefined) {
+          figma.root.setSharedPluginData(
+            PLUGIN_NAMESPACE,
+            "file_key",
+            p.fileKey,
+          );
         }
         break;
       }
