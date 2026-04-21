@@ -4,6 +4,7 @@ export interface ModuleInfo {
   id: string;
   name: string;
   description: string;
+  disabled?: boolean;
 }
 
 export interface ModuleViewProps {
@@ -16,6 +17,7 @@ export interface ModuleViewProps {
   hasCanvasSelection?: boolean;
   fileKey?: string;
   figmaToken?: string;
+  libraries?: Array<{ name: string; fileKey: string }>;
   onSaveToken: (token: string) => void;
 }
 

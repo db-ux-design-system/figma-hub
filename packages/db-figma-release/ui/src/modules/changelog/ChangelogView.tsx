@@ -23,13 +23,18 @@ interface VersionEntry {
 }
 
 const PUBLISH_PATTERN = /components published|komponenten veröffentlicht/i;
+const IGNORE_PATTERN = /^(ready for dev|completed|marked as ready)$/i;
 
 function isMerge(v: VersionEntry): boolean {
-  return !!v.label && !isPublish(v);
+  return !!v.label && !isPublish(v) && !isIgnored(v);
 }
 
 function isPublish(v: VersionEntry): boolean {
   return !!v.label && PUBLISH_PATTERN.test(v.label);
+}
+
+function isIgnored(v: VersionEntry): boolean {
+  return !!v.label && IGNORE_PATTERN.test(v.label.trim());
 }
 
 function formatDate(iso: string): string {
@@ -45,8 +50,11 @@ function ChangelogView({
   onBack,
   fileKey,
   figmaToken,
+  libraries = [],
 }: ModuleViewProps) {
-  const [allVersions, setAllVersions] = useState<VersionEntry[]>([]);
+  const [allVersions, setAllVersions] = useState<
+    Array<VersionEntry & { libraryName: string }>
+  >([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,17 +66,22 @@ function ChangelogView({
   );
   const [scanning, setScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState<ProgressUpdate | null>(null);
-
   const [copied, setCopied] = useState(false);
+
+  // Auto-detect current library from file key
+  const currentLibrary =
+    libraries.find((lib) => lib.fileKey === fileKey) ?? null;
+  const currentLibraryName = currentLibrary?.name ?? null;
+
+  // Only fetch the current library's history
+  const targetLibraries = currentLibrary ? [currentLibrary] : [];
 
   const handleMessage = useCallback(
     (msg: PluginToUIMessage) => {
       if (msg.module !== moduleId) return;
-
       if (msg.type === "progress") {
         setScanProgress(msg.data as ProgressUpdate);
       }
-
       if (msg.type === "result") {
         const res = msg.data as ModuleResult;
         if (res.success) {
@@ -93,34 +106,44 @@ function ChangelogView({
   usePluginMessage(handleMessage);
 
   const fetchHistory = async () => {
-    if (!fileKey || !figmaToken) return;
+    if (!figmaToken || targetLibraries.length === 0) return;
     setLoading(true);
     setError(null);
     setReleaseNote(null);
     try {
-      const res = await fetch(
-        `https://api.figma.com/v1/files/${fileKey}/versions`,
-        { headers: { "X-Figma-Token": figmaToken } },
+      const results = await Promise.all(
+        targetLibraries.map(async (lib) => {
+          const res = await fetch(
+            `https://api.figma.com/v1/files/${lib.fileKey}/versions`,
+            { headers: { "X-Figma-Token": figmaToken } },
+          );
+          if (!res.ok) {
+            throw new Error(`${lib.name}: API Error ${res.status}`);
+          }
+          const data = await res.json();
+          const entries = (data.versions ?? []) as VersionEntry[];
+          return entries
+            .filter((v) => v.label && !IGNORE_PATTERN.test(v.label.trim()))
+            .map((v) => ({ ...v, libraryName: lib.name }));
+        }),
       );
-      if (!res.ok) {
-        setError(`API Error ${res.status}: ${await res.text()}`);
-        setLoading(false);
-        return;
-      }
-      const data = await res.json();
-      const entries = (data.versions ?? []) as VersionEntry[];
-      // Keep only labeled entries
-      const labeled = entries.filter((v) => v.label);
-      console.log(
-        "Version history labeled entries:",
-        labeled.map((v) => ({ label: v.label, desc: v.description })),
-      );
-      setAllVersions(labeled);
 
-      // Auto-select: all merges before the first publish
+      const merged = results
+        .flat()
+        .sort(
+          (a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+        );
+      setAllVersions(merged);
+
       const autoSelected = new Set<string>();
-      for (const v of labeled) {
-        if (isPublish(v)) break;
+      const seenPublishForLib = new Set<string>();
+      for (const v of merged) {
+        if (seenPublishForLib.has(v.libraryName)) continue;
+        if (isPublish(v)) {
+          seenPublishForLib.add(v.libraryName);
+          continue;
+        }
         if (isMerge(v)) autoSelected.add(v.id);
       }
       setSelectedIds(autoSelected);
@@ -130,18 +153,20 @@ function ChangelogView({
     setLoading(false);
   };
 
-  // Split into "since last publish" and "older"
-  const { recentMerges, lastPublish } = useMemo(() => {
-    const merges: VersionEntry[] = [];
-    let pub: VersionEntry | null = null;
+  const { recentMerges, lastPublishByLib } = useMemo(() => {
+    const merges: Array<VersionEntry & { libraryName: string }> = [];
+    const pubByLib: Record<string, VersionEntry & { libraryName: string }> = {};
+    const seenPublishForLib = new Set<string>();
     for (const v of allVersions) {
+      if (seenPublishForLib.has(v.libraryName)) continue;
       if (isPublish(v)) {
-        pub = v;
-        break;
+        pubByLib[v.libraryName] = v;
+        seenPublishForLib.add(v.libraryName);
+        continue;
       }
       if (isMerge(v)) merges.push(v);
     }
-    return { recentMerges: merges, lastPublish: pub };
+    return { recentMerges: merges, lastPublishByLib: pubByLib };
   }, [allVersions]);
 
   const toggleEntry = (id: string) => {
@@ -156,35 +181,41 @@ function ChangelogView({
   const generateReleaseNote = () => {
     const selected = recentMerges.filter((v) => selectedIds.has(v.id));
     if (selected.length === 0) return;
-
-    // Start scanning for changed components
     setScanning(true);
     setChangedByPage({});
     sendMessage("detect-changed", {});
 
-    // Build the merge part of the note already
-    const lines: string[] = [];
+    const byLib = new Map<string, typeof selected>();
     for (const v of selected) {
-      const title = v.label?.trim();
-      lines.push(`- ${title}`);
-      if (v.description) {
-        for (const line of v.description.split("\n")) {
-          const trimmed = line.trim();
-          if (trimmed) lines.push(`  - ${trimmed}`);
+      const list = byLib.get(v.libraryName) ?? [];
+      list.push(v);
+      byLib.set(v.libraryName, list);
+    }
+
+    const lines: string[] = [];
+    for (const [libName, entries] of byLib) {
+      if (byLib.size > 1) lines.push(`### ${libName}`);
+      for (const v of entries) {
+        const title = v.label?.trim();
+        lines.push(`- ${title}`);
+        if (v.description) {
+          for (const line of v.description.split("\n")) {
+            const trimmed = line.trim();
+            if (trimmed) lines.push(`  - ${trimmed}`);
+          }
         }
       }
+      if (byLib.size > 1) lines.push("");
     }
     setReleaseNote(lines.join("\n"));
   };
 
-  // Append changed components to release note when scan completes
   const releaseNoteWithComponents = useMemo(() => {
     if (!releaseNote) return null;
     const pages = Object.entries(changedByPage).sort(([a], [b]) =>
       a.localeCompare(b),
     );
     if (pages.length === 0) return releaseNote;
-
     const lines = [releaseNote, "", "Affected components:"];
     for (const [page, components] of pages) {
       lines.push(`- ${page}: ${components.join(", ")}`);
@@ -201,6 +232,11 @@ function ChangelogView({
           </DBButton>
           <h1 className="text-2xl">{moduleName}</h1>
           <p className="text-sm">{moduleDescription}</p>
+          {currentLibraryName && (
+            <p className="text-xs opacity-60">
+              Current file: {currentLibraryName}
+            </p>
+          )}
         </div>
 
         {!figmaToken && (
@@ -211,11 +247,15 @@ function ChangelogView({
 
         <DBButton
           variant="brand"
-          disabled={!figmaToken || !fileKey || loading}
+          disabled={!figmaToken || targetLibraries.length === 0 || loading}
           onClick={fetchHistory}
           width="full"
         >
-          {loading ? "Loading…" : "Load Version History"}
+          {loading
+            ? "Loading…"
+            : currentLibraryName
+              ? `Load Version History – ${currentLibraryName}`
+              : "Load Version History"}
         </DBButton>
       </div>
 
@@ -237,10 +277,18 @@ function ChangelogView({
           <p className="text-sm font-semibold">
             {recentMerges.length} merge{recentMerges.length !== 1 ? "s" : ""}{" "}
             since last publish
-            {lastPublish
-              ? ` (${lastPublish.description ?? lastPublish.label}, ${formatDate(lastPublish.created_at)})`
-              : ""}
           </p>
+
+          {Object.entries(lastPublishByLib).length > 0 && (
+            <div className="flex flex-col gap-fix-2xs text-xs opacity-60">
+              {Object.entries(lastPublishByLib).map(([lib, pub]) => (
+                <span key={lib}>
+                  {lib}: {pub.description ?? pub.label} (
+                  {formatDate(pub.created_at)})
+                </span>
+              ))}
+            </div>
+          )}
 
           {recentMerges.map((v) => (
             <div key={v.id} className="flex items-start gap-fix-xs text-sm">
@@ -249,6 +297,9 @@ function ChangelogView({
                 onChange={() => toggleEntry(v.id)}
                 size="small"
               >
+                {libraries.length > 1 && targetLibraries.length > 1 && (
+                  <span className="opacity-50">[{v.libraryName}] </span>
+                )}
                 {v.label}
               </DBCheckbox>
               <span className="flex-1">
@@ -300,7 +351,7 @@ function ChangelogView({
                 const now = new Date();
                 const date = `${String(now.getDate()).padStart(2, "0")}.${String(now.getMonth() + 1).padStart(2, "0")}.${now.getFullYear()}`;
                 sendMessage("write-entry", {
-                  title: `Core – v${versionInput.trim()}`,
+                  title: `${currentLibraryName ?? "Core"} – v${versionInput.trim()}`,
                   date,
                   body: releaseNoteWithComponents,
                 });
@@ -361,11 +412,21 @@ function ChangelogView({
         !loading &&
         !error &&
         figmaToken &&
-        fileKey && (
+        libraries.length > 0 && (
           <DBInfotext semantic="informational">
             Click "Load Version History" to fetch entries.
           </DBInfotext>
         )}
+
+      {libraries.length === 0 && !loading && (
+        <DBInfotext semantic="warning">No libraries configured.</DBInfotext>
+      )}
+
+      {targetLibraries.length === 0 && libraries.length > 0 && !loading && (
+        <DBInfotext semantic="warning">
+          This file is not a known library.
+        </DBInfotext>
+      )}
     </div>
   );
 }

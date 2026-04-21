@@ -1,5 +1,4 @@
 import {
-  DBBrand,
   DBHeader,
   DBPage,
   DBSection,
@@ -41,10 +40,7 @@ const App = () => {
     : null;
 
   return (
-    <DBPage
-      variant="fixed"
-      header={<DBHeader brand={<DBBrand>DB Figma Migrate</DBBrand>} />}
-    >
+    <DBPage variant="fixed" header={<DBHeader brand={"DB Figma Migrate"} />}>
       <DBSection spacing="none">
         <div className="flex flex-col gap-fix-md p-fix-sm">
           <BranchWarning isBranch={branchStatus} />

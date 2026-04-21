@@ -1,4 +1,9 @@
 import { delay } from "shared/utils";
+import {
+  readStampFromInstance,
+  isEligibleForMigration,
+  REQUIRED_STAMP_FOR_V5,
+} from "shared/stamp";
 import type {
   MigrationDefinition,
   MigrationNode,
@@ -84,6 +89,10 @@ async function analyzeRecursive(
     if (mainComponent) {
       const componentKey = matchComponent(mainComponent.name);
       if (componentKey) {
+        // Read the update stamp from the main component
+        const stamp = await readStampFromInstance(instance);
+        const eligible = isEligibleForMigration(stamp);
+
         const textFields = COMPONENT_TEXT_MAP[componentKey];
         const overriddenFields: Record<string, string> = {};
         let hasAnyOverride = false;
@@ -105,6 +114,8 @@ async function analyzeRecursive(
               component:
                 componentKey.charAt(0).toUpperCase() + componentKey.slice(1),
               mainComponentName: mainComponent.name,
+              stamp: stamp ?? "–",
+              eligible: eligible ? "ja" : "nein",
               ...overriddenFields,
             },
           });
@@ -161,6 +172,19 @@ const slotIntroduction: MigrationDefinition<void> = {
     node: MigrationNode,
     context: MigrationContext<void>,
   ): Promise<MigrationNodeResult> {
+    // Check stamp eligibility before migrating
+    if (node.details.eligible !== "ja") {
+      const stampInfo =
+        node.details.stamp === "–"
+          ? "kein Stamp"
+          : `Stamp: ${node.details.stamp}`;
+      return {
+        nodeId: node.id,
+        status: "skipped",
+        description: `${node.details.component} "${node.name}" – Manuelle Migration erforderlich (${stampInfo}, benötigt: ${REQUIRED_STAMP_FOR_V5}).`,
+      };
+    }
+
     const componentKey = node.details.component?.toLowerCase();
     if (!componentKey || !COMPONENT_TEXT_MAP[componentKey]) {
       return {

@@ -2,6 +2,7 @@ import { ModuleRegistry } from "./module-registry";
 import { StampingModule } from "./modules/stamping/index";
 import { ChangelogModule } from "./modules/changelog/index";
 import { PLUGIN_NAMESPACE, UPDATED_WITH_KEY } from "./modules/stamping/stamp";
+import { LIBRARIES, findLibraryByFileKey } from "./config";
 import type {
   UIToPluginMessage,
   PluginToUIMessage,
@@ -9,6 +10,39 @@ import type {
 } from "./types";
 
 figma.showUI(__html__, { width: 600, height: 768 });
+
+// Auto-detect and persist file key on startup
+try {
+  const existingKey = figma.root.getSharedPluginData(
+    PLUGIN_NAMESPACE,
+    "file_key",
+  );
+  if (!existingKey) {
+    // Try figma.fileKey first (works with private plugins that have a real ID)
+    if (typeof (figma as any).fileKey === "string" && (figma as any).fileKey) {
+      figma.root.setSharedPluginData(
+        PLUGIN_NAMESPACE,
+        "file_key",
+        (figma as any).fileKey,
+      );
+    } else {
+      // Fallback: match document name against known libraries
+      const docName = figma.root.name;
+      const match = LIBRARIES.find((lib) =>
+        docName.toLowerCase().includes(lib.name.toLowerCase()),
+      );
+      if (match) {
+        figma.root.setSharedPluginData(
+          PLUGIN_NAMESPACE,
+          "file_key",
+          match.fileKey,
+        );
+      }
+    }
+  }
+} catch {
+  /* ok */
+}
 
 function sendProgress(module: string, data: ProgressUpdate): void {
   figma.ui.postMessage({ type: "progress", module, data } as PluginToUIMessage);
@@ -55,9 +89,34 @@ figma.ui.onmessage = async (msg: UIToPluginMessage) => {
       }
 
       case "getModules": {
-        const modules = registry
-          .getAll()
-          .map(({ id, name, description }) => ({ id, name, description }));
+        // Detect current file key from sharedPluginData
+        const currentFileKey =
+          figma.root.getSharedPluginData(PLUGIN_NAMESPACE, "file_key") || null;
+        const currentLib = currentFileKey
+          ? findLibraryByFileKey(currentFileKey)
+          : null;
+
+        // Also check user's custom libraries
+        let userCustomLibs: Array<{ name: string; fileKey: string }> = [];
+        try {
+          const raw = await figma.clientStorage.getAsync(
+            "db-release.customLibraries",
+          );
+          if (raw) userCustomLibs = raw;
+        } catch {
+          /* ok */
+        }
+        const isCustomMatch =
+          currentFileKey != null &&
+          userCustomLibs.some((l) => l.fileKey === currentFileKey);
+
+        const modules = registry.getAll().map(({ id, name, description }) => ({
+          id,
+          name,
+          description,
+          // Changelog is enabled if the current file is a known or custom library
+          disabled: id === "changelog" && !currentLib && !isCustomMatch,
+        }));
         figma.ui.postMessage({
           type: "modules",
           data: modules,
@@ -82,19 +141,55 @@ figma.ui.onmessage = async (msg: UIToPluginMessage) => {
         } catch {
           /* ok */
         }
-        let fileKey: string | undefined;
-        const fk = figma.root.getSharedPluginData(PLUGIN_NAMESPACE, "file_key");
-        if (fk) fileKey = fk;
+
+        // File key stored per document
+        const fileKey =
+          figma.root.getSharedPluginData(PLUGIN_NAMESPACE, "file_key") ||
+          undefined;
+
+        // Current library match
+        const currentLibrary = fileKey
+          ? findLibraryByFileKey(fileKey)
+          : undefined;
+
+        // User-specific custom libraries (persisted per user via clientStorage)
+        let customLibraries: Array<{ name: string; fileKey: string }> = [];
+        try {
+          const raw = await figma.clientStorage.getAsync(
+            "db-release.customLibraries",
+          );
+          if (raw) customLibraries = raw;
+        } catch {
+          /* ok */
+        }
+
+        // Check custom libs for current file match
+        const customMatch = fileKey
+          ? customLibraries.find((l) => l.fileKey === fileKey)
+          : undefined;
+
         figma.ui.postMessage({
           type: "storage",
-          data: { lastModule, figmaToken, fileKey },
+          data: {
+            lastModule,
+            figmaToken,
+            fileKey,
+            currentLibrary: currentLibrary ?? customMatch ?? null,
+            libraries: LIBRARIES,
+            customLibraries,
+          },
         } as PluginToUIMessage);
         break;
       }
 
       case "setStorage": {
         const p = msg.payload as
-          | { lastModule?: string; figmaToken?: string; fileKey?: string }
+          | {
+              lastModule?: string;
+              figmaToken?: string;
+              fileKey?: string;
+              customLibraries?: Array<{ name: string; fileKey: string }>;
+            }
           | undefined;
         if (p?.lastModule) {
           try {
@@ -122,6 +217,16 @@ figma.ui.onmessage = async (msg: UIToPluginMessage) => {
             "file_key",
             p.fileKey,
           );
+        }
+        if (p?.customLibraries !== undefined) {
+          try {
+            await figma.clientStorage.setAsync(
+              "db-release.customLibraries",
+              p.customLibraries,
+            );
+          } catch {
+            /* ok */
+          }
         }
         break;
       }

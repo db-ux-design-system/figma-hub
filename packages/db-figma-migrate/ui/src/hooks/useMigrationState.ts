@@ -25,7 +25,7 @@ const initialState: AppState = {
   releases: [],
   migrations: new Map(),
   selectedRelease: null,
-  selectedScope: "page",
+  selectedScope: "frame",
   persistedState: null,
   branchStatus: null,
   activeMigrationId: null,

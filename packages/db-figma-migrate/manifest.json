@@ -3,8 +3,8 @@
   "id": "db-figma-migrate",
   "api": "1.0.0",
   "editorType": ["figma"],
-  "ui": "index.html",
-  "main": "index.js",
+  "ui": "dist/index.html",
+  "main": "dist/index.js",
   "networkAccess": { "allowedDomains": ["none"] },
   "documentAccess": "dynamic-page"
 }

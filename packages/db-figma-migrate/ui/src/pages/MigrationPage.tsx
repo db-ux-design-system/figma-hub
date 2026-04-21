@@ -73,65 +73,162 @@ const MigrationPage = ({
       )}
 
       {/* Node list — shown for both automatic and semi-automatic */}
-      {status === "ready" && nodes.length > 0 && (
-        <div className="flex flex-col gap-fix-md">
-          {/* Instructions */}
-          <DBInfotext semantic="informational">
-            <strong>Vorgehen:</strong> Aktualisiere zuerst die Instanzen manuell
-            in Figma (Rechtsklick → „Update Instance" oder ↻). Klicke danach auf
-            „Inhalte wiederherstellen", um die zwischengespeicherten Texte
-            zurückzuschreiben.
-          </DBInfotext>
+      {status === "ready" &&
+        nodes.length > 0 &&
+        (() => {
+          const eligibleNodes = nodes.filter(
+            (n) => n.details.eligible !== "nein",
+          );
+          const ineligibleNodes = nodes.filter(
+            (n) => n.details.eligible === "nein",
+          );
 
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-bold">
-              {nodes.length} Instanz(en) mit überschriebenen Texten
-            </span>
-            <DBButton
-              size="small"
-              onClick={() =>
-                onMigrateBatch(
-                  state.migrationId,
-                  nodes.map((n) => n.id),
-                )
-              }
-            >
-              Alle wiederherstellen
-            </DBButton>
-          </div>
+          return (
+            <div className="flex flex-col gap-fix-md">
+              {/* Instructions */}
+              <DBInfotext semantic="informational">
+                <strong>Vorgehen:</strong> Aktualisiere zuerst die Instanzen
+                manuell in Figma (Rechtsklick → „Update Instance" oder ↻).
+                Klicke danach auf „Inhalte wiederherstellen", um die
+                zwischengespeicherten Texte zurückzuschreiben.
+              </DBInfotext>
 
-          {nodes.map((node) => (
-            <DBCard
-              key={node.id}
-              data-density="functional"
-              className="gap-fix-xs"
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-bold">{node.name}</span>
-                <DBTag>{node.details.component ?? node.type}</DBTag>
-              </div>
-              <div className="flex flex-col gap-fix-2xs text-xs">
-                {Object.entries(node.details)
-                  .filter(
-                    ([k]) => k !== "component" && k !== "mainComponentName",
-                  )
-                  .map(([k, v]) => (
-                    <span key={k}>
-                      <strong>{k}</strong>: „{v}"
+              {/* Ineligible nodes warning */}
+              {ineligibleNodes.length > 0 && (
+                <DBInfotext semantic="warning">
+                  {ineligibleNodes.length} Instanz(en) benötigen eine manuelle
+                  Migration (fehlender oder veralteter Update-Stamp).
+                </DBInfotext>
+              )}
+
+              {/* ── Eligible nodes ── */}
+              {eligibleNodes.length > 0 && (
+                <div className="flex flex-col gap-fix-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold">
+                      {eligibleNodes.length} Instanz(en) migrierbar
                     </span>
+                    <DBButton
+                      size="small"
+                      onClick={() =>
+                        onMigrateBatch(
+                          state.migrationId,
+                          eligibleNodes.map((n) => n.id),
+                        )
+                      }
+                    >
+                      Alle wiederherstellen
+                    </DBButton>
+                  </div>
+
+                  {eligibleNodes.map((node) => (
+                    <DBCard
+                      key={node.id}
+                      data-density="functional"
+                      className="gap-fix-xs"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold">{node.name}</span>
+                        <div className="flex gap-fix-2xs">
+                          <DBTag semantic="successful">
+                            Stamp {node.details.stamp}
+                          </DBTag>
+                          <DBTag>{node.details.component ?? node.type}</DBTag>
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-fix-2xs text-xs">
+                        {Object.entries(node.details)
+                          .filter(
+                            ([k]) =>
+                              k !== "component" &&
+                              k !== "mainComponentName" &&
+                              k !== "stamp" &&
+                              k !== "eligible",
+                          )
+                          .map(([k, v]) => (
+                            <span key={k}>
+                              <strong>{k}</strong>: „{v}"
+                            </span>
+                          ))}
+                      </div>
+                      <div className="flex gap-fix-xs">
+                        <DBButton
+                          size="small"
+                          variant="outlined"
+                          onClick={() => onNavigateToNode(node.id)}
+                        >
+                          Anzeigen
+                        </DBButton>
+                        <DBButton
+                          size="small"
+                          variant="outlined"
+                          onClick={() =>
+                            onMigrateSingle(state.migrationId, node.id)
+                          }
+                        >
+                          Inhalte wiederherstellen
+                        </DBButton>
+                      </div>
+                    </DBCard>
                   ))}
-              </div>
-              <DBButton
-                size="small"
-                variant="outlined"
-                onClick={() => onMigrateSingle(state.migrationId, node.id)}
-              >
-                Inhalte wiederherstellen
-              </DBButton>
-            </DBCard>
-          ))}
-        </div>
-      )}
+                </div>
+              )}
+
+              {/* ── Ineligible nodes ── */}
+              {ineligibleNodes.length > 0 && (
+                <div className="flex flex-col gap-fix-sm">
+                  <span className="text-sm font-bold">
+                    {ineligibleNodes.length} Instanz(en) – manuelle Migration
+                    erforderlich
+                  </span>
+
+                  {ineligibleNodes.map((node) => (
+                    <DBCard
+                      key={node.id}
+                      data-density="functional"
+                      className="gap-fix-xs"
+                      style={{ opacity: 0.7 }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold">{node.name}</span>
+                        <div className="flex gap-fix-2xs">
+                          <DBTag semantic="warning">
+                            {node.details.stamp === "–"
+                              ? "Kein Stamp"
+                              : `Stamp ${node.details.stamp}`}
+                          </DBTag>
+                          <DBTag>{node.details.component ?? node.type}</DBTag>
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-fix-2xs text-xs">
+                        {Object.entries(node.details)
+                          .filter(
+                            ([k]) =>
+                              k !== "component" &&
+                              k !== "mainComponentName" &&
+                              k !== "stamp" &&
+                              k !== "eligible",
+                          )
+                          .map(([k, v]) => (
+                            <span key={k}>
+                              <strong>{k}</strong>: „{v}"
+                            </span>
+                          ))}
+                      </div>
+                      <DBButton
+                        size="small"
+                        variant="outlined"
+                        onClick={() => onNavigateToNode(node.id)}
+                      >
+                        Anzeigen
+                      </DBButton>
+                    </DBCard>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
       {/* Semi-automatic: decision point */}
       {isSemiAutomatic && status === "migrating" && state.currentStep && (
