@@ -145,42 +145,54 @@ export async function bindChangelogHeadlineVariables(
     const fontFamilyVar = variables.fontFamily;
     const fontStyleVar = variables.fontStyle;
 
-    // Try to read font values from variables
-    let fontFamily = "Inter";
-    let fontStyle = "Regular";
+    // Collect all unique font combinations across all modes so the correct
+    // font is available regardless of which mode is currently active.
+    const fontsToLoad: Array<{ family: string; style: string }> = [];
 
     try {
-      // Get the current mode (usually the first mode)
       const collection = await figma.variables.getVariableCollectionByIdAsync(
         fontFamilyVar.variableCollectionId,
       );
 
       if (collection && collection.modes.length > 0) {
-        const modeId = collection.modes[0].modeId;
+        for (const mode of collection.modes) {
+          const familyValue = fontFamilyVar.valuesByMode[mode.modeId];
+          const styleValue = fontStyleVar.valuesByMode[mode.modeId];
 
-        const familyValue = fontFamilyVar.valuesByMode[modeId];
-        const styleValue = fontStyleVar.valuesByMode[modeId];
-
-        if (typeof familyValue === "string") {
-          fontFamily = familyValue;
-        }
-        if (typeof styleValue === "string") {
-          fontStyle = styleValue;
+          if (
+            typeof familyValue === "string" &&
+            typeof styleValue === "string"
+          ) {
+            // Avoid duplicates
+            const alreadyAdded = fontsToLoad.some(
+              (f) => f.family === familyValue && f.style === styleValue,
+            );
+            if (!alreadyAdded) {
+              fontsToLoad.push({ family: familyValue, style: styleValue });
+            }
+          }
         }
       }
     } catch (varError) {
       console.warn("⚠️ Could not read font values from variables:", varError);
     }
 
-    // Load the font based on variable values
-    try {
-      await figma.loadFontAsync({ family: fontFamily, style: fontStyle });
-      console.log(`✅ Font loaded: ${fontFamily} ${fontStyle}`);
-    } catch (fontError) {
-      console.warn(
-        `⚠️ Font ${fontFamily} ${fontStyle} could not be loaded, using fallback`,
-      );
-      await figma.loadFontAsync({ family: "Inter", style: "Regular" });
+    // Always include Inter as ultimate fallback
+    if (fontsToLoad.length === 0) {
+      fontsToLoad.push({ family: "Inter", style: "Regular" });
+    }
+
+    // Load all font variants so the bound variable works in every mode
+    for (const font of fontsToLoad) {
+      try {
+        await figma.loadFontAsync(font);
+        console.log(`✅ Font loaded: ${font.family} ${font.style}`);
+      } catch (fontError) {
+        console.warn(
+          `⚠️ Font ${font.family} ${font.style} could not be loaded, using fallback`,
+        );
+        await figma.loadFontAsync({ family: "Inter", style: "Regular" });
+      }
     }
 
     // Now bind all variables

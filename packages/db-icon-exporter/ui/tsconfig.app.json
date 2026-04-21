@@ -27,5 +27,11 @@
   "include": [
     "src",
     "../../../node_modules/@db-ux/db-theme-icons/build/types/overwrite.d.ts"
+  ],
+  "exclude": [
+    "src/**/__tests__",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/test"
   ]
 }
