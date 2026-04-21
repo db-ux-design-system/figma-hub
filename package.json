@@ -28,7 +28,8 @@
     "dev:db-custom-color-importer": "npm run dev -w=@db-ux/custom-color-importer",
     "dev:db-figma-migrate": "npm run dev -w=@db-ux/db-figma-migrate",
     "build:db-figma-release": "npm run build -w=@db-ux/figma-release",
-    "dev:db-figma-release": "npm run dev -w=@db-ux/figma-release"
+    "dev:db-figma-release": "npm run dev -w=@db-ux/figma-release",
+    "export-plugins": "node scripts/export-plugins.mjs"
   },
   "author": "",
   "license": "Apache-2.0",
