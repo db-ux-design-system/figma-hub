@@ -1,10 +1,13 @@
 {
-  "name": "DB Figma Migrate",
-  "id": "db-figma-migrate",
+  "name": "📦 DB Figma Migrate",
+  "id": "0000000000000000000",
   "api": "1.0.0",
   "editorType": ["figma"],
-  "ui": "dist/index.html",
   "main": "dist/index.js",
-  "networkAccess": { "allowedDomains": ["none"] },
-  "documentAccess": "dynamic-page"
+  "ui": "dist/index.html",
+  "capabilities": [],
+  "enableProposedApi": false,
+  "permissions": [],
+  "documentAccess": "dynamic-page",
+  "networkAccess": { "allowedDomains": ["none"] }
 }
