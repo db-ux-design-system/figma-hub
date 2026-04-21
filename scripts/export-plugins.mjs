@@ -40,9 +40,10 @@ try {
   /* no .env file — that's fine */
 }
 
-const DEFAULT_TARGET = process.env.PLUGIN_EXPORT_DIR
+const LOCAL_TARGET = join(ROOT, "dist-plugins");
+const SHAREPOINT_TARGET = process.env.PLUGIN_EXPORT_DIR
   ? resolve(process.env.PLUGIN_EXPORT_DIR)
-  : join(ROOT, "dist-plugins");
+  : null;
 
 function getPluginDirs() {
   return readdirSync(PACKAGES, { withFileTypes: true })
@@ -99,24 +100,19 @@ function exportPlugin(pluginName, targetBase) {
 
 const args = process.argv.slice(2);
 if (args.includes("--help") || args.includes("-h")) {
+  console.log("Usage: node scripts/export-plugins.mjs [plugin ...] [--all]");
+  console.log(`\nTargets:`);
+  console.log(`  Local:      ${LOCAL_TARGET}`);
   console.log(
-    "Usage: node scripts/export-plugins.mjs [target-dir] [plugin ...] [--all]",
+    `  SharePoint: ${SHAREPOINT_TARGET ?? "(not configured — set PLUGIN_EXPORT_DIR in .env)"}`,
   );
-  console.log(`\nDefault target: ${DEFAULT_TARGET}`);
   console.log("\nAvailable plugins:");
   for (const name of getPluginDirs()) console.log(`  - ${name}`);
   process.exit(0);
 }
 
-// First arg is target dir if it doesn't look like a plugin name, otherwise use default
-let targetDir = DEFAULT_TARGET;
-let pluginArgs = args;
-
-if (args.length > 0 && !args[0].startsWith("db-") && args[0] !== "--all") {
-  targetDir = resolve(args[0]);
-  pluginArgs = args.slice(1);
-}
-const exportAll = pluginArgs.includes("--all");
+const pluginArgs = args.filter((a) => !a.startsWith("-"));
+const exportAll = args.includes("--all");
 const plugins = exportAll ? getPluginDirs() : pluginArgs;
 
 if (plugins.length === 0) {
@@ -126,9 +122,26 @@ if (plugins.length === 0) {
   process.exit(1);
 }
 
-console.log(`Exporting ${plugins.length} plugin(s) to ${targetDir}\n`);
-let success = 0;
-for (const name of plugins) {
-  if (exportPlugin(name, targetDir)) success++;
+// Build list of targets
+const targets = [LOCAL_TARGET];
+if (SHAREPOINT_TARGET) {
+  if (existsSync(SHAREPOINT_TARGET)) {
+    targets.push(SHAREPOINT_TARGET);
+  } else {
+    console.warn(
+      `⚠ SharePoint folder not found (not synced?): ${SHAREPOINT_TARGET}\n`,
+    );
+  }
 }
-console.log(`\nDone: ${success}/${plugins.length} exported.`);
+
+let totalSuccess = 0;
+for (const targetDir of targets) {
+  console.log(`→ ${targetDir}\n`);
+  for (const name of plugins) {
+    if (exportPlugin(name, targetDir)) totalSuccess++;
+  }
+  console.log();
+}
+console.log(
+  `Done: ${totalSuccess} export(s) across ${targets.length} target(s).`,
+);
