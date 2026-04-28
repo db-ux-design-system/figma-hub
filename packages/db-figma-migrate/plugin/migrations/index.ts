@@ -1,8 +1,8 @@
 /**
- * Barrel-Datei für Auto-Discovery aller Migrationen.
+ * Barrel file for auto-discovery of all migrations.
  *
- * Neue Migrationen werden hier als Re-Export hinzugefügt.
- * Der Plugin-Kern importiert diese Datei und registriert
- * alle exportierten MigrationDefinitions automatisch.
+ * New migrations are added here as re-exports.
+ * The plugin core imports this file and registers
+ * all exported MigrationDefinitions automatically.
  */
 export { default as slotIntroduction } from "./v5/slot-introduction";

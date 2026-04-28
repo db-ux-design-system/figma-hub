@@ -24,7 +24,7 @@ export interface MigrationNodeResult {
   error?: string;
 }
 
-// ─── Halb-automatische Migration ────────────────────────────
+// ─── Semi-Automatic Migration ───────────────────────────────
 
 export interface MigrationStep {
   id: string;

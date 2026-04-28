@@ -20,13 +20,13 @@ function parseMajor(version: string): number {
 }
 
 /**
- * VersionChecker prüft die Kompatibilität der im Dokument
- * verwendeten Komponentenversionen mit den unterstützten Quellversionen.
+ * VersionChecker verifies the compatibility of component versions
+ * used in the document with the supported source versions.
  */
 export class VersionChecker {
   /**
-   * Prüft Komponentenversionen gegen supportedSourceVersions.
-   * Berechnet majorVersionGap zwischen aktueller Version und Ziel-Release-Version.
+   * Checks component versions against supportedSourceVersions.
+   * Calculates majorVersionGap between the current version and the target release version.
    */
   async checkCompatibility(
     definition: MigrationDefinition<unknown>,

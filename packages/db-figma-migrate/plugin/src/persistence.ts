@@ -2,14 +2,14 @@ import type { PersistedMigrationState } from "./types";
 import type { MigrationRegistry } from "./registry";
 
 /**
- * PersistenceManager speichert und lädt den Migrationsstatus
- * pro Dokument über figma.root.setPluginData / getPluginData.
+ * PersistenceManager saves and loads the migration state
+ * per document via figma.root.setPluginData / getPluginData.
  */
 export class PersistenceManager {
   private static STORAGE_KEY = "db-figma-migrate-state";
 
   /**
-   * Speichert den gesamten PersistedMigrationState.
+   * Saves the entire PersistedMigrationState.
    */
   save(state: PersistedMigrationState): void {
     figma.root.setPluginData(
@@ -19,8 +19,8 @@ export class PersistenceManager {
   }
 
   /**
-   * Lädt den gespeicherten Status.
-   * Gibt null zurück bei fehlendem oder ungültigem Status.
+   * Loads the persisted state.
+   * Returns null if the state is missing or invalid.
    */
   load(): PersistedMigrationState | null {
     try {
@@ -33,7 +33,7 @@ export class PersistenceManager {
   }
 
   /**
-   * Markiert einen Node als abgeschlossen für eine bestimmte Migration.
+   * Marks a node as completed for a specific migration.
    */
   markCompleted(migrationId: string, nodeId: string): void {
     const state = this.load() ?? {
@@ -59,7 +59,7 @@ export class PersistenceManager {
   }
 
   /**
-   * Gibt die abgeschlossenen Node-IDs für eine Migration zurück.
+   * Returns the completed node IDs for a migration.
    */
   getCompletedNodes(migrationId: string): string[] {
     const state = this.load();
@@ -68,8 +68,8 @@ export class PersistenceManager {
   }
 
   /**
-   * Prüft, ob alle Abhängigkeiten einer Migration abgeschlossen sind.
-   * Gibt zurück, ob die Migration gestartet werden kann und welche Abhängigkeiten fehlen.
+   * Checks whether all dependencies of a migration are completed.
+   * Returns whether the migration can be started and which dependencies are missing.
    */
   canStart(
     migrationId: string,

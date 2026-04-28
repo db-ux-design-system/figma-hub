@@ -2,21 +2,21 @@ import type { MigrationReport } from "../types";
 
 export function formatReport(report: MigrationReport): string {
   const lines: string[] = [
-    `Migrations-Report: ${report.migrationTitle}`,
+    `Migration Report: ${report.migrationTitle}`,
     `Release: ${report.releaseVersion}`,
     `Scope: ${report.scope}`,
-    `Zeitpunkt: ${report.timestamp}`,
+    `Timestamp: ${report.timestamp}`,
     "",
-    "Zusammenfassung:",
-    `  Gesamt:       ${report.summary.total}`,
-    `  Erfolgreich:  ${report.summary.success}`,
-    `  Fehlgeschlagen: ${report.summary.error}`,
-    `  Übersprungen: ${report.summary.skipped}`,
+    "Summary:",
+    `  Total:    ${report.summary.total}`,
+    `  Success:  ${report.summary.success}`,
+    `  Failed:   ${report.summary.error}`,
+    `  Skipped:  ${report.summary.skipped}`,
   ];
 
   const failed = report.results.filter((r) => r.status === "error");
   if (failed.length > 0) {
-    lines.push("", "Fehlgeschlagene Nodes:");
+    lines.push("", "Failed nodes:");
     for (const r of failed) {
       lines.push(
         `  - ${r.nodeId}: ${r.description}${r.error ? ` (${r.error})` : ""}`,

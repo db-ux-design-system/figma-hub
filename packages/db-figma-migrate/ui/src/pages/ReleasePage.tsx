@@ -1,49 +1,42 @@
 import type { MigrationScope, MigrationUIState } from "../types";
-import ReleaseSelector from "../components/ReleaseSelector";
 import ScopeSelector from "../components/ScopeSelector";
 import MigrationCard from "../components/MigrationCard";
 
 interface ReleasePageProps {
-  releases: string[];
-  selectedRelease: string | null;
+  latestRelease: string | null;
   selectedScope: MigrationScope;
   migrations: Map<string, MigrationUIState>;
-  onSelectRelease: (release: string) => void;
   onSelectScope: (scope: MigrationScope) => void;
   onAnalyze: (migrationId: string) => void;
   onOpenMigration: (migrationId: string) => void;
 }
 
 const ReleasePage = ({
-  releases,
-  selectedRelease,
+  latestRelease,
   selectedScope,
   migrations,
-  onSelectRelease,
   onSelectScope,
   onAnalyze,
   onOpenMigration,
 }: ReleasePageProps) => {
-  const releaseMigrations = selectedRelease
+  const releaseMigrations = latestRelease
     ? Array.from(migrations.values()).filter(
-        (m) => m.metadata.releaseVersion === selectedRelease,
+        (m) => m.metadata.releaseVersion === latestRelease,
       )
     : [];
 
   return (
-    <div className="flex flex-col gap-fix-md">
-      <div className="flex gap-fix-md">
-        <ReleaseSelector
-          releases={releases}
-          selectedRelease={selectedRelease}
-          onSelect={onSelectRelease}
-        />
+    <div className="flex flex-col gap-fix-lg">
+      <div className="flex flex-col gap-fix-2xs">
+        {latestRelease && (
+          <h1 className="text-lg m0">Migration to v{latestRelease}</h1>
+        )}
         <ScopeSelector selectedScope={selectedScope} onSelect={onSelectScope} />
       </div>
 
-      {releaseMigrations.length === 0 && selectedRelease && (
+      {releaseMigrations.length === 0 && latestRelease && (
         <p className="text-sm opacity-70">
-          Keine Migrationen für Release v{selectedRelease} verfügbar.
+          No migrations available for release v{latestRelease}.
         </p>
       )}
 

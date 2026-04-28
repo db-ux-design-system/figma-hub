@@ -16,9 +16,7 @@ const GuidedMigrationView = ({
 
   if (!currentStep) {
     return (
-      <DBInfotext semantic="informational">
-        Warte auf nächsten Schritt…
-      </DBInfotext>
+      <DBInfotext semantic="informational">Waiting for next step…</DBInfotext>
     );
   }
 
@@ -29,7 +27,7 @@ const GuidedMigrationView = ({
 
       {progress && (
         <ProgressIndicator
-          label="Fortschritt"
+          label="Progress"
           current={progress.completed}
           total={progress.total}
         />
@@ -44,7 +42,7 @@ const GuidedMigrationView = ({
 
       {currentStep.type === "action" && (
         <DBInfotext semantic="informational">
-          Automatischer Schritt wird ausgeführt…
+          Automatic step is being executed…
         </DBInfotext>
       )}
     </div>

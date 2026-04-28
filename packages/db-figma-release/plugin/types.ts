@@ -3,6 +3,7 @@ export interface PluginModule {
   id: string;
   name: string;
   description: string;
+  runIn?: "branch" | "main";
   execute(action: string, payload?: unknown): Promise<ModuleResult>;
 }
 

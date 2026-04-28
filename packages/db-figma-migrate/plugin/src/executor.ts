@@ -11,8 +11,8 @@ import type { PersistenceManager } from "./persistence";
 import { VersionChecker } from "./version-checker";
 
 /**
- * MigrationExecutor führt Migrationen aus – sowohl automatisch als auch
- * halb-automatisch. Unterstützt Dry-Run-Modus und Batch-Verarbeitung.
+ * MigrationExecutor runs migrations – both automatic and
+ * semi-automatic. Supports dry-run mode and batch processing.
  */
 export class MigrationExecutor {
   private versionChecker: VersionChecker;

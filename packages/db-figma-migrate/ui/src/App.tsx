@@ -1,9 +1,4 @@
-import {
-  DBHeader,
-  DBPage,
-  DBSection,
-  DBInfotext,
-} from "@db-ux/react-core-components";
+import { DBInfotext } from "@db-ux/react-core-components";
 import "./index.css";
 import { usePluginMessages } from "./hooks/usePluginMessages";
 import { useMigrationState } from "./hooks/useMigrationState";
@@ -16,12 +11,10 @@ const App = () => {
   const {
     releases,
     migrations,
-    selectedRelease,
     selectedScope,
     branchStatus,
     activeMigrationId,
     error,
-    selectRelease,
     setScope,
     setActiveMigration,
     startAnalysis,
@@ -39,39 +32,36 @@ const App = () => {
     ? (migrations.get(activeMigrationId) ?? null)
     : null;
 
+  const latestRelease = releases.length > 0 ? releases[0] : null;
+
   return (
-    <DBPage variant="fixed" header={<DBHeader brand={"DB Figma Migrate"} />}>
-      <DBSection spacing="none">
-        <div className="flex flex-col gap-fix-md p-fix-sm">
-          <BranchWarning isBranch={branchStatus} />
+    <div className="p-fix-md flex flex-col gap-fix-md">
+      <BranchWarning isBranch={branchStatus} />
 
-          {error && <DBInfotext semantic="critical">{error}</DBInfotext>}
+      {error && <DBInfotext semantic="critical">{error}</DBInfotext>}
 
-          {activeMigration ? (
-            <MigrationPage
-              state={activeMigration}
-              onMigrateSingle={startMigration}
-              onMigrateBatch={startBatch}
-              onPreview={startPreview}
-              onDecision={sendDecision}
-              onNavigateToNode={navigateToNode}
-              onBack={() => setActiveMigration(null)}
-            />
-          ) : (
-            <ReleasePage
-              releases={releases}
-              selectedRelease={selectedRelease}
-              selectedScope={selectedScope}
-              migrations={migrations}
-              onSelectRelease={selectRelease}
-              onSelectScope={setScope}
-              onAnalyze={startAnalysis}
-              onOpenMigration={setActiveMigration}
-            />
-          )}
-        </div>
-      </DBSection>
-    </DBPage>
+      {activeMigration ? (
+        <MigrationPage
+          state={activeMigration}
+          onMigrateSingle={startMigration}
+          onMigrateBatch={startBatch}
+          onPreview={startPreview}
+          onDecision={sendDecision}
+          onNavigateToNode={navigateToNode}
+          onAnalyze={startAnalysis}
+          onBack={() => setActiveMigration(null)}
+        />
+      ) : (
+        <ReleasePage
+          latestRelease={latestRelease}
+          selectedScope={selectedScope}
+          migrations={migrations}
+          onSelectScope={setScope}
+          onAnalyze={startAnalysis}
+          onOpenMigration={setActiveMigration}
+        />
+      )}
+    </div>
   );
 };
 

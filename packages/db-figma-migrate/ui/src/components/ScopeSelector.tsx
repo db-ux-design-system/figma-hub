@@ -8,10 +8,11 @@ interface ScopeSelectorProps {
 
 const scopeLabels: Record<MigrationScope, string> = {
   frame: "Frame",
-  page: "Seite",
-  document: "Dokument",
+  page: "Page",
+  document: "Document",
 };
 
+// TODO: Switch to DBCustomSelect once the mobile-variant issue in Figma plugin iframes is resolved
 const ScopeSelector = ({ selectedScope, onSelect }: ScopeSelectorProps) => {
   return (
     <DBSelect

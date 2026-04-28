@@ -13,7 +13,7 @@ import type {
 } from "../../src/types";
 
 /**
- * Mapping: Komponentenname → Text-Layer die geprüft werden.
+ * Mapping: component name → text layers to check.
  */
 const COMPONENT_TEXT_MAP: Record<
   string,
@@ -25,6 +25,12 @@ const COMPONENT_TEXT_MAP: Record<
   ],
   badge: [{ layerName: "Text", propertyLabel: "Text" }],
   button: [{ layerName: "Text", propertyLabel: "Text" }],
+  checkbox: [{ layerName: "Label", propertyLabel: "Label" }],
+  infotext: [{ layerName: "Text", propertyLabel: "Text" }],
+  link: [{ layerName: "Text", propertyLabel: "Text" }],
+  radio: [{ layerName: "Label", propertyLabel: "Label" }],
+  switch: [{ layerName: "Label", propertyLabel: "Label" }],
+  tooltip: [{ layerName: "Label", propertyLabel: "Label" }],
 };
 
 const SUPPORTED_COMPONENTS = Object.keys(COMPONENT_TEXT_MAP);
@@ -115,7 +121,7 @@ async function analyzeRecursive(
                 componentKey.charAt(0).toUpperCase() + componentKey.slice(1),
               mainComponentName: mainComponent.name,
               stamp: stamp ?? "–",
-              eligible: eligible ? "ja" : "nein",
+              eligible: eligible ? "yes" : "no",
               ...overriddenFields,
             },
           });
@@ -136,22 +142,22 @@ async function analyzeRecursive(
  * Slot-Introduction Migration
  *
  * Flow:
- * 1. Analyse: Findet Instanzen mit überschriebenen Texten, cacht sie in details
- * 2. User aktualisiert Instanzen manuell in Figma (Update Instance)
- * 3. User klickt "Inhalte wiederherstellen" → Plugin schreibt gecachte Texte zurück
+ * 1. Analysis: finds instances with overridden texts, caches them in details
+ * 2. User updates instances manually in Figma (Update Instance)
+ * 3. User clicks "Restore content" → plugin writes cached texts back
  *
- * executionMode ist "automatic" — der "Migrieren"-Button schreibt direkt
- * die Texte zurück. Die Anleitung zum manuellen Update steht in der UI.
+ * executionMode is "automatic" — the "Migrate" button writes the
+ * texts back directly. Instructions for the manual update are in the UI.
  */
 const slotIntroduction: MigrationDefinition<void> = {
   id: "slot-introduction",
   releaseVersion: "5.0.0",
-  executionMode: "automatic",
-  title: "Einführung Slots in Komponenten",
+  executionMode: "semi-automatic",
+  title: "Slot introduction in components",
   description:
-    "Prüft Accordion, Badge und Button Instanzen auf überschriebene Texte. " +
-    "Speichert die Inhalte zwischen, damit sie nach einem manuellen Update " +
-    "der Instanz wiederhergestellt werden können.",
+    "Checks instances of the following components for overridden texts and labels: " +
+    "Accordion, Badge, Button, Checkbox, Infotext, Link, Radio, Switch, Tooltip. " +
+    "Caches the content so it can be restored after a manual instance update.",
   priority: 10,
 
   async analyze(context: AnalysisContext): Promise<MigrationNode[]> {
@@ -173,15 +179,15 @@ const slotIntroduction: MigrationDefinition<void> = {
     context: MigrationContext<void>,
   ): Promise<MigrationNodeResult> {
     // Check stamp eligibility before migrating
-    if (node.details.eligible !== "ja") {
+    if (node.details.eligible !== "yes") {
       const stampInfo =
         node.details.stamp === "–"
-          ? "kein Stamp"
-          : `Stamp: ${node.details.stamp}`;
+          ? "no stamp"
+          : `stamp: ${node.details.stamp}`;
       return {
         nodeId: node.id,
         status: "skipped",
-        description: `${node.details.component} "${node.name}" – Manuelle Migration erforderlich (${stampInfo}, benötigt: ${REQUIRED_STAMP_FOR_V5}).`,
+        description: `${node.details.component} "${node.name}" – manual migration required (${stampInfo}, required: ${REQUIRED_STAMP_FOR_V5}).`,
       };
     }
 
@@ -190,7 +196,7 @@ const slotIntroduction: MigrationDefinition<void> = {
       return {
         nodeId: node.id,
         status: "skipped",
-        description: `Unbekannte Komponente.`,
+        description: `Unknown component.`,
       };
     }
 
@@ -205,7 +211,7 @@ const slotIntroduction: MigrationDefinition<void> = {
       return {
         nodeId: node.id,
         status: "skipped",
-        description: "Keine überschriebenen Texte.",
+        description: "No overridden texts.",
       };
     }
 
@@ -216,7 +222,7 @@ const slotIntroduction: MigrationDefinition<void> = {
       return {
         nodeId: node.id,
         status: "success",
-        description: `Würde wiederherstellen: ${fields}`,
+        description: `Would restore: ${fields}`,
       };
     }
 
@@ -226,8 +232,8 @@ const slotIntroduction: MigrationDefinition<void> = {
       return {
         nodeId: node.id,
         status: "error",
-        description: `Node nicht gefunden.`,
-        error: "Kein INSTANCE.",
+        description: `Node not found.`,
+        error: "Not an INSTANCE.",
       };
     }
 
@@ -251,11 +257,11 @@ const slotIntroduction: MigrationDefinition<void> = {
           restored.push(`${layerName}="${text}"`);
         } catch (err) {
           failed.push(
-            `${layerName} (${err instanceof Error ? err.message : "Fehler"})`,
+            `${layerName} (${err instanceof Error ? err.message : "error"})`,
           );
         }
       } else {
-        failed.push(`${layerName} (Layer nicht gefunden)`);
+        failed.push(`${layerName} (layer not found)`);
       }
     }
 
@@ -263,7 +269,7 @@ const slotIntroduction: MigrationDefinition<void> = {
       return {
         nodeId: node.id,
         status: "error",
-        description: "Texte konnten nicht wiederhergestellt werden.",
+        description: "Texts could not be restored.",
         error: failed.join(", "),
       };
     }
@@ -272,8 +278,8 @@ const slotIntroduction: MigrationDefinition<void> = {
       nodeId: node.id,
       status: "success",
       description:
-        `${node.details.component} "${node.name}" – Wiederhergestellt: ${restored.join(", ")}` +
-        (failed.length > 0 ? `. Fehlgeschlagen: ${failed.join(", ")}` : ""),
+        `${node.details.component} "${node.name}" – restored: ${restored.join(", ")}` +
+        (failed.length > 0 ? `. Failed: ${failed.join(", ")}` : ""),
     };
   },
 };

@@ -1,130 +1,130 @@
 /**
- * DB Figma Migrate – Kern-Interfaces und Typen
+ * DB Figma Migrate – Core Interfaces and Types
  *
- * Dieses Modul definiert alle TypeScript-Interfaces für das
- * modulare Migrations-Framework.
+ * This module defines all TypeScript interfaces for the
+ * modular migration framework.
  */
 
-// ─── Enums & Grundtypen ─────────────────────────────────────
+// ─── Enums & Basic Types ────────────────────────────────────
 
-/** Ausführungsmodus einer Migration. */
+/** Execution mode of a migration. */
 export type ExecutionMode = "automatic" | "semi-automatic";
 
-/** Geltungsbereich einer Migration. */
+/** Scope of a migration. */
 export type MigrationScope = "frame" | "page" | "document";
 
 // ─── Migration Definition ───────────────────────────────────
 
 /**
- * Zentrale Migrationsdefinition.
- * Der generische Typ-Parameter T erlaubt migrationsspezifische
- * Konfigurationsdaten (z.B. Inhalts-Cache, Komponenten-Mappings).
+ * Central migration definition.
+ * The generic type parameter T allows migration-specific
+ * configuration data (e.g. content cache, component mappings).
  */
 export interface MigrationDefinition<T = void> {
-  /** Eindeutiger Bezeichner (z.B. 'modes-density-device-split') */
+  /** Unique identifier (e.g. 'modes-density-device-split') */
   id: string;
-  /** Semantische Release-Version (z.B. '5.0.0') */
+  /** Semantic release version (e.g. '5.0.0') */
   releaseVersion: string;
-  /** Anzeige-Titel */
+  /** Display title */
   title: string;
-  /** Beschreibung der Migration */
+  /** Description of the migration */
   description: string;
-  /** Automatisch oder halb-automatisch */
+  /** Automatic or semi-automatic */
   executionMode: ExecutionMode;
-  /** Analyse-Funktion: Findet betroffene Nodes im Scope */
+  /** Analysis function: Finds affected nodes within the scope */
   analyze: (context: AnalysisContext) => Promise<MigrationNode[]>;
-  /** Migrations-Funktion: Transformiert einen einzelnen Node */
+  /** Migration function: Transforms a single node */
   migrate: (
     node: MigrationNode,
     context: MigrationContext<T>,
   ) => Promise<MigrationNodeResult>;
-  /** Optionale Schritte für halb-automatische Migrationen */
+  /** Optional steps for semi-automatic migrations */
   steps?: MigrationStep[];
-  /** Optionale Abhängigkeiten (Bezeichner anderer Migrationen desselben Releases) */
+  /** Optional dependencies (identifiers of other migrations in the same release) */
   dependencies?: string[];
-  /** Optionale Priorität (niedrigere Werte = höhere Priorität, Standard: 100) */
+  /** Optional priority (lower values = higher priority, default: 100) */
   priority?: number;
-  /** Unterstützte Quellversionen der Komponenten */
+  /** Supported source versions of the components */
   supportedSourceVersions?: string[];
-  /** Optionale migrationsspezifische Konfiguration */
+  /** Optional migration-specific configuration */
   config?: T;
 }
 
-// ─── Analyse & Migration Kontext ────────────────────────────
+// ─── Analysis & Migration Context ───────────────────────────
 
-/** Kontext für die Analyse-Funktion. */
+/** Context for the analysis function. */
 export interface AnalysisContext {
-  /** Der gewählte Scope */
+  /** The selected scope */
   scope: MigrationScope;
-  /** Die zu analysierenden Root-Nodes (abhängig vom Scope) */
+  /** The root nodes to analyze (depends on the scope) */
   rootNodes: ReadonlyArray<SceneNode>;
-  /** Callback für Fortschrittsmeldungen */
+  /** Callback for progress reporting */
   reportProgress: (nodesScanned: number) => void;
 }
 
-/** Kontext für die Migrations-Funktion. */
+/** Context for the migration function. */
 export interface MigrationContext<T = void> {
-  /** Dry-Run-Modus: true = keine Änderungen am Dokument */
+  /** Dry-run mode: true = no changes to the document */
   dryRun: boolean;
-  /** Migrationsspezifische Konfiguration */
+  /** Migration-specific configuration */
   config?: T;
-  /** Callback für Entscheidungspunkte (halb-automatisch) */
+  /** Callback for decision points (semi-automatic) */
   requestDecision?: (step: MigrationStep) => Promise<unknown>;
 }
 
-// ─── Migration Node & Ergebnis ──────────────────────────────
+// ─── Migration Node & Result ────────────────────────────────
 
-/** Ein von einer Migration betroffener Figma-Node. */
+/** A Figma node affected by a migration. */
 export interface MigrationNode {
-  /** Figma-Node-ID */
+  /** Figma node ID */
   id: string;
-  /** Node-Name */
+  /** Node name */
   name: string;
-  /** Node-Typ (FRAME, INSTANCE, TEXT, etc.) */
+  /** Node type (FRAME, INSTANCE, TEXT, etc.) */
   type: string;
-  /** Migrationsspezifische Details zur Anzeige in der UI */
+  /** Migration-specific details for display in the UI */
   details: Record<string, string>;
 }
 
-/** Ergebnis der Migration eines einzelnen Nodes. */
+/** Result of migrating a single node. */
 export interface MigrationNodeResult {
   nodeId: string;
   status: "success" | "error" | "skipped";
-  /** Beschreibung der durchgeführten Änderung (für Report und Dry-Run) */
+  /** Description of the change performed (for report and dry-run) */
   description: string;
-  /** Fehlermeldung bei status === 'error' */
+  /** Error message when status === 'error' */
   error?: string;
 }
 
-// ─── Halb-automatische Migration ────────────────────────────
+// ─── Semi-Automatic Migration ───────────────────────────────
 
-/** Ein Schritt innerhalb einer halb-automatischen Migration. */
+/** A step within a semi-automatic migration. */
 export interface MigrationStep {
-  /** Eindeutiger Schritt-Bezeichner */
+  /** Unique step identifier */
   id: string;
-  /** Anzeige-Titel des Schritts */
+  /** Display title of the step */
   title: string;
-  /** Beschreibung / Anweisung */
+  /** Description / instruction */
   description: string;
-  /** Art des Schritts */
+  /** Type of the step */
   type: "action" | "decision";
-  /** Verfügbare Optionen bei type === 'decision' */
+  /** Available options when type === 'decision' */
   options?: DecisionOption[];
 }
 
-/** Eine Auswahloption an einem Entscheidungspunkt. */
+/** A selection option at a decision point. */
 export interface DecisionOption {
-  /** Eindeutiger Wert der Option */
+  /** Unique value of the option */
   value: string;
-  /** Anzeige-Label */
+  /** Display label */
   label: string;
-  /** Optionale Beschreibung */
+  /** Optional description */
   description?: string;
 }
 
-// ─── Versionscheck ──────────────────────────────────────────
+// ─── Version Check ──────────────────────────────────────────
 
-/** Ergebnis der Komponentenversions-Prüfung. */
+/** Result of the component version check. */
 export interface VersionCheckResult {
   nodeId: string;
   nodeName: string;
@@ -136,7 +136,7 @@ export interface VersionCheckResult {
 
 // ─── Report ─────────────────────────────────────────────────
 
-/** Migrations-Report nach Abschluss. */
+/** Migration report after completion. */
 export interface MigrationReport {
   migrationId: string;
   migrationTitle: string;
@@ -152,9 +152,9 @@ export interface MigrationReport {
   };
 }
 
-// ─── Persistenz ─────────────────────────────────────────────
+// ─── Persistence ────────────────────────────────────────────
 
-/** Persistierter Migrationsstatus pro Dokument. */
+/** Persisted migration state per document. */
 export interface PersistedMigrationState {
   version: number;
   completedMigrations: Record<string, CompletedMigrationEntry>;
@@ -167,9 +167,9 @@ export interface CompletedMigrationEntry {
   report?: MigrationReport;
 }
 
-// ─── Nachrichten-Protokoll ──────────────────────────────────
+// ─── Message Protocol ───────────────────────────────────────
 
-/** Nachrichten von UI an Plugin. */
+/** Messages from UI to Plugin. */
 export type UIMessageToPlugin =
   | { type: "init" }
   | { type: "analyze"; migrationId: string; scope: MigrationScope }
@@ -185,7 +185,7 @@ export type UIMessageToPlugin =
   | { type: "export_report"; migrationId: string }
   | { type: "navigate_to_node"; nodeId: string };
 
-/** Nachrichten von Plugin an UI. */
+/** Messages from Plugin to UI. */
 export type PluginMessageToUI =
   | {
       type: "init_data";
@@ -248,9 +248,9 @@ export type PluginMessageToUI =
   | { type: "error"; data: { migrationId?: string; message: string } }
   | { type: "branch_status"; data: { isBranch: boolean | null } };
 
-// ─── UI-Zustand ─────────────────────────────────────────────
+// ─── UI State ───────────────────────────────────────────────
 
-/** UI-Zustand pro Migration. */
+/** UI state per migration. */
 export interface MigrationUIState {
   migrationId: string;
   status:

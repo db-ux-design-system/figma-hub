@@ -1,4 +1,4 @@
-import { DBInfotext } from "@db-ux/react-core-components";
+import { DBNotification } from "@db-ux/react-core-components";
 
 interface BranchWarningProps {
   isBranch: boolean | null;
@@ -7,26 +7,25 @@ interface BranchWarningProps {
 const BranchWarning = ({ isBranch }: BranchWarningProps) => {
   if (isBranch === false) {
     return (
-      <DBInfotext semantic="critical">
-        Du arbeitest in der Hauptdatei. Migrationen sollten in einem
-        Figma-Branch durchgeführt werden.
-      </DBInfotext>
+      <DBNotification variant="docked" semantic="critical">
+        You are working in the main file. Migrations should be performed in a
+        Figma branch.
+      </DBNotification>
     );
   }
 
   if (isBranch === true) {
     return (
-      <DBInfotext semantic="successful">
-        Du arbeitest in einem Branch. Migrationen können sicher durchgeführt
-        werden.
-      </DBInfotext>
+      <DBNotification variant="docked" semantic="successful">
+        You are working in a branch. Migrations can be performed safely.
+      </DBNotification>
     );
   }
 
   return (
-    <DBInfotext semantic="warning">
-      Migrationen sollten in einem Figma-Branch durchgeführt werden.
-    </DBInfotext>
+    <DBNotification variant="docked" semantic="warning">
+      Migrations should be performed in a Figma branch.
+    </DBNotification>
   );
 };
 

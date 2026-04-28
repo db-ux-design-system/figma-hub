@@ -4,6 +4,7 @@ import {
   DBCard,
   DBInfotext,
   DBInput,
+  DBTag,
 } from "@db-ux/react-core-components";
 import { sendMessage, usePluginMessage } from "./hooks/usePluginMessage";
 import type {
@@ -28,7 +29,9 @@ function App() {
   >();
   const [hasCanvasSelection, setHasCanvasSelection] = useState(false);
   const [fileKey, setFileKey] = useState<string | undefined>();
+  const [documentName, setDocumentName] = useState<string | undefined>();
   const [figmaToken, setFigmaToken] = useState<string | undefined>();
+  const [isBranch, setIsBranch] = useState<boolean | null>(null);
   const [libraries, setLibraries] = useState<
     Array<{ name: string; fileKey: string }>
   >([]);
@@ -51,6 +54,7 @@ function App() {
         | {
             lastModule?: string;
             fileKey?: string;
+            documentName?: string;
             figmaToken?: string;
             libraries?: Array<{ name: string; fileKey: string }>;
             currentLibrary?: { name: string; fileKey: string } | null;
@@ -62,6 +66,9 @@ function App() {
       }
       if (storageData?.fileKey) {
         setFileKey(storageData.fileKey);
+      }
+      if (storageData?.documentName) {
+        setDocumentName(storageData.documentName);
       }
       if (storageData?.libraries) {
         setLibraries(storageData.libraries);
@@ -86,6 +93,24 @@ function App() {
   }, []);
 
   usePluginMessage(handleMessage);
+
+  // Detect branch via REST API
+  useEffect(() => {
+    if (!figmaToken || !fileKey) return;
+    (async () => {
+      try {
+        const res = await fetch(
+          `https://api.figma.com/v1/files/${fileKey}?branch_data=true&depth=1`,
+          { headers: { "X-Figma-Token": figmaToken } },
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        setIsBranch(!!data.mainFileKey);
+      } catch {
+        /* ignore */
+      }
+    })();
+  }, [figmaToken, fileKey]);
 
   const activeModule = modules.find((m) => m.id === activeModuleId);
   const ActiveView = activeModuleId ? moduleViewRegistry[activeModuleId] : null;
@@ -151,20 +176,24 @@ function App() {
 
     setAddingLib(true);
 
-    // Try to get name from URL first
-    let name = parseFileName(shareLinkInput);
-
-    // If no name in URL and we have a token, fetch from API
-    if (!name && figmaToken) {
-      try {
-        const res = await fetch(
-          `https://api.figma.com/v1/files/${key}?depth=1`,
-          { headers: { "X-Figma-Token": figmaToken } },
-        );
-        const data = await res.json();
-        name = data.name ?? null;
-      } catch {
-        /* ignore */
+    // Use the actual document name if the link points to the current file,
+    // otherwise try URL slug, then API
+    let name: string | null = null;
+    if (key === fileKey && documentName) {
+      name = documentName;
+    } else {
+      name = parseFileName(shareLinkInput);
+      if (!name && figmaToken) {
+        try {
+          const res = await fetch(
+            `https://api.figma.com/v1/files/${key}?depth=1`,
+            { headers: { "X-Figma-Token": figmaToken } },
+          );
+          const data = await res.json();
+          name = data.name ?? null;
+        } catch {
+          /* ignore */
+        }
       }
     }
 
@@ -183,6 +212,9 @@ function App() {
 
   return (
     <div className="p-fix-md flex flex-col gap-fix-md">
+      {/* <DBInfotext semantic="successful">
+        Build: {__BUILD_TIME__} | {documentName ?? "?"}
+      </DBInfotext> */}
       {activeModule && ActiveView ? (
         <ActiveView
           moduleId={activeModuleId!}
@@ -193,6 +225,8 @@ function App() {
           initialVersion={selectionVersion}
           hasCanvasSelection={hasCanvasSelection}
           fileKey={fileKey}
+          documentName={documentName}
+          isBranch={isBranch}
           figmaToken={figmaToken}
           libraries={allLibraries}
           onSaveToken={saveToken}
@@ -260,7 +294,14 @@ function App() {
                   setActiveModuleId(mod.id);
                 }}
               >
-                <h2 className="text-lg font-semibold">{mod.name}</h2>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg m-0 font-semibold">{mod.name}</h2>
+                  {mod.runIn && (
+                    <DBTag>
+                      {mod.runIn === "branch" ? "Run in branch" : "Run in main"}
+                    </DBTag>
+                  )}
+                </div>
                 <p className="text-sm">{mod.description}</p>
                 {mod.disabled && (
                   <DBInfotext semantic="warning">

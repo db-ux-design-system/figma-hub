@@ -10,8 +10,8 @@ import type { PersistenceManager } from "./persistence";
 import type { VersionChecker } from "./version-checker";
 
 /**
- * Zentraler Nachrichten-Handler auf Plugin-Seite.
- * Routet eingehende UI-Nachrichten an Executor, Registry, Persistence und VersionChecker.
+ * Central message handler on the plugin side.
+ * Routes incoming UI messages to Executor, Registry, Persistence, and VersionChecker.
  */
 export class MessageHandler {
   /** Stores the last report per migrationId for export_report. */

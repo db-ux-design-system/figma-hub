@@ -1,8 +1,8 @@
 import type { MigrationDefinition } from "./types";
 
 /**
- * Vergleicht zwei Semver-Strings (major.minor.patch).
- * Gibt negativ zurück wenn a < b, positiv wenn a > b, 0 wenn gleich.
+ * Compares two semver strings (major.minor.patch).
+ * Returns negative if a < b, positive if a > b, 0 if equal.
  */
 function compareSemver(a: string, b: string): number {
   const partsA = a.split(".").map(Number);
@@ -16,15 +16,15 @@ function compareSemver(a: string, b: string): number {
 }
 
 /**
- * MigrationRegistry verwaltet alle registrierten Migrationen.
- * Sie wird beim Plugin-Start einmalig befüllt und ist danach read-only.
+ * MigrationRegistry manages all registered migrations.
+ * It is populated once at plugin start and is read-only afterwards.
  */
 export class MigrationRegistry {
   private definitions: Map<string, MigrationDefinition<unknown>> = new Map();
 
   /**
-   * Registriert eine MigrationDefinition.
-   * Wirft einen Fehler, wenn eine Definition mit derselben ID bereits existiert.
+   * Registers a MigrationDefinition.
+   * Throws an error if a definition with the same ID already exists.
    */
   register(definition: MigrationDefinition<unknown>): void {
     if (this.definitions.has(definition.id)) {
@@ -36,8 +36,8 @@ export class MigrationRegistry {
   }
 
   /**
-   * Gibt alle Definitionen einer Release-Version zurück,
-   * sortiert nach Priorität aufsteigend (Standard: 100).
+   * Returns all definitions for a release version,
+   * sorted by priority ascending (default: 100).
    */
   getMigrationsByRelease(release: string): MigrationDefinition<unknown>[] {
     const result: MigrationDefinition<unknown>[] = [];
@@ -50,8 +50,8 @@ export class MigrationRegistry {
   }
 
   /**
-   * Gibt alle Releases mit mindestens einer Definition zurück,
-   * absteigend nach Semver sortiert (neueste zuerst).
+   * Returns all releases with at least one definition,
+   * sorted descending by semver (newest first).
    */
   getAvailableReleases(): string[] {
     const releases = new Set<string>();
@@ -62,15 +62,15 @@ export class MigrationRegistry {
   }
 
   /**
-   * Gibt eine einzelne Definition anhand ihrer ID zurück, oder undefined.
+   * Returns a single definition by its ID, or undefined.
    */
   getMigrationById(id: string): MigrationDefinition<unknown> | undefined {
     return this.definitions.get(id);
   }
 
   /**
-   * Prüft auf zirkuläre Abhängigkeiten mittels Tiefensuche.
-   * Wirft einen Fehler, wenn ein Zyklus erkannt wird.
+   * Checks for circular dependencies using depth-first search.
+   * Throws an error if a cycle is detected.
    */
   validateDependencies(): void {
     const visited = new Set<string>();

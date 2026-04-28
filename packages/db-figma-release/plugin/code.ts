@@ -17,7 +17,18 @@ try {
     PLUGIN_NAMESPACE,
     "file_key",
   );
-  if (!existingKey) {
+  if (existingKey) {
+    // Validate stored key: if it belongs to a known library whose name
+    // doesn't exactly match the document name, clear it (was likely set
+    // by the old includes-based auto-detection on a different file).
+    const matchedLib = findLibraryByFileKey(existingKey);
+    if (
+      matchedLib &&
+      matchedLib.name.toLowerCase() !== figma.root.name.trim().toLowerCase()
+    ) {
+      figma.root.setSharedPluginData(PLUGIN_NAMESPACE, "file_key", "");
+    }
+  } else {
     // Try figma.fileKey first (works with private plugins that have a real ID)
     if (typeof (figma as any).fileKey === "string" && (figma as any).fileKey) {
       figma.root.setSharedPluginData(
@@ -26,10 +37,10 @@ try {
         (figma as any).fileKey,
       );
     } else {
-      // Fallback: match document name against known libraries
-      const docName = figma.root.name;
-      const match = LIBRARIES.find((lib) =>
-        docName.toLowerCase().includes(lib.name.toLowerCase()),
+      // Fallback: exact match of document name against known libraries
+      const docName = figma.root.name.trim();
+      const match = LIBRARIES.find(
+        (lib) => lib.name.toLowerCase() === docName.toLowerCase(),
       );
       if (match) {
         figma.root.setSharedPluginData(
@@ -110,17 +121,23 @@ figma.ui.onmessage = async (msg: UIToPluginMessage) => {
           currentFileKey != null &&
           userCustomLibs.some((l) => l.fileKey === currentFileKey);
 
-        const modules = registry.getAll().map(({ id, name, description }) => ({
-          id,
-          name,
-          description,
-          // Changelog is enabled if the current file is a known or custom library
-          disabled: id === "changelog" && !currentLib && !isCustomMatch,
-        }));
+        const modules = registry
+          .getAll()
+          .map(({ id, name, description, runIn }) => ({
+            id,
+            name,
+            description,
+            runIn,
+            // Changelog is enabled if the current file is a known or custom library
+            disabled: id === "changelog" && !currentLib && !isCustomMatch,
+          }));
         figma.ui.postMessage({
           type: "modules",
           data: modules,
         } as PluginToUIMessage);
+
+        // UI is ready — send current selection state
+        sendSelectionVersion();
         break;
       }
 
@@ -174,6 +191,7 @@ figma.ui.onmessage = async (msg: UIToPluginMessage) => {
             lastModule,
             figmaToken,
             fileKey,
+            documentName: figma.root.name,
             currentLibrary: currentLibrary ?? customMatch ?? null,
             libraries: LIBRARIES,
             customLibraries,
@@ -287,19 +305,48 @@ async function detectChangedComponents(): Promise<void> {
 
 // --- Selection change ---
 
+function collectComponents(
+  node: SceneNode,
+): (ComponentNode | ComponentSetNode)[] {
+  if (node.type === "COMPONENT_SET") return [node];
+  if (node.type === "COMPONENT" && node.parent?.type !== "COMPONENT_SET")
+    return [node];
+  if ("children" in node) {
+    const results: (ComponentNode | ComponentSetNode)[] = [];
+    for (const child of (node as ChildrenMixin).children) {
+      results.push(...collectComponents(child as SceneNode));
+    }
+    return results;
+  }
+  return [];
+}
+
 function sendSelectionVersion(): void {
   let version: string | null = null;
   let hasComponents = false;
+  const selectionTypes = figma.currentPage.selection.map(
+    (n) => `${n.name}(${n.type})`,
+  );
   for (const node of figma.currentPage.selection) {
-    if (node.type === "COMPONENT" || node.type === "COMPONENT_SET") {
+    const components = collectComponents(node);
+    if (components.length > 0) {
       hasComponents = true;
-      const v = node.getSharedPluginData(PLUGIN_NAMESPACE, UPDATED_WITH_KEY);
-      if (v) {
-        version = v;
-        break;
+      for (const comp of components) {
+        const v = comp.getSharedPluginData(PLUGIN_NAMESPACE, UPDATED_WITH_KEY);
+        if (v) {
+          version = v;
+          break;
+        }
       }
+      if (version) break;
     }
   }
+  console.log("[selectionchange]", {
+    selectionCount: figma.currentPage.selection.length,
+    selectionTypes,
+    hasComponents,
+    version,
+  });
   figma.ui.postMessage({
     type: "selectionVersion",
     data: { version, hasComponents },

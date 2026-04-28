@@ -4,6 +4,7 @@ export interface ModuleInfo {
   id: string;
   name: string;
   description: string;
+  runIn?: "branch" | "main";
   disabled?: boolean;
 }
 
@@ -16,6 +17,8 @@ export interface ModuleViewProps {
   initialVersion?: string;
   hasCanvasSelection?: boolean;
   fileKey?: string;
+  documentName?: string;
+  isBranch?: boolean | null;
   figmaToken?: string;
   libraries?: Array<{ name: string; fileKey: string }>;
   onSaveToken: (token: string) => void;

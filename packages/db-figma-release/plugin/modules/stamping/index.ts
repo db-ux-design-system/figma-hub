@@ -16,7 +16,7 @@ import {
 import { updateStatusFrame } from "./update-status";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-const BATCH_SIZE = 10;
+const BATCH_SIZE = 5;
 
 export interface ComponentListEntry {
   id: string;
@@ -31,6 +31,7 @@ export class StampingModule implements PluginModule {
   id = "stamping";
   name = "Stamping";
   description = "Manage update version nummer";
+  runIn = "main" as const;
 
   private sendProgress: (data: ProgressUpdate) => void;
 
@@ -253,13 +254,23 @@ export class StampingModule implements PluginModule {
 
   private getSelectedComponents(): (ComponentNode | ComponentSetNode)[] {
     const results: (ComponentNode | ComponentSetNode)[] = [];
-    for (const node of figma.currentPage.selection) {
-      if (
-        (node.type === "COMPONENT" || node.type === "COMPONENT_SET") &&
-        this.isPublishable(node)
-      ) {
-        results.push(node);
+    const collect = (node: SceneNode) => {
+      if (node.type === "COMPONENT_SET") {
+        if (this.isPublishable(node)) results.push(node);
+        return;
       }
+      if (node.type === "COMPONENT" && node.parent?.type !== "COMPONENT_SET") {
+        if (this.isPublishable(node)) results.push(node);
+        return;
+      }
+      if ("children" in node) {
+        for (const child of (node as ChildrenMixin).children) {
+          collect(child as SceneNode);
+        }
+      }
+    };
+    for (const node of figma.currentPage.selection) {
+      collect(node);
     }
     return results;
   }

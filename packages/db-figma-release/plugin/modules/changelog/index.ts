@@ -10,6 +10,7 @@ export class ChangelogModule implements PluginModule {
   id = "changelog";
   name = "Changelog";
   description = "Version History auslesen und Changelog pflegen";
+  runIn = "main" as const;
 
   private sendProgress: (data: ProgressUpdate) => void;
 
@@ -23,9 +24,19 @@ export class ChangelogModule implements PluginModule {
         return this.writeEntry(payload);
       case "detect-changed":
         return this.detectChanged();
+      case "check-page":
+        return this.checkPage();
       default:
         return this.err(`Unknown action: "${action}"`);
     }
+  }
+
+  private async checkPage(): Promise<ModuleResult> {
+    await figma.loadAllPagesAsync();
+    const changelogPage = figma.root.children.find((p) =>
+      p.name.includes("Changelog"),
+    );
+    return { success: true, data: { hasChangelogPage: !!changelogPage } };
   }
 
   private async detectChanged(): Promise<ModuleResult> {
@@ -136,12 +147,8 @@ export class ChangelogModule implements PluginModule {
     await figma.loadFontAsync(FONT_REGULAR);
     await figma.loadFontAsync(FONT_BOLD);
 
-    // Detect font size from existing text
-    let fontSize = 14;
-    const existingText = entriesFrame.findOne(
-      (n) => n.type === "TEXT",
-    ) as TextNode | null;
-    if (existingText) fontSize = existingText.fontSize as number;
+    const headerFontSize = 16;
+    const bodyFontSize = 14;
 
     const entryWidth = entriesFrame.width || 400;
 
@@ -167,7 +174,7 @@ export class ChangelogModule implements PluginModule {
 
     const titleNode = figma.createText();
     titleNode.fontName = FONT_BOLD;
-    titleNode.fontSize = fontSize;
+    titleNode.fontSize = headerFontSize;
     titleNode.characters = title;
     titleNode.layoutGrow = 1;
     headerRow.appendChild(titleNode);
@@ -175,7 +182,7 @@ export class ChangelogModule implements PluginModule {
     if (date) {
       const dateNode = figma.createText();
       dateNode.fontName = FONT_REGULAR;
-      dateNode.fontSize = fontSize;
+      dateNode.fontSize = headerFontSize;
       dateNode.characters = date;
       dateNode.layoutGrow = 0;
       headerRow.appendChild(dateNode);
@@ -183,13 +190,73 @@ export class ChangelogModule implements PluginModule {
 
     entryFrame.appendChild(headerRow);
 
-    // --- Body text ---
-    const bodyNode = figma.createText();
-    bodyNode.fontName = FONT_REGULAR;
-    bodyNode.fontSize = fontSize;
-    bodyNode.characters = body;
-    bodyNode.layoutAlign = "STRETCH";
-    entryFrame.appendChild(bodyNode);
+    // --- Body: parse markdown-style formatting ---
+    const lines = body.split("\n");
+    // --- Body: group lines into merge entries (bold title + bullet description) ---
+    // Each **title** starts a new group; bullet/plain lines belong to the current group
+    interface MergeEntry {
+      title: string | null;
+      bullets: string[];
+    }
+    const entries: MergeEntry[] = [];
+    let current: MergeEntry | null = null;
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+
+      const boldMatch = trimmed.match(/^\*\*(.+)\*\*$/);
+      if (boldMatch) {
+        current = { title: boldMatch[1], bullets: [] };
+        entries.push(current);
+        continue;
+      }
+
+      const bulletMatch = trimmed.match(/^[-–•*]\s+(.+)$/);
+      if (bulletMatch) {
+        if (!current) {
+          current = { title: null, bullets: [] };
+          entries.push(current);
+        }
+        current.bullets.push(bulletMatch[1]);
+      } else {
+        if (!current) {
+          current = { title: null, bullets: [] };
+          entries.push(current);
+        }
+        current.bullets.push(trimmed);
+      }
+    }
+
+    // Create one TextNode per merge entry with bold title + native bullet list
+    for (const entry of entries) {
+      const textNode = figma.createText();
+      textNode.fontName = FONT_REGULAR;
+      textNode.fontSize = bodyFontSize;
+      textNode.layoutAlign = "STRETCH";
+
+      // Build the full text: title on first line, then bullet lines
+      const parts: string[] = [];
+      if (entry.title) parts.push(entry.title);
+      for (const b of entry.bullets) parts.push(b);
+      textNode.characters = parts.join("\n");
+
+      // Apply bold to the title line
+      if (entry.title) {
+        textNode.setRangeFontName(0, entry.title.length, FONT_BOLD);
+      }
+
+      // Apply unordered list style to bullet lines
+      if (entry.bullets.length > 0) {
+        const bulletStart = entry.title ? entry.title.length + 1 : 0;
+        const bulletEnd = textNode.characters.length;
+        textNode.setRangeListOptions(bulletStart, bulletEnd, {
+          type: "UNORDERED",
+        });
+      }
+
+      entryFrame.appendChild(textNode);
+    }
 
     // Insert at the top of entries
     entriesFrame.insertChild(0, entryFrame);

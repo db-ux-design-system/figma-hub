@@ -9,7 +9,7 @@ interface DecisionPointProps {
 const DecisionPoint = ({ options, onSelect }: DecisionPointProps) => {
   return (
     <div className="flex flex-col gap-fix-sm">
-      <span className="text-sm font-bold">Bitte wähle eine Option:</span>
+      <span className="text-sm font-bold">Please choose an option:</span>
       {options.map((opt) => (
         <DBCard
           key={opt.value}
@@ -21,7 +21,7 @@ const DecisionPoint = ({ options, onSelect }: DecisionPointProps) => {
             <span className="text-sm">{opt.description}</span>
           )}
           <DBButton size="small" onClick={() => onSelect(opt.value)}>
-            Auswählen
+            Select
           </DBButton>
         </DBCard>
       ))}

@@ -16,6 +16,7 @@ interface MigrationPageProps {
   onPreview: (migrationId: string) => void;
   onDecision: (migrationId: string, nodeId: string, decision: unknown) => void;
   onNavigateToNode: (nodeId: string) => void;
+  onAnalyze: (migrationId: string) => void;
   onBack: () => void;
 }
 
@@ -25,6 +26,7 @@ const MigrationPage = ({
   onMigrateBatch,
   onDecision,
   onNavigateToNode,
+  onAnalyze,
   onBack,
 }: MigrationPageProps) => {
   const { metadata, nodes, versionWarnings, status, progress, report, error } =
@@ -34,13 +36,29 @@ const MigrationPage = ({
 
   return (
     <div className="flex flex-col gap-fix-md">
-      <DBButton size="small" variant="ghost" onClick={onBack}>
-        ← Zurück
-      </DBButton>
+      <div className="flex items-center justify-between">
+        <DBButton
+          size="small"
+          variant="ghost"
+          onClick={onBack}
+          icon={"arrow_left"}
+        >
+          Back
+        </DBButton>
+        {(status === "ready" || status === "completed") && (
+          <DBButton
+            size="small"
+            variant="outlined"
+            onClick={() => onAnalyze(state.migrationId)}
+          >
+            Rescan
+          </DBButton>
+        )}
+      </div>
 
       <div className="flex items-center gap-fix-sm">
-        <span className="font-bold text-lg">{metadata.title}</span>
-        <DBTag>{isAutomatic ? "Automatisch" : "Halb-automatisch"}</DBTag>
+        <h1 className="text-lg m0">{metadata.title}</h1>
+        <DBTag>{isAutomatic ? "Automatic" : "Semi-automatic"}</DBTag>
       </div>
       <p className="text-sm">{metadata.description}</p>
 
@@ -52,10 +70,10 @@ const MigrationPage = ({
               key={w.nodeId}
               semantic={w.majorVersionGap > 1 ? "critical" : "warning"}
             >
-              {w.nodeName}: Version {w.currentVersion ?? "unbekannt"} –{" "}
+              {w.nodeName}: Version {w.currentVersion ?? "unknown"} –{" "}
               {w.compatible
-                ? "kompatibel"
-                : `nicht kompatibel (Gap: ${w.majorVersionGap})`}
+                ? "compatible"
+                : `not compatible (gap: ${w.majorVersionGap})`}
             </DBInfotext>
           ))}
         </div>
@@ -77,27 +95,27 @@ const MigrationPage = ({
         nodes.length > 0 &&
         (() => {
           const eligibleNodes = nodes.filter(
-            (n) => n.details.eligible !== "nein",
+            (n) => n.details.eligible !== "no",
           );
           const ineligibleNodes = nodes.filter(
-            (n) => n.details.eligible === "nein",
+            (n) => n.details.eligible === "no",
           );
 
           return (
             <div className="flex flex-col gap-fix-md">
               {/* Instructions */}
-              <DBInfotext semantic="informational">
-                <strong>Vorgehen:</strong> Aktualisiere zuerst die Instanzen
-                manuell in Figma (Rechtsklick → „Update Instance" oder ↻).
-                Klicke danach auf „Inhalte wiederherstellen", um die
-                zwischengespeicherten Texte zurückzuschreiben.
-              </DBInfotext>
+              <h2 className="text-md m0">Instructions:</h2>
+              <p>
+                First, update the instances manually in Figma (right-click →
+                "Update Instance" or ↻). Then click "Restore content" to write
+                back the cached texts.
+              </p>
 
               {/* Ineligible nodes warning */}
               {ineligibleNodes.length > 0 && (
                 <DBInfotext semantic="warning">
-                  {ineligibleNodes.length} Instanz(en) benötigen eine manuelle
-                  Migration (fehlender oder veralteter Update-Stamp).
+                  {ineligibleNodes.length} instance(s) require manual migration
+                  (missing or outdated update stamp).
                 </DBInfotext>
               )}
 
@@ -106,7 +124,7 @@ const MigrationPage = ({
                 <div className="flex flex-col gap-fix-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-bold">
-                      {eligibleNodes.length} Instanz(en) migrierbar
+                      {eligibleNodes.length} instance(s) eligible for migration
                     </span>
                     <DBButton
                       size="small"
@@ -117,7 +135,7 @@ const MigrationPage = ({
                         )
                       }
                     >
-                      Alle wiederherstellen
+                      Restore all
                     </DBButton>
                   </div>
 
@@ -157,7 +175,7 @@ const MigrationPage = ({
                           variant="outlined"
                           onClick={() => onNavigateToNode(node.id)}
                         >
-                          Anzeigen
+                          Show
                         </DBButton>
                         <DBButton
                           size="small"
@@ -166,7 +184,7 @@ const MigrationPage = ({
                             onMigrateSingle(state.migrationId, node.id)
                           }
                         >
-                          Inhalte wiederherstellen
+                          Restore content
                         </DBButton>
                       </div>
                     </DBCard>
@@ -178,8 +196,8 @@ const MigrationPage = ({
               {ineligibleNodes.length > 0 && (
                 <div className="flex flex-col gap-fix-sm">
                   <span className="text-sm font-bold">
-                    {ineligibleNodes.length} Instanz(en) – manuelle Migration
-                    erforderlich
+                    {ineligibleNodes.length} instance(s) – manual migration
+                    required
                   </span>
 
                   {ineligibleNodes.map((node) => (
@@ -194,7 +212,7 @@ const MigrationPage = ({
                         <div className="flex gap-fix-2xs">
                           <DBTag semantic="warning">
                             {node.details.stamp === "–"
-                              ? "Kein Stamp"
+                              ? "No stamp"
                               : `Stamp ${node.details.stamp}`}
                           </DBTag>
                           <DBTag>{node.details.component ?? node.type}</DBTag>
@@ -220,7 +238,7 @@ const MigrationPage = ({
                         variant="outlined"
                         onClick={() => onNavigateToNode(node.id)}
                       >
-                        Anzeigen
+                        Show
                       </DBButton>
                     </DBCard>
                   ))}
@@ -249,9 +267,7 @@ const MigrationPage = ({
       )}
 
       {status === "ready" && nodes.length === 0 && !report && (
-        <DBInfotext semantic="successful">
-          Keine betroffenen Nodes gefunden.
-        </DBInfotext>
+        <DBInfotext semantic="successful">No affected nodes found.</DBInfotext>
       )}
     </div>
   );

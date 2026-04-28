@@ -36,6 +36,7 @@ function StampingView({
   onBack,
   initialVersion,
   hasCanvasSelection,
+  isBranch,
 }: ModuleViewProps) {
   const [version, setVersion] = useState("");
   const [isRunning, setIsRunning] = useState(false);
@@ -217,7 +218,9 @@ function StampingView({
             invalidMessage="MAJOR.MINOR"
           />
           <DBButton
-            variant="brand"
+            variant={
+              selectedIds.size > 0 || hasCanvasSelection ? "outlined" : "brand"
+            }
             disabled={!isValid || isRunning}
             onClick={stampAll}
             width="full"
@@ -225,7 +228,9 @@ function StampingView({
             Stamp All
           </DBButton>
           <DBButton
-            variant="outlined"
+            variant={
+              selectedIds.size > 0 || hasCanvasSelection ? "brand" : "outlined"
+            }
             disabled={
               !isValid ||
               isRunning ||
@@ -298,8 +303,13 @@ function StampingView({
               <DBButton
                 variant="ghost"
                 size="small"
-                disabled={isRunning}
+                disabled={isRunning || !!isBranch}
                 onClick={detectChanged}
+                title={
+                  isBranch
+                    ? "Publish-Status ist in Branches nicht verfügbar"
+                    : undefined
+                }
               >
                 Select changed
               </DBButton>

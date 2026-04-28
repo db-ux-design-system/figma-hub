@@ -19,12 +19,12 @@ const PreviewView = ({ state, onStartPreview }: PreviewViewProps) => {
         onClick={onStartPreview}
         disabled={isPreviewing}
       >
-        Vorschau
+        Preview
       </DBButton>
 
       {isPreviewing && state.progress && (
         <ProgressIndicator
-          label="Vorschau"
+          label="Preview"
           current={state.progress.completed}
           total={state.progress.total}
         />
@@ -32,7 +32,7 @@ const PreviewView = ({ state, onStartPreview }: PreviewViewProps) => {
 
       {changes && changes.length > 0 && (
         <div className="flex flex-col gap-fix-xs">
-          <span className="text-sm font-bold">Geplante Änderungen:</span>
+          <span className="text-sm font-bold">Planned changes:</span>
           {changes.map((c: MigrationNodeResult) => (
             <DBCard key={c.nodeId} data-density="functional">
               <span className="text-sm">
@@ -44,9 +44,7 @@ const PreviewView = ({ state, onStartPreview }: PreviewViewProps) => {
       )}
 
       {changes && changes.length === 0 && (
-        <DBInfotext semantic="informational">
-          Keine Änderungen geplant.
-        </DBInfotext>
+        <DBInfotext semantic="informational">No changes planned.</DBInfotext>
       )}
     </div>
   );

@@ -16,18 +16,18 @@ const MigrationReportView = ({
 
   return (
     <div className="flex flex-col gap-fix-sm">
-      <span className="font-bold">Migrations-Report</span>
+      <span className="font-bold">Migration Report</span>
 
       <div className="flex gap-fix-md text-sm">
-        <span>Erfolgreich: {summary.success}</span>
-        <span>Fehlgeschlagen: {summary.error}</span>
-        <span>Übersprungen: {summary.skipped}</span>
+        <span>Successful: {summary.success}</span>
+        <span>Failed: {summary.error}</span>
+        <span>Skipped: {summary.skipped}</span>
       </div>
 
       {failed.length > 0 && (
         <div className="flex flex-col gap-fix-xs">
           <DBInfotext semantic="critical">
-            {failed.length} Node(s) fehlgeschlagen
+            {failed.length} node(s) failed
           </DBInfotext>
           {failed.map((r) => (
             <DBCard
@@ -39,7 +39,7 @@ const MigrationReportView = ({
               <div className="flex items-center justify-between">
                 <span className="text-sm font-bold">{r.nodeId}</span>
                 {onNavigateToNode && (
-                  <span className="text-xs underline">Zur Instanz →</span>
+                  <span className="text-xs underline">Go to instance →</span>
                 )}
               </div>
               <span className="text-sm">{r.description}</span>
@@ -53,7 +53,7 @@ const MigrationReportView = ({
 
       {summary.error === 0 && (
         <DBInfotext semantic="successful">
-          Alle Nodes erfolgreich migriert.
+          All nodes migrated successfully.
         </DBInfotext>
       )}
 
@@ -62,7 +62,7 @@ const MigrationReportView = ({
         variant="outlined"
         onClick={() => downloadReport(report)}
       >
-        Report exportieren
+        Export report
       </DBButton>
     </div>
   );
