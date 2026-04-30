@@ -196,8 +196,11 @@ export class StampingModule implements PluginModule {
     this.updateRootMap(components, version, mode === "all");
 
     // Update the "Update status" frame on the Overview page
+    // Always pass ALL components so the table shows the full picture,
+    // not just the subset that was stamped in this run.
     try {
-      await updateStatusFrame(components);
+      const allComponents = await this.findAllComponents();
+      await updateStatusFrame(allComponents);
     } catch (e) {
       console.log("updateStatusFrame error:", e);
     }
