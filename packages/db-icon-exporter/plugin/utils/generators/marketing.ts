@@ -13,6 +13,15 @@ import {
   cleanFilename,
 } from "../helpers";
 
+/**
+ * Entfernt Leerzeichen nach Kommas in einem String.
+ * Leerzeichen zwischen Wörtern bleiben erhalten.
+ * Beispiel: "Zug, Bahn, S-Bahn" → "Zug,Bahn,S-Bahn"
+ */
+function removeSpacesAfterCommas(value: string): string {
+  return value.replace(/,\s+/g, ",");
+}
+
 export function generateMarketingPortalCSV(
   allIcons: IconData[],
   iconType: string,
@@ -93,7 +102,9 @@ export function generateMarketingPortalCSV(
           if (parsed.keywords)
             tags.push(...parsed.keywords.split(",").map((k) => k.trim()));
 
-          const tagString = tags.filter(Boolean).join(",");
+          const tagString = removeSpacesAfterCommas(
+            tags.filter(Boolean).join(","),
+          );
           const row = [
             `"${filename}"`,
             `"${size}dp"`,
@@ -139,7 +150,9 @@ export function generateMarketingPortalCSV(
           if (parsed.keywords)
             tags.push(...parsed.keywords.split(",").map((k) => k.trim()));
 
-          const tagString = tags.filter(Boolean).join(",");
+          const tagString = removeSpacesAfterCommas(
+            tags.filter(Boolean).join(","),
+          );
           const row = [
             `"${filename}"`,
             `"${size}dp"`,
@@ -189,7 +202,7 @@ export function generateMarketingPortalCSV(
       if (parsed.keywords)
         tags.push(...parsed.keywords.split(",").map((k) => k.trim()));
 
-      const tagString = tags.filter(Boolean).join(",");
+      const tagString = removeSpacesAfterCommas(tags.filter(Boolean).join(","));
       const row = [
         `"${filename}"`,
         `"${size}dp"`,
