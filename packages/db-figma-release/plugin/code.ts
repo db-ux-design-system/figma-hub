@@ -2,7 +2,12 @@ import { ModuleRegistry } from "./module-registry";
 import { StampingModule } from "./modules/stamping/index";
 import { ChangelogModule } from "./modules/changelog/index";
 import { PLUGIN_NAMESPACE, UPDATED_WITH_KEY } from "./modules/stamping/stamp";
-import { LIBRARIES, findLibraryByFileKey } from "./config";
+import {
+  LIBRARIES,
+  findLibraryByFileKey,
+  findLibraryByDocumentName,
+  documentMatchesLibrary,
+} from "./config";
 import type {
   UIToPluginMessage,
   PluginToUIMessage,
@@ -19,13 +24,9 @@ try {
   );
   if (existingKey) {
     // Validate stored key: if it belongs to a known library whose name
-    // doesn't exactly match the document name, clear it (was likely set
-    // by the old includes-based auto-detection on a different file).
+    // is not contained in the document name, clear it (file was duplicated).
     const matchedLib = findLibraryByFileKey(existingKey);
-    if (
-      matchedLib &&
-      matchedLib.name.toLowerCase() !== figma.root.name.trim().toLowerCase()
-    ) {
+    if (matchedLib && !documentMatchesLibrary(figma.root.name, matchedLib)) {
       figma.root.setSharedPluginData(PLUGIN_NAMESPACE, "file_key", "");
     }
   } else {
@@ -37,11 +38,8 @@ try {
         (figma as any).fileKey,
       );
     } else {
-      // Fallback: exact match of document name against known libraries
-      const docName = figma.root.name.trim();
-      const match = LIBRARIES.find(
-        (lib) => lib.name.toLowerCase() === docName.toLowerCase(),
-      );
+      // Fallback: fuzzy match of document name against known libraries
+      const match = findLibraryByDocumentName(figma.root.name);
       if (match) {
         figma.root.setSharedPluginData(
           PLUGIN_NAMESPACE,

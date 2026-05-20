@@ -34,3 +34,25 @@ export function findLibraryByFileKey(
 export function isKnownLibrary(fileKey: string): boolean {
   return LIBRARIES.some((lib) => lib.fileKey === fileKey);
 }
+
+/**
+ * Checks whether a document name matches a library entry.
+ * Uses a "contains" check so that names like
+ * "DB UX DS v3 - Core Components - v4.8.0" still match "Core Components".
+ */
+export function documentMatchesLibrary(
+  documentName: string,
+  library: LibraryDefinition,
+): boolean {
+  return documentName.toLowerCase().includes(library.name.toLowerCase());
+}
+
+/**
+ * Finds a library whose name is contained in the given document name.
+ */
+export function findLibraryByDocumentName(
+  documentName: string,
+): LibraryDefinition | undefined {
+  const normalized = documentName.trim().toLowerCase();
+  return LIBRARIES.find((lib) => normalized.includes(lib.name.toLowerCase()));
+}
