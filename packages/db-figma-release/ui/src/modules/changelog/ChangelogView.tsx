@@ -11,7 +11,6 @@ import type {
   ModuleResult,
   ModuleViewProps,
   PluginToUIMessage,
-  ProgressUpdate,
 } from "../../types";
 
 interface VersionEntry {
@@ -23,18 +22,54 @@ interface VersionEntry {
 }
 
 const PUBLISH_PATTERN = /components published|komponenten veröffentlicht/i;
+const VERSION_BUMP_PATTERN = /^version[\s\-_]*bump/i;
 
 function isMerge(v: VersionEntry): boolean {
-  return !!v.label && !isPublish(v);
+  return !!v.label && !isPublish(v) && !isVersionBump(v);
 }
 
 function isPublish(v: VersionEntry): boolean {
   return !!v.label && PUBLISH_PATTERN.test(v.label);
 }
 
+function isVersionBump(v: VersionEntry): boolean {
+  return !!v.label && VERSION_BUMP_PATTERN.test(v.label.trim());
+}
+
 function formatDate(iso: string): string {
   const d = new Date(iso);
   return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`;
+}
+
+/**
+ * Extracts the version string from a version bump label or changelog entry title.
+ * e.g. "version bump v4.8.0" → "4.8.0", "Core – v4.7.0" → "4.7.0"
+ */
+function extractVersion(text: string): string | null {
+  const match = text.match(/v?(\d+\.\d+\.\d+)/);
+  return match ? match[1] : null;
+}
+
+interface LibraryConfig {
+  changelogTitle: string;
+  versionPrefix: string;
+}
+
+const LIBRARY_CONFIG: Record<string, LibraryConfig> = {
+  HiaxnfH92ilbE4gfboFMA0: {
+    changelogTitle: "Core Foundation",
+    versionPrefix: "v",
+  },
+  mlJ6R0GkfR15a93KSlqXtB: { changelogTitle: "Core", versionPrefix: "v" },
+  jS7unqZw51v07eYyXR6qP0: {
+    changelogTitle: "🧪 Core Lab",
+    versionPrefix: "lab",
+  },
+};
+
+function getLibraryConfig(fileKey?: string): LibraryConfig {
+  if (fileKey && LIBRARY_CONFIG[fileKey]) return LIBRARY_CONFIG[fileKey];
+  return { changelogTitle: "Core", versionPrefix: "v" };
 }
 
 function ChangelogView({
@@ -46,6 +81,7 @@ function ChangelogView({
   fileKey,
   figmaToken,
 }: ModuleViewProps) {
+  const libConfig = getLibraryConfig(fileKey);
   const [allVersions, setAllVersions] = useState<VersionEntry[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
@@ -53,37 +89,24 @@ function ChangelogView({
   const [releaseNote, setReleaseNote] = useState<string | null>(null);
   const [versionInput, setVersionInput] = useState("");
   const [writeResult, setWriteResult] = useState<string | null>(null);
-  const [changedByPage, setChangedByPage] = useState<Record<string, string[]>>(
-    {},
-  );
-  const [scanning, setScanning] = useState(false);
-  const [scanProgress, setScanProgress] = useState<ProgressUpdate | null>(null);
-
   const [copied, setCopied] = useState(false);
+  const [lastEntryTitle, setLastEntryTitle] = useState<string | null>(null);
 
   const handleMessage = useCallback(
     (msg: PluginToUIMessage) => {
       if (msg.module !== moduleId) return;
 
-      if (msg.type === "progress") {
-        setScanProgress(msg.data as ProgressUpdate);
-      }
-
       if (msg.type === "result") {
         const res = msg.data as ModuleResult;
         if (res.success) {
           const data = res.data as Record<string, unknown>;
-          if (data.changedByPage) {
-            setChangedByPage(data.changedByPage as Record<string, string[]>);
-            setScanning(false);
-            setScanProgress(null);
+          if (data.lastEntryTitle !== undefined) {
+            setLastEntryTitle(data.lastEntryTitle as string | null);
           } else if (data.message) {
             setWriteResult(data.message as string);
           }
         } else {
           setError(res.errors?.[0]?.message ?? "Unknown error");
-          setScanning(false);
-          setScanProgress(null);
         }
       }
     },
@@ -97,30 +120,52 @@ function ChangelogView({
     setLoading(true);
     setError(null);
     setReleaseNote(null);
+
+    // Read last changelog entry from the artboard
+    sendMessage("read-last-entry", {});
+
     try {
-      const res = await fetch(
-        `https://api.figma.com/v1/files/${fileKey}/versions`,
-        { headers: { "X-Figma-Token": figmaToken } },
-      );
-      if (!res.ok) {
-        setError(`API Error ${res.status}: ${await res.text()}`);
-        setLoading(false);
-        return;
-      }
-      const data = await res.json();
-      const entries = (data.versions ?? []) as VersionEntry[];
+      // Fetch all pages until we find a publish/version bump or run out of pages
+      let allEntries: VersionEntry[] = [];
+      let nextPage: string | undefined = undefined;
+      let foundStop = false;
+
+      do {
+        const url = nextPage
+          ? nextPage
+          : `https://api.figma.com/v1/files/${fileKey}/versions`;
+        const res = await fetch(url, {
+          headers: { "X-Figma-Token": figmaToken },
+        });
+        if (!res.ok) {
+          setError(`API Error ${res.status}: ${await res.text()}`);
+          setLoading(false);
+          return;
+        }
+        const data = await res.json();
+        const entries = (data.versions ?? []) as VersionEntry[];
+        allEntries = allEntries.concat(entries);
+
+        // Check if we've found a stopping point (publish or version bump)
+        const labeled = entries.filter((v) => v.label);
+        for (const v of labeled) {
+          if (isPublish(v) || isVersionBump(v)) {
+            foundStop = true;
+            break;
+          }
+        }
+
+        nextPage = data.pagination?.next_page ?? undefined;
+      } while (!foundStop && nextPage);
+
       // Keep only labeled entries
-      const labeled = entries.filter((v) => v.label);
-      console.log(
-        "Version history labeled entries:",
-        labeled.map((v) => ({ label: v.label, desc: v.description })),
-      );
+      const labeled = allEntries.filter((v) => v.label);
       setAllVersions(labeled);
 
-      // Auto-select: all merges before the first publish
+      // Auto-select: all merges before the first publish or version bump
       const autoSelected = new Set<string>();
       for (const v of labeled) {
-        if (isPublish(v)) break;
+        if (isPublish(v) || isVersionBump(v)) break;
         if (isMerge(v)) autoSelected.add(v.id);
       }
       setSelectedIds(autoSelected);
@@ -130,19 +175,28 @@ function ChangelogView({
     setLoading(false);
   };
 
-  // Split into "since last publish" and "older"
-  const { recentMerges, lastPublish } = useMemo(() => {
+  // Collect all version bumps that are missing from the changelog artboard
+  const { recentMerges, missingBumps } = useMemo(() => {
     const merges: VersionEntry[] = [];
-    let pub: VersionEntry | null = null;
+    const bumps: VersionEntry[] = [];
+    const lastVersion = lastEntryTitle ? extractVersion(lastEntryTitle) : null;
+
     for (const v of allVersions) {
-      if (isPublish(v)) {
-        pub = v;
-        break;
+      if (isPublish(v)) break;
+      if (isVersionBump(v)) {
+        // Check if this bump is already in the changelog
+        const bumpVer = v.label ? extractVersion(v.label) : null;
+        if (bumpVer && lastVersion && bumpVer === lastVersion) {
+          // This bump matches the last changelog entry — stop here
+          break;
+        }
+        bumps.push(v);
+      } else if (isMerge(v)) {
+        merges.push(v);
       }
-      if (isMerge(v)) merges.push(v);
     }
-    return { recentMerges: merges, lastPublish: pub };
-  }, [allVersions]);
+    return { recentMerges: merges, missingBumps: bumps };
+  }, [allVersions, lastEntryTitle]);
 
   const toggleEntry = (id: string) => {
     setSelectedIds((prev) => {
@@ -157,12 +211,6 @@ function ChangelogView({
     const selected = recentMerges.filter((v) => selectedIds.has(v.id));
     if (selected.length === 0) return;
 
-    // Start scanning for changed components
-    setScanning(true);
-    setChangedByPage({});
-    sendMessage("detect-changed", {});
-
-    // Build the merge part of the note already
     const lines: string[] = [];
     for (const v of selected) {
       const title = v.label?.trim();
@@ -170,27 +218,18 @@ function ChangelogView({
       if (v.description) {
         for (const line of v.description.split("\n")) {
           const trimmed = line.trim();
-          if (trimmed) lines.push(`  - ${trimmed}`);
+          if (!trimmed) continue;
+          // If the line already starts with a list marker, just indent it
+          if (/^[-•*]/.test(trimmed)) {
+            lines.push(`  ${trimmed}`);
+          } else {
+            lines.push(`  - ${trimmed}`);
+          }
         }
       }
     }
     setReleaseNote(lines.join("\n"));
   };
-
-  // Append changed components to release note when scan completes
-  const releaseNoteWithComponents = useMemo(() => {
-    if (!releaseNote) return null;
-    const pages = Object.entries(changedByPage).sort(([a], [b]) =>
-      a.localeCompare(b),
-    );
-    if (pages.length === 0) return releaseNote;
-
-    const lines = [releaseNote, "", "Affected components:"];
-    for (const [page, components] of pages) {
-      lines.push(`- ${page}: ${components.join(", ")}`);
-    }
-    return lines.join("\n");
-  }, [releaseNote, changedByPage]);
 
   return (
     <div className="flex flex-col gap-fix-md">
@@ -232,57 +271,99 @@ function ChangelogView({
         </div>
       )}
 
-      {recentMerges.length > 0 && (
+      {(recentMerges.length > 0 || missingBumps.length > 0) && (
         <div className="flex flex-col gap-fix-sm">
-          <p className="text-sm font-semibold">
-            {recentMerges.length} merge{recentMerges.length !== 1 ? "s" : ""}{" "}
-            since last publish
-            {lastPublish
-              ? ` (${lastPublish.description ?? lastPublish.label}, ${formatDate(lastPublish.created_at)})`
-              : ""}
-          </p>
+          {lastEntryTitle && (
+            <DBInfotext
+              semantic={missingBumps.length === 0 ? "successful" : "warning"}
+            >
+              Last Changelog entry: {lastEntryTitle}
+            </DBInfotext>
+          )}
 
-          {recentMerges.map((v) => (
-            <div key={v.id} className="flex items-start gap-fix-xs text-sm">
-              <DBCheckbox
-                checked={selectedIds.has(v.id)}
-                onChange={() => toggleEntry(v.id)}
-                size="small"
-              >
-                {v.label}
-              </DBCheckbox>
-              <span className="flex-1">
-                {v.description && (
-                  <span className="opacity-60"> — {v.description}</span>
-                )}
-              </span>
-              <span className="text-xs opacity-40 whitespace-nowrap">
-                {formatDate(v.created_at)}
-              </span>
+          {missingBumps.length > 0 && (
+            <div className="flex flex-col gap-fix-xs">
+              <p className="text-sm font-semibold">Missing in Changelog:</p>
+              {missingBumps.map((v) => {
+                const bumpVer = v.label ? extractVersion(v.label) : null;
+                return (
+                  <div
+                    key={v.id}
+                    className="flex items-center justify-between text-sm px-fix-xs py-fix-2xs rounded bg-[var(--db-adaptive-bg-basic-level-2-default)]"
+                  >
+                    <span className="font-medium">{v.label}</span>
+                    <div className="flex items-center gap-fix-xs">
+                      <span className="text-xs opacity-40">
+                        {formatDate(v.created_at)}
+                      </span>
+                      <DBButton
+                        variant="outlined"
+                        size="small"
+                        onClick={() => {
+                          sendMessage("write-entry", {
+                            title: `${libConfig.changelogTitle} – ${libConfig.versionPrefix}${bumpVer ?? v.label?.replace(VERSION_BUMP_PATTERN, "").trim()}`,
+                            date: formatDate(v.created_at),
+                            body: "- version bump",
+                          });
+                        }}
+                      >
+                        Write
+                      </DBButton>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          ))}
+          )}
 
-          <DBButton
-            variant="brand"
-            disabled={selectedIds.size === 0}
-            onClick={generateReleaseNote}
-            width="full"
-          >
-            Generate Release Note ({selectedIds.size})
-          </DBButton>
+          {recentMerges.length > 0 && (
+            <>
+              <p className="text-sm font-semibold">
+                {recentMerges.length} merge
+                {recentMerges.length !== 1 ? "s" : ""} since last version
+              </p>
+
+              {recentMerges.map((v) => (
+                <div key={v.id} className="flex flex-col gap-fix-2xs text-sm">
+                  <div className="flex items-center gap-fix-xs">
+                    <DBCheckbox
+                      checked={selectedIds.has(v.id)}
+                      onChange={() => toggleEntry(v.id)}
+                      size="small"
+                    >
+                      {v.label}
+                    </DBCheckbox>
+                    <span className="flex-1" />
+                    <span className="text-xs opacity-40 whitespace-nowrap">
+                      {formatDate(v.created_at)}
+                    </span>
+                  </div>
+                  {v.description && (
+                    <p className="text-xs opacity-60 pl-[28px] whitespace-pre-line">
+                      {v.description}
+                    </p>
+                  )}
+                </div>
+              ))}
+
+              <DBButton
+                variant="brand"
+                disabled={selectedIds.size === 0}
+                onClick={generateReleaseNote}
+                width="full"
+              >
+                Generate Release Note ({selectedIds.size})
+              </DBButton>
+            </>
+          )}
         </div>
       )}
 
-      {releaseNoteWithComponents && (
+      {releaseNote && (
         <div className="flex flex-col gap-fix-sm">
-          <p className="text-sm font-semibold">
-            Release Note
-            {scanning && (
-              <span className="opacity-60"> — scanning components</span>
-            )}
-          </p>
+          <p className="text-sm font-semibold">Release Note</p>
           <pre className="text-sm whitespace-pre-wrap border rounded p-fix-sm bg-[var(--db-adaptive-bg-basic-level-2-default)]">
-            {releaseNoteWithComponents}
+            {releaseNote}
           </pre>
           <div className="flex gap-fix-sm items-end">
             <DBInput
@@ -295,14 +376,14 @@ function ChangelogView({
             />
             <DBButton
               variant="brand"
-              disabled={!versionInput.trim() || scanning}
+              disabled={!versionInput.trim()}
               onClick={() => {
                 const now = new Date();
                 const date = `${String(now.getDate()).padStart(2, "0")}.${String(now.getMonth() + 1).padStart(2, "0")}.${now.getFullYear()}`;
                 sendMessage("write-entry", {
-                  title: `Core – v${versionInput.trim()}`,
+                  title: `${libConfig.changelogTitle} – ${libConfig.versionPrefix}${versionInput.trim()}`,
                   date,
-                  body: releaseNoteWithComponents,
+                  body: releaseNote,
                 });
               }}
             >
@@ -314,7 +395,7 @@ function ChangelogView({
             size="small"
             onClick={() => {
               const el = document.createElement("textarea");
-              el.value = releaseNoteWithComponents;
+              el.value = releaseNote;
               document.body.appendChild(el);
               el.select();
               document.execCommand("copy");
@@ -341,21 +422,13 @@ function ChangelogView({
         </div>
       )}
 
-      {scanning && (
-        <div className="fixed top-fix-md right-fix-md z-50 w-72">
-          <DBNotification variant="overlay" semantic="informational">
-            {scanProgress
-              ? `Scanning ${scanProgress.processed} / ${scanProgress.total}`
-              : "Scanning components"}
-          </DBNotification>
-        </div>
-      )}
-
-      {allVersions.length > 0 && recentMerges.length === 0 && (
-        <DBInfotext semantic="informational">
-          No merges since last publish.
-        </DBInfotext>
-      )}
+      {allVersions.length > 0 &&
+        recentMerges.length === 0 &&
+        missingBumps.length === 0 && (
+          <DBInfotext semantic="informational">
+            No merges since last publish.
+          </DBInfotext>
+        )}
 
       {allVersions.length === 0 &&
         !loading &&

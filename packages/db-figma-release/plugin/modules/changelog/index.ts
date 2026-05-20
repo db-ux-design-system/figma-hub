@@ -23,9 +23,66 @@ export class ChangelogModule implements PluginModule {
         return this.writeEntry(payload);
       case "detect-changed":
         return this.detectChanged();
+      case "check-page":
+        return this.checkPage();
+      case "read-last-entry":
+        return this.readLastEntry();
       default:
         return this.err(`Unknown action: "${action}"`);
     }
+  }
+
+  private async checkPage(): Promise<ModuleResult> {
+    await figma.loadAllPagesAsync();
+    const changelogPage = figma.root.children.find((p) =>
+      p.name.includes("Changelog"),
+    );
+    return {
+      success: true,
+      data: { hasChangelogPage: !!changelogPage },
+    };
+  }
+
+  /**
+   * Reads the first (= most recent) entry from the "Changelog entries" frame
+   * and returns its name (which is the title, e.g. "Core – v4.8.0").
+   */
+  private async readLastEntry(): Promise<ModuleResult> {
+    await figma.loadAllPagesAsync();
+
+    const changelogPage = figma.root.children.find((p) =>
+      p.name.includes("Changelog"),
+    );
+    if (!changelogPage) return this.err("Changelog page not found");
+
+    let entriesFrame = changelogPage.findOne(
+      (n) => "children" in n && n.name === "Changelog entries",
+    ) as FrameNode | null;
+
+    if (!entriesFrame) {
+      const parent = changelogPage.findOne(
+        (n) => n.type === "FRAME" && n.name === "Changelog",
+      ) as FrameNode | null;
+      if (parent) {
+        entriesFrame = parent.findOne(
+          (n) => "children" in n && n.name === "Changelog entries",
+        ) as FrameNode | null;
+      }
+    }
+
+    if (!entriesFrame || !("children" in entriesFrame)) {
+      return this.err("'Changelog entries' frame not found");
+    }
+
+    const firstEntry = entriesFrame.children[0];
+    if (!firstEntry) {
+      return { success: true, data: { lastEntryTitle: null } };
+    }
+
+    return {
+      success: true,
+      data: { lastEntryTitle: firstEntry.name },
+    };
   }
 
   private async detectChanged(): Promise<ModuleResult> {
@@ -107,7 +164,7 @@ export class ChangelogModule implements PluginModule {
   private async writeEntry(payload: unknown): Promise<ModuleResult> {
     const { title, date, body } =
       (payload as { title: string; date: string; body: string }) ?? {};
-    if (!title || !body) return this.err("Missing title or body");
+    if (!title) return this.err("Missing title");
 
     await figma.loadAllPagesAsync();
 
@@ -183,13 +240,45 @@ export class ChangelogModule implements PluginModule {
 
     entryFrame.appendChild(headerRow);
 
-    // --- Body text ---
-    const bodyNode = figma.createText();
-    bodyNode.fontName = FONT_REGULAR;
-    bodyNode.fontSize = fontSize;
-    bodyNode.characters = body;
-    bodyNode.layoutAlign = "STRETCH";
-    entryFrame.appendChild(bodyNode);
+    // --- Body text (only if body is not empty) ---
+    if (body) {
+      // Parse body lines: lines starting with "- " or "• " become list items
+      const rawLines = body.split("\n").filter((l) => l.trim());
+      const listItems: { text: string; indent: number }[] = [];
+      for (const line of rawLines) {
+        // Count leading spaces for indent level
+        const leadingSpaces = line.match(/^(\s*)/)?.[1]?.length ?? 0;
+        const indent = Math.floor(leadingSpaces / 2);
+        const stripped = line.replace(/^\s*[-•*]\s*/, "");
+        listItems.push({ text: stripped.trim() || line.trim(), indent });
+      }
+
+      const bodyText = listItems.map((item) => item.text).join("\n");
+      const bodyNode = figma.createText();
+      bodyNode.fontName = FONT_REGULAR;
+      bodyNode.fontSize = fontSize;
+      bodyNode.characters = bodyText;
+      bodyNode.layoutAlign = "STRETCH";
+
+      // Apply unordered list formatting per line
+      let charOffset = 0;
+      for (const item of listItems) {
+        const lineLength = item.text.length;
+        if (item.indent > 0) {
+          bodyNode.setRangeIndentation(
+            charOffset,
+            charOffset + lineLength,
+            item.indent,
+          );
+        }
+        bodyNode.setRangeListOptions(charOffset, charOffset + lineLength, {
+          type: "UNORDERED",
+        });
+        charOffset += lineLength + 1; // +1 for newline
+      }
+
+      entryFrame.appendChild(bodyNode);
+    }
 
     // Insert at the top of entries
     entriesFrame.insertChild(0, entryFrame);
