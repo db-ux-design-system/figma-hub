@@ -1,8 +1,56 @@
-import { Mapping } from "./types";
+import { Mapping, VariableScope } from "./types";
 
 export const BASE_COLLECTION_NAME = "Theme";
 export const DISPLAY_MODE_COLLECTION_NAME = "Mode";
 export const COLORS_COLLECTION_NAME = "Colors";
+
+/**
+ * Mode names
+ */
+export const MODE_NAMES = {
+  BASE: "Value",
+  LIGHT: "Light Mode",
+  DARK: "Dark Mode",
+  DB_ADAPTIVE: "db-adaptive",
+} as const;
+
+/**
+ * Notification messages
+ */
+export const MESSAGES = {
+  SUCCESS_CREATED: "All collections newly created",
+  SUCCESS_SYNCED: "Variables synchronized",
+  ERROR_PREFIX: "Error: ",
+  WARNING_KEY_NOT_FOUND: (key: string, name: string) =>
+    `Key ${key} for ${name} not found.`,
+} as const;
+
+/**
+ * Scopes for different variable types
+ */
+export const SCOPES = {
+  BACKGROUND: ["FRAME_FILL", "SHAPE_FILL"] as VariableScope[],
+  FOREGROUND: [
+    "SHAPE_FILL",
+    "TEXT_FILL",
+    "STROKE_COLOR",
+    "EFFECT_COLOR",
+  ] as VariableScope[],
+  NONE: [] as VariableScope[],
+} as const;
+
+/**
+ * Get scopes based on variable name pattern
+ */
+export function getScopesForMapping(name: string): VariableScope[] {
+  if (name.startsWith("bg/") || name.startsWith("origin/")) {
+    return SCOPES.BACKGROUND;
+  }
+  if (name.startsWith("on-bg/") || name.startsWith("on-origin/")) {
+    return SCOPES.FOREGROUND;
+  }
+  return SCOPES.NONE;
+}
 
 export const MAPPINGS: Mapping[] = [
   {
