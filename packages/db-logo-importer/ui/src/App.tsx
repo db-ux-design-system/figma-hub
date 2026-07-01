@@ -143,6 +143,7 @@ const App = () => {
           variant="brand"
           onClick={handleImport}
           disabled={isLoading || !file}
+          className="shrink-0"
         >
           {isLoading ? "Importing..." : "Import SVG"}
         </DBButton>
