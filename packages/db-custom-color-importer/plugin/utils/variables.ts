@@ -27,47 +27,17 @@ function createVariableGroupPath(
   family: string,
   selectedPrefix: string,
 ): string {
-  // Keep the original family name - don't add selectedPrefix to it
-  // Just create the group structure from the existing family name
-
-  // Split by dashes to find potential group structure
-  const parts = family.split("-");
-
-  // If we have at least 3 parts (prefix-group-subgroup), try to create nested structure
-  if (parts.length >= 3) {
-    // Find common prefix patterns
-    // Example: "db-poi-db-services" -> ["db", "poi", "db", "services"]
-    // We want to group as: "db-poi/db-services"
-
-    // Strategy: Look for repeated prefix patterns
-    const result: string[] = [];
-    let i = 0;
-
-    while (i < parts.length) {
-      // Check if current part + next part forms a known prefix pattern
-      if (i < parts.length - 1) {
-        const combined = `${parts[i]}-${parts[i + 1]}`;
-        // If this looks like a prefix (2 parts), group it
-        if (i === 0 || result.length === 0) {
-          result.push(combined);
-          i += 2;
-        } else {
-          // Start a new group
-          result.push(parts.slice(i).join("-"));
-          break;
-        }
-      } else {
-        // Last part, add it
-        result.push(parts[i]);
-        i++;
-      }
-    }
-
-    // Join with slashes for nested groups
-    return result.join("/");
+  // If the family name starts with the theme prefix (e.g. "dibe-"),
+  // split it off as the first group and keep the rest as-is.
+  // Example: prefix="dibe", family="dibe-br-color-01" -> "dibe/br-color-01"
+  // Example: prefix="dibe", family="dibe-behandlung-bg" -> "dibe/behandlung-bg"
+  const prefixWithDash = selectedPrefix.toLowerCase() + "-";
+  if (family.toLowerCase().startsWith(prefixWithDash)) {
+    const rest = family.slice(prefixWithDash.length);
+    return `${selectedPrefix}/${rest}`;
   }
 
-  // If less than 3 parts, return as-is (keep original family name)
+  // If no prefix match, return as-is
   return family;
 }
 
@@ -323,6 +293,78 @@ export async function createAdaptiveColorVariables(
   );
 }
 
+/**
+ * Migrates variables created by earlier plugin versions from the flat group
+ * naming (e.g. "dibe-colors/dibe-br-color-01/0" and
+ * "dibe-br-color-01/<mapping>") to the new grouped naming
+ * ("dibe-colors/dibe/br-color-01/0" and "dibe/br-color-01/<mapping>").
+ *
+ * Renaming a variable in Figma preserves its ID and all existing bindings,
+ * so this migration does not break references in existing designs and avoids
+ * creating duplicate variables on re-import.
+ *
+ * Safe & idempotent: only renames when the old name exists and the new name
+ * does not yet exist (collision guard). Affects the Theme (base) and Mode
+ * (display) collections; adaptive variables use no family grouping and are
+ * left untouched.
+ */
+export async function migrateLegacyVariableNames(
+  data: ColorData,
+  colorFamilies: string[],
+  themePrefix: string,
+  variablePrefix: string,
+): Promise<number> {
+  const renameMap = new Map<string, string>();
+
+  for (const family of colorFamilies) {
+    const newGroup = createVariableGroupPath(family, variablePrefix);
+    // Earlier versions used the flat family name as the group segment.
+    const oldGroup = family;
+    if (oldGroup === newGroup) continue;
+
+    // Base variables (Theme collection)
+    const tokens = data.colors[family];
+    for (const tokenKey in tokens) {
+      renameMap.set(
+        `${themePrefix}-colors/${oldGroup}/${tokenKey}`,
+        `${themePrefix}-colors/${newGroup}/${tokenKey}`,
+      );
+    }
+
+    // Display variables (Mode collection)
+    for (const m of MAPPINGS) {
+      renameMap.set(`${oldGroup}/${m.name}`, `${newGroup}/${m.name}`);
+    }
+  }
+
+  if (renameMap.size === 0) return 0;
+
+  const allVars = await figma.variables.getLocalVariablesAsync();
+  const byName = new Map<string, Variable>();
+  for (const v of allVars) byName.set(v.name, v);
+
+  let migrated = 0;
+  for (const [oldName, newName] of renameMap) {
+    const oldVar = byName.get(oldName);
+    if (!oldVar) continue;
+    // Collision guard: don't rename onto an already existing new-scheme name.
+    if (byName.has(newName)) continue;
+    oldVar.name = newName;
+    byName.delete(oldName);
+    byName.set(newName, oldVar);
+    migrated++;
+  }
+
+  if (migrated > 0) {
+    log.info(
+      `Migrated ${migrated} legacy variables to the new naming`,
+      "migrateLegacyVariableNames",
+    );
+  }
+
+  return migrated;
+}
+
 export async function handleImportJson(msg: ImportMessage) {
   try {
     log.section("Starting JSON Import");
@@ -353,6 +395,18 @@ export async function handleImportJson(msg: ImportMessage) {
       colorFamilies,
       variablePrefix,
     );
+
+    // Rename variables created by earlier plugin versions to the new grouped
+    // naming before building the variable map, so they are reused (values
+    // updated) instead of duplicated. Runs only when not deleting everything.
+    const migratedCount = deleteMissing
+      ? 0
+      : await migrateLegacyVariableNames(
+          data,
+          colorFamilies,
+          themePrefix,
+          variablePrefix,
+        );
 
     const varMap = await getExistingVariablesMap();
 
@@ -390,13 +444,18 @@ export async function handleImportJson(msg: ImportMessage) {
       ? MESSAGES.SUCCESS_CREATED
       : MESSAGES.SUCCESS_SYNCED;
 
-    log.section("Import Complete");
-    log.success(successMessage, "handleImportJson");
+    const feedbackMessage =
+      migratedCount > 0
+        ? `${successMessage} (migrated ${migratedCount} variables to the new naming)`
+        : successMessage;
 
-    figma.notify(successMessage);
+    log.section("Import Complete");
+    log.success(feedbackMessage, "handleImportJson");
+
+    figma.notify(feedbackMessage);
 
     figma.ui.postMessage({
-      feedback: `Success: ${successMessage}`,
+      feedback: `Success: ${feedbackMessage}`,
     });
   } catch (e) {
     log.error("Import failed", e, "handleImportJson");

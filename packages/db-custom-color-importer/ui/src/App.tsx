@@ -5,6 +5,7 @@ import {
   DBStack,
   DBInfotext,
   DBCheckbox,
+  DBNotification,
 } from "@db-ux/react-core-components";
 
 function App() {
@@ -148,11 +149,6 @@ function App() {
       // Extract prefix from filename (theme prefix)
       const filenamePrefix = extractPrefixFromFilename(fileName);
 
-      // DEBUG: Log the detected prefixes
-      console.log("DEBUG - Filename:", fileName);
-      console.log("DEBUG - Filename prefix:", filenamePrefix);
-      console.log("DEBUG - JSON prefix:", jsonPrefix);
-
       // Determine theme prefix and whether to show dialog
       let themePrefix = "";
       let showThemeBuilderHint = false;
@@ -160,8 +156,6 @@ function App() {
       if (filenamePrefix && jsonPrefix) {
         // Both prefixes found - proceed directly without dialog
         themePrefix = filenamePrefix;
-
-        console.log("DEBUG - Both prefixes found, proceeding with auto-import");
 
         // Proceed directly with import
         setIsProcessing(true);
@@ -278,7 +272,30 @@ function App() {
   };
 
   return (
-    <div className="p-fix-md flex flex-col gap-fix-md overflow-visible">
+    <div className="w-full p-fix-md flex flex-col gap-fix-md overflow-visible">
+      {/*
+        Warm-up: the DBNotification (a DB web component using `inline-size:
+        inherit`) mislays out on its very first mount in this embedded plugin
+        iframe — its content is pushed to the side until a later render.
+        Mounting one hidden-but-laid-out instance on app start "warms up" the
+        component so the real notification renders correctly on the first import.
+      */}
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          insetInlineStart: 0,
+          inlineSize: "100%",
+          visibility: "hidden",
+          pointerEvents: "none",
+          zIndex: -1,
+        }}
+      >
+        <DBNotification semantic="informational" variant="standalone">
+          warm-up
+        </DBNotification>
+      </div>
+
       {/* Header area */}
       <header>
         <h1 className="text-2xl">DB Custom Color Importer</h1>
@@ -300,22 +317,16 @@ function App() {
       </header>
 
       {isProcessing ? (
-        <DBStack gap="medium" className="items-center justify-center py-fix-lg">
-          <div className="flex flex-col items-center gap-fix-md">
-            {/* Spinner */}
-            <div className="relative w-16 h-16">
-              <div className="absolute inset-0 rounded-full border-4 border-gray-200"></div>
-              <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-red-500 animate-spin"></div>
-            </div>
-            <DBInfotext semantic="informational">
-              <div className="text-center">
-                <strong>Processing...</strong>
-                <br />
-                Importing color variables. This may take a moment.
-              </div>
-            </DBInfotext>
-          </div>
-        </DBStack>
+        <div style={{ inlineSize: "100%" }}>
+          <DBNotification
+            semantic="informational"
+            variant="standalone"
+            headline="Processing …"
+            ariaLive="polite"
+          >
+            Importing color variables. This may take a moment.
+          </DBNotification>
+        </div>
       ) : !showPrefixDialog ? (
         <>
           <DBStack gap="medium">

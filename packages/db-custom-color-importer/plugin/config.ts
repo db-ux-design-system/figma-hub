@@ -315,7 +315,7 @@ export const MAPPINGS: Mapping[] = [
     name: "on-bg/vibrant/pressed",
     light: 2,
     dark: 2,
-    key: "85aadee42dbe009398fedff3a410585436f2408c",
+    key: "581ec0021542a86e2eee443b1e457698ce8616f6",
   },
   {
     name: "on-bg/inverted/default",

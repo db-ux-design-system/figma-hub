@@ -4,53 +4,60 @@
 
 ### Fixed
 
-- **Farbgenauigkeit**: Hex-Werte werden jetzt präzise importiert
-  - Problem: `#001110` wurde zu `#00120F` durch Rundung der RGB-Werte
-  - Lösung: RGB-Werte verwenden volle Präzision, Alpha-Kanal wird auf ganze Prozent gerundet
-  - RGB-Werte: Keine Rundung (volle Präzision für exakte Farben)
-  - Alpha-Werte: Rundung auf ganze Prozent (0.00, 0.01, 0.02, ... 1.00)
-  - Tests hinzugefügt mit echten Werten aus RITheme JSON
-
-### Added
-
-- **Flexible Prefix Selection**: Der Prefix-Dialog zeigt jetzt alle erkannten Prefixes als auswählbare Optionen an
-  - Prefix aus Variablennamen (z.B. "db" aus "db-poi-color-01")
-  - Prefix aus Dateinamen (z.B. "RI" aus "DB-RI-Theme-figma.json")
-  - Unterstützt beliebig viele erkannte Prefixes (2, 3 oder mehr)
-  - Freie Eingabe möglich, wenn kein Prefix erkannt wurde oder ein anderer gewünscht ist
-
-- **Automatische Variablengruppierung**: Variablen mit gemeinsamen Prefixes werden automatisch in verschachtelte Gruppen organisiert
-  - Beispiel: `db-poi-db-services` → `db-poi/db-services`
-  - Beispiel: `db-poi-services` → `db-poi/services`
-  - Macht die Navigation in Figma übersichtlicher
-
-- **Smart Variable Reuse**: Existierende Variablen werden automatisch erkannt und wiederverwendet
-  - Prüfung erfolgt basierend auf dem Variablennamen (nicht dem Collection-Prefix)
-  - Variablen in der Mode-Collection werden aktualisiert statt neu erstellt
-  - Reduziert Duplikate und erhält bestehende Referenzen
-
-- **Prefix-Trennung**: Collection-Prefix und Variablen-Prefix sind jetzt getrennt
-  - Collections verwenden den gewählten Prefix (z.B. "RI-Theme", "RI-Mode", "RI-Colors")
-  - Variablen behalten ihre originalen Namen (z.B. "db-poi-color-01")
-  - Gruppierung erfolgt basierend auf den Variablennamen selbst
-
-- **Processing Screen**: Während des Imports wird ein animierter Loading-Screen angezeigt
-  - Visuelles Feedback während der Verarbeitung
-  - Verhindert versehentliche Mehrfach-Imports
-  - Zeigt klare Status-Nachricht
+- **Incorrect color alias**: `on-bg/vibrant/pressed` referenced the wrong
+  Foundation key.
+  - Before: key `85aadee…2408c` (belongs to `on-bg/inverted/pressed`)
+  - Now: correct key `581ec00…616f6`, verified against the Core Foundation
+    library.
+- **Color precision**: hex values are now imported with full precision.
+  - Before: RGB channels were rounded to 2 decimals, which could shift a hex
+    value by one step (e.g. `#EBFFE6` became `#EBFFE5`).
+  - Now: RGB channels use full precision; only the alpha channel is rounded to
+    whole percent (Figma requirement).
+  - Note: some older Figma files quantize color variables to ~1% internally.
+    This is a file-/platform-level limitation outside the plugin's control; the
+    plugin writes the exact value.
 
 ### Changed
 
-- Prefix-Dialog wird jetzt immer angezeigt, auch beim Import in bestehende Collections
-- Verbesserte Benutzerführung mit klarer Erklärung der Gruppierungsfunktion
-- Prefix-Auswahl erfolgt über Buttons statt nur Texteingabe (wenn Prefixes erkannt wurden)
-- Warnung bei unterschiedlichen Prefixes ist jetzt informativer mit "Change Prefix" Option
+- **Variable grouping** (breaking): the theme prefix is now split off as its own
+  group instead of being kept flat.
+  - Before: `dibe-colors/dibe-br-color-01/0`
+  - Now: `dibe-colors/dibe/br-color-01/0`
+  - Affects the Theme (base) and Mode (display) collections. Adaptive variables
+    are unaffected.
+- **Processing state**: replaced the custom spinner and misused infotext with a
+  proper standalone `DBNotification` (headline + description, `aria-live` for
+  screen readers).
+
+### Added
+
+- **Automatic migration of legacy variable names**: on import, variables created
+  by earlier versions using the flat naming are renamed to the new grouped
+  naming.
+  - `dibe-colors/dibe-br-color-01/0` → `dibe-colors/dibe/br-color-01/0`
+  - `dibe-br-color-01/<mapping>` → `dibe/br-color-01/<mapping>`
+  - Renaming preserves variable IDs and all bindings, so existing designs keep
+    working and no duplicates are created on re-import.
+  - Safe and idempotent (collision guard); skipped when "Delete existing" is on.
+  - The result message reports how many variables were migrated.
+- **Flexible prefix selection**: the prefix dialog shows every detected prefix as
+  a selectable option (from variable names and/or filename), with free text
+  input as a fallback.
+- **Smart variable reuse**: existing variables are detected by name and reused
+  (values updated) instead of duplicated.
+- **Separate collection and variable prefixes**: collections use the chosen
+  prefix (e.g. `RI-Theme`, `RI-Mode`, `RI-Colors`) while variables keep their
+  original names; grouping is derived from the variable names.
+
+### Removed
+
+- Debug logging that was written to the console during import.
 
 ### Technical Details
 
-- Neue Funktion `createVariableGroupPath()` für intelligente Gruppierung ohne Prefix-Änderung
-- Flexible Array-basierte Prefix-Erkennung statt fixer Struktur
-- UI zeigt alle erkannten Prefixes mit ihrer Quelle an
-- Display Mode Variables werden jetzt aktualisiert statt immer neu erstellt
-- Logging zeigt an, ob Variablen neu erstellt oder aktualisiert wurden
-- Processing State verhindert UI-Interaktionen während des Imports
+- New `createVariableGroupPath()` for prefix-based grouping.
+- New `migrateLegacyVariableNames()` runs before the variable map is built so
+  renamed variables are reused rather than recreated.
+- Display mode variables are updated instead of always recreated.
+- Logging indicates whether variables were created, updated, or migrated.

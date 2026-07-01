@@ -24,47 +24,17 @@ function createVariableGroupPath(
   family: string,
   selectedPrefix: string,
 ): string {
-  // Keep the original family name - don't add selectedPrefix to it
-  // Just create the group structure from the existing family name
-
-  // Split by dashes to find potential group structure
-  const parts = family.split("-");
-
-  // If we have at least 3 parts (prefix-group-subgroup), try to create nested structure
-  if (parts.length >= 3) {
-    // Find common prefix patterns
-    // Example: "db-poi-db-services" -> ["db", "poi", "db", "services"]
-    // We want to group as: "db-poi/db-services"
-
-    // Strategy: Look for repeated prefix patterns
-    const result: string[] = [];
-    let i = 0;
-
-    while (i < parts.length) {
-      // Check if current part + next part forms a known prefix pattern
-      if (i < parts.length - 1) {
-        const combined = `${parts[i]}-${parts[i + 1]}`;
-        // If this looks like a prefix (2 parts), group it
-        if (i === 0 || result.length === 0) {
-          result.push(combined);
-          i += 2;
-        } else {
-          // Start a new group
-          result.push(parts.slice(i).join("-"));
-          break;
-        }
-      } else {
-        // Last part, add it
-        result.push(parts[i]);
-        i++;
-      }
-    }
-
-    // Join with slashes for nested groups
-    return result.join("/");
+  // If the family name starts with the theme prefix (e.g. "dibe-"),
+  // split it off as the first group and keep the rest as-is.
+  // Example: prefix="dibe", family="dibe-br-color-01" -> "dibe/br-color-01"
+  // Example: prefix="dibe", family="dibe-behandlung-bg" -> "dibe/behandlung-bg"
+  const prefixWithDash = selectedPrefix.toLowerCase() + "-";
+  if (family.toLowerCase().startsWith(prefixWithDash)) {
+    const rest = family.slice(prefixWithDash.length);
+    return `${selectedPrefix}/${rest}`;
   }
 
-  // If less than 3 parts, return as-is (keep original family name)
+  // If no prefix match, return as-is
   return family;
 }
 
