@@ -3,16 +3,16 @@ import { CONFIG } from "../config";
 /**
  * Binds a color variable to a layer's fill property
  *
- * @param component - The component containing the target layer
+ * @param frame - The frame containing the target layer
  * @param layerName - Name of the layer to bind the variable to
  * @param variable - The Figma variable to bind
  */
 export function bindFillVariable(
-  component: ComponentNode,
+  frame: FrameNode,
   layerName: string,
-  variable: Variable,
+  variable: Variable
 ): void {
-  const target = component.findOne((node) => node.name === layerName);
+  const target = frame.findOne((node) => node.name === layerName);
 
   if (!target || !("fills" in target)) {
     console.warn(`Layer "${layerName}" not found or doesn't support fills`);
@@ -22,7 +22,7 @@ export function bindFillVariable(
   const paint = figma.variables.setBoundVariableForPaint(
     { type: "SOLID", color: { r: 0, g: 0, b: 0 } },
     "color",
-    variable,
+    variable
   );
 
   target.fills = [paint];
@@ -37,50 +37,52 @@ export function bindFillVariable(
 async function importVariables(): Promise<{
   dbLogo: Variable;
   logoAddition: Variable;
+  componentHeight: Variable;
 }> {
-  const [dbLogo, logoAddition] = await Promise.all([
+  const [dbLogo, logoAddition, componentHeight] = await Promise.all([
     figma.variables.importVariableByKeyAsync(CONFIG.keys.dbLogo),
     figma.variables.importVariableByKeyAsync(CONFIG.keys.logoAddition),
+    figma.variables.importVariableByKeyAsync(CONFIG.keys.componentHeight),
   ]);
 
-  return { dbLogo, logoAddition };
+  return { dbLogo, logoAddition, componentHeight };
 }
 
 /**
- * Binds design system variables to component layers and properties
+ * Binds design system variables to frame layers and properties
  * - Binds color variables to "DB Logo" and "Logo Addition" layers
- * - Sets fixed height of 24px to component and SVG Container
- * - Locks component aspect ratio
+ * - Binds height variable (db-base/icon-font-size/md) to frame and SVG Container
+ * - Locks frame aspect ratio
  *
- * @param component - The component to bind variables to
+ * @param frame - The frame to bind variables to
  * @throws Error if variables cannot be imported or bound
  */
 export async function bindDesignVariables(
-  component: ComponentNode,
+  frame: FrameNode
 ): Promise<void> {
   try {
     const variables = await importVariables();
 
     // Bind fill colors to specific layers
-    bindFillVariable(component, "DB Logo", variables.dbLogo);
-    bindFillVariable(component, "Logo Addition", variables.logoAddition);
+    bindFillVariable(frame, "DB Logo", variables.dbLogo);
+    bindFillVariable(frame, "Logo Addition", variables.logoAddition);
 
-    // Set fixed height to SVG Container
-    const svgContainer = component.findOne(
-      (node) => node.name === "SVG Container",
+    // Bind height variable to the frame
+    frame.setBoundVariable("height", variables.componentHeight);
+
+    // Also bind height to the SVG Container child
+    const svgContainer = frame.findOne(
+      (node) => node.name === "SVG Container"
     );
-    if (svgContainer && "resize" in svgContainer) {
-      svgContainer.resize(svgContainer.width, 24);
+    if (svgContainer && "setBoundVariable" in svgContainer) {
+      (svgContainer as FrameNode).setBoundVariable(
+        "height",
+        variables.componentHeight
+      );
     }
 
-    // Set fixed height to component and lock aspect ratio
-    component.resize(component.width, 24);
-    component.lockAspectRatio();
-
-    component.constraints = {
-      horizontal: "MIN",
-      vertical: "MIN",
-    };
+    // Lock aspect ratio on the frame
+    frame.lockAspectRatio();
   } catch (error) {
     throw new Error("Variables could not be linked. Check Library.");
   }

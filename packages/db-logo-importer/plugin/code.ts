@@ -1,13 +1,6 @@
 import { CONFIG } from "./config";
-import {
-  isValidSVG,
-  cleanFilename,
-  processAndFlattenLayers,
-} from "./utils/svgProcessor";
-import {
-  createComponentFromSVG,
-  setupComponent,
-} from "./utils/componentBuilder";
+import { isValidSVG, cleanFilename, processAndFlattenLayers } from "./utils/svgProcessor";
+import { createFrameFromSVG, setupFrame } from "./utils/componentBuilder";
 import { bindDesignVariables } from "./utils/variablesBinder";
 
 // Initialize plugin UI
@@ -35,25 +28,25 @@ async function handleSVGImport(
   try {
     // Create SVG node from markup
     const svgNode = figma.createNodeFromSvg(svgText);
-    const componentName = cleanFilename(filename);
+    const frameName = cleanFilename(filename);
 
     // Process layers (flatten and rename)
     processAndFlattenLayers(svgNode as FrameNode);
 
-    // Create and configure component
-    const component = createComponentFromSVG(svgNode, componentName);
-    setupComponent(component, svgNode);
+    // Create and configure frame
+    const frame = createFrameFromSVG(svgNode, frameName);
+    setupFrame(frame, svgNode);
 
-    // Bind design system variables
+    // Bind design system variables (height token)
     try {
-      await bindDesignVariables(component);
+      await bindDesignVariables(frame);
     } catch (varError) {
       figma.notify("Variables could not be linked. Check Library.");
       console.error("Variable binding error:", varError);
     }
 
     // Success feedback
-    figma.notify("Component created in viewport center");
+    figma.notify("Frame created in viewport center");
     figma.ui.postMessage({ feedback: "Success: Logo imported." });
   } catch (error) {
     figma.notify("Error: SVG import failed.");

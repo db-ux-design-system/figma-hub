@@ -21,6 +21,6 @@ export const CONFIG = {
    */
   ui: {
     width: 500,
-    height: 380,
+    height: 460,
   },
 } as const;
