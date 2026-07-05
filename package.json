@@ -30,7 +30,7 @@
   "license": "Apache-2.0",
   "devDependencies": {
     "@types/node": "^25.5.2",
-    "adm-zip": "^0.5.17",
+    "adm-zip": "^0.5.18",
     "npm-run-all2": "8.0.4"
   },
   "dependencies": {
