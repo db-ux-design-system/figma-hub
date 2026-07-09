@@ -6,3 +6,6 @@ dist
 .env
 .DS_Store
 .kiro
+
+# Exported test plugins
+dist-plugins/
