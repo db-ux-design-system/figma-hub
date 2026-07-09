@@ -1,15 +1,14 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   DBButton,
-  DBInput,
   DBInfotext,
-  DBStack,
 } from "@db-ux/react-core-components";
 
 const App = () => {
   const [feedback, setFeedback] = useState<string>("");
   const [file, setFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Listener for messages from the plugin backend (code.ts)
   useEffect(() => {
@@ -75,18 +74,6 @@ const App = () => {
       <header>
         <h1 className="text-2xl">DB Logo Importer</h1>
         <p className="text-sm">
-          Please use the{" "}
-          <a
-            href="https://marketingportal.extranet.deutschebahn.com/marketingportal/Marke-und-Design/Basiselemente/Logo/Logozusatz-mit-Tool"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline"
-          >
-            DB brand logo generator
-          </a>{" "}
-          to create a custom logo for your project or product.
-        </p>
-        <p className="text-sm">
           Please also read the{" "}
           <a
             href="https://www.figma.com/design/WXIWe7Cj9bKUAanFfMZlUK/feat--initial-design-logo---pulse--1430--1575?node-id=13920-21204"
@@ -109,35 +96,66 @@ const App = () => {
         </p>
       </header>
 
-      {/* Input Section */}
-      <DBStack>
-        <DBInput
-          label="Choose SVG File"
-          showLabel={false}
+      {/* Upload Area */}
+      <div
+        className="rounded-[var(--db-border-radius-sm)] p-fix-lg flex flex-col items-center gap-fix-md"
+        style={{
+          border: 'var(--db-border-width-3xs) dashed var(--db-adaptive-on-bg-basic-emphasis-60-default)',
+        }}
+      >
+        <p className="text-center text-sm m-0">
+          Use the{" "}
+          <a
+            href="https://marketingportal.extranet.deutschebahn.com/marketingportal/Marke-und-Design/Basiselemente/Logo/Logozusatz-mit-Tool"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline"
+          >
+            DB brand logo generator
+          </a>{" "}
+          to create a custom logo SVG
+        </p>
+
+        <input
+          ref={fileInputRef}
           type="file"
           accept="image/svg+xml"
           onChange={handleFileChange}
-          className="w-full"
+          className="hidden"
         />
 
+        <DBButton
+          variant="filled"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          Browse
+        </DBButton>
+
+        {file && (
+          <p className="text-sm text-adaptive-on-basic-emphasis-80-default">{file.name}</p>
+        )}
+      </div>
+
+      {/* Import Button + Feedback */}
+      <div className="flex items-center gap-fix-sm">
         <DBButton
           icon="upload"
           variant="brand"
           onClick={handleImport}
-          disabled={isLoading}
+          disabled={isLoading || !file}
+          className="shrink-0"
         >
           {isLoading ? "Importing..." : "Import SVG"}
         </DBButton>
-      </DBStack>
 
-      {/* Feedback / Status */}
-      {feedback && (
-        <DBInfotext
-          semantic={feedback.includes("Success") ? "successful" : "critical"}
-        >
-          {feedback}
-        </DBInfotext>
-      )}
+        {feedback && (
+          <DBInfotext
+            semantic={feedback.includes("Success") ? "successful" : "critical"}
+          >
+            {feedback}
+          </DBInfotext>
+        )}
+      </div>
     </div>
   );
 };
