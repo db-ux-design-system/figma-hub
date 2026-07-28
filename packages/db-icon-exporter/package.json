@@ -1,0 +1,24 @@
+{
+  "name": "db-icon-exporter",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Figma plugin to create components from SVGs, assign color variables, and scale.",
+  "main": "index.js",
+  "workspaces": [
+    "plugin",
+    "ui"
+  ],
+  "scripts": {
+    "build": "npm-run-all --parallel build:*",
+    "build:code": "npm run build -w=db-icon-exporter-code -- --minify",
+    "build:ui": "npm run build -w=db-icon-exporter-ui",
+    "dev": "npm-run-all --parallel dev:*",
+    "dev:code": "npm run dev -w=db-icon-exporter-code",
+    "dev:ui": "npm run dev -w=db-icon-exporter-ui"
+  },
+  "devDependencies": {
+    "autoprefixer": "10.4.23",
+    "postcss": "8.5.6",
+    "tailwindcss": "4.1.18"
+  }
+}
