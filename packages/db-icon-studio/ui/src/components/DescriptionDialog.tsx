@@ -31,7 +31,8 @@ export function DescriptionDialog({
       enContextual: "",
       deDefault: "",
       deContextual: "",
-      keywords: "",
+      tag: "",
+      figmaKeyword: "",
       en: "",
       de: "",
       illustrativeKeywords: "",
@@ -157,78 +158,62 @@ export function DescriptionDialog({
             className="space-y-4"
             noValidate
           >
-            <div className="flex flex-row gap-fix-sm">
-              <div className="form-section w-1/2">
-                <h4 className="text-sm mb-fix-sm">EN:</h4>
-                <div className="form-group mb-fix-sm">
-                  <DBInput
-                    label="Default"
-                    variant="floating"
-                    value={formData.enDefault}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      setFormData({ ...formData, enDefault: e.target.value })
-                    }
-                    required
-                    placeholder="e.g., Bell disabled"
-                  />
-                </div>
-
-                <div className="form-group mb-fix-sm">
-                  <DBInput
-                    label="Contextual"
-                    variant="floating"
-                    value={formData.enContextual}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      setFormData({ ...formData, enContextual: e.target.value })
-                    }
-                    placeholder="e.g., Notification off, Alert off"
-                  />
-                </div>
+            <div className="form-section">
+              <h4 className="text-sm mb-fix-sm">EN:</h4>
+              <div className="form-group mb-fix-sm">
+                <DBInput
+                  label="Default"
+                  variant="floating"
+                  value={formData.enDefault}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setFormData({ ...formData, enDefault: e.target.value })
+                  }
+                  required
+                  placeholder="e.g., Bell disabled"
+                />
               </div>
 
-              <div className="form-section w-1/2">
-                <h4 className="text-sm mb-fix-sm">DE:</h4>
-                <div className="form-group mb-fix-sm">
-                  <DBInput
-                    label="Default"
-                    variant="floating"
-                    value={formData.deDefault}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      setFormData({ ...formData, deDefault: e.target.value })
-                    }
-                    required
-                    placeholder="e.g., Alarmglocke inaktiv"
-                  />
-                </div>
-
-                <div className="form-group mb-fix-sm">
-                  <DBInput
-                    label="Contextual"
-                    variant="floating"
-                    value={formData.deContextual}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      setFormData({ ...formData, deContextual: e.target.value })
-                    }
-                    placeholder="e.g., Benachrichtigung aus, Alarm aus"
-                  />
-                </div>
+              <div className="form-group mb-fix-sm">
+                <DBInput
+                  label="Contextual"
+                  variant="floating"
+                  value={formData.enContextual}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setFormData({ ...formData, enContextual: e.target.value })
+                  }
+                  placeholder="e.g., Notification off, Alert off"
+                />
               </div>
             </div>
 
             <div className="form-section">
-              <div className="form-group">
-                <h4 className="text-sm mb-fix-sm">General:</h4>
+              <h4 className="text-sm mb-fix-sm">DE:</h4>
+              <div className="form-group mb-fix-sm">
                 <DBInput
-                  label="Keywords"
+                  label="Default"
                   variant="floating"
-                  value={formData.keywords}
+                  value={formData.deDefault}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    setFormData({ ...formData, keywords: e.target.value })
+                    setFormData({ ...formData, deDefault: e.target.value })
                   }
-                  placeholder="e.g., durchgestrichen"
+                  required
+                  placeholder="e.g., Alarmglocke inaktiv"
+                />
+              </div>
+
+              <div className="form-group mb-fix-sm">
+                <DBInput
+                  label="Contextual"
+                  variant="floating"
+                  value={formData.deContextual}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setFormData({ ...formData, deContextual: e.target.value })
+                  }
+                  placeholder="e.g., Benachrichtigung aus, Alarm aus"
                 />
               </div>
             </div>
+
           </form>
         </div>
 

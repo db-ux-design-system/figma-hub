@@ -91,7 +91,8 @@ export interface DescriptionData {
   enContextual?: string;
   deDefault?: string;
   deContextual?: string;
-  keywords?: string;
+  tag?: string;
+  figmaKeyword?: string;
 
   // Illustrative icons (simplified)
   en?: string;

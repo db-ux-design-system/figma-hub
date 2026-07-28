@@ -57,14 +57,13 @@ export class DescriptionEditor {
    * DE:
    * Default: [text]
    * Contextual: [text or empty]
-   * Keywords: [text or empty]
-   * #functionalicon #fi #coreicon
+   * Tag: [text or empty]
+   * FigmaKeyword: [text or empty]
    *
    * Illustrative format:
    * EN: [text]
    * DE: [text]
    * Keywords: [text or empty]
-   * #illustrativeicon #ii
    *
    * @param data - The description data
    * @returns Formatted description string
@@ -79,8 +78,12 @@ export class DescriptionEditor {
         data.deContextual && data.deContextual.trim().length > 0
           ? data.deContextual
           : "";
-      const keywords =
-        data.keywords && data.keywords.trim().length > 0 ? data.keywords : "";
+      const tag =
+        data.tag && data.tag.trim().length > 0 ? data.tag : "";
+      const figmaKeyword =
+        data.figmaKeyword && data.figmaKeyword.trim().length > 0
+          ? data.figmaKeyword
+          : "";
 
       return (
         `EN:\n` +
@@ -91,8 +94,8 @@ export class DescriptionEditor {
         `Default: ${data.deDefault}\n` +
         `Contextual: ${deContextual}\n` +
         `\n` +
-        `Keywords: ${keywords}\n` +
-        `#functionalicon #fi #coreicon`
+        `Tag: ${tag}\n` +
+        `FigmaKeyword: ${figmaKeyword}`
       );
     } else {
       // illustrative
@@ -105,8 +108,7 @@ export class DescriptionEditor {
         `EN: ${data.en}\n` +
         `DE: ${data.de}\n` +
         `\n` +
-        `Keywords: ${keywords}\n` +
-        `#illustrativeicon #ii`
+        `Keywords: ${keywords}`
       );
     }
   }
@@ -159,8 +161,13 @@ export class DescriptionEditor {
         } else if (currentSection === "DE") {
           data.deContextual = value;
         }
+      } else if (trimmedLine.startsWith("Tag:")) {
+        data.tag = trimmedLine.substring("Tag:".length).trim();
+      } else if (trimmedLine.startsWith("FigmaKeyword:")) {
+        data.figmaKeyword = trimmedLine.substring("FigmaKeyword:".length).trim();
       } else if (trimmedLine.startsWith("Keywords:")) {
-        data.keywords = trimmedLine.substring("Keywords:".length).trim();
+        // Legacy format support: map old Keywords to tag
+        data.tag = trimmedLine.substring("Keywords:".length).trim();
       }
     }
 
@@ -171,7 +178,8 @@ export class DescriptionEditor {
         enContextual: data.enContextual || "",
         deDefault: data.deDefault,
         deContextual: data.deContextual || "",
-        keywords: data.keywords || "",
+        tag: data.tag || "",
+        figmaKeyword: data.figmaKeyword || "",
         en: "",
         de: "",
         illustrativeKeywords: "",
@@ -211,7 +219,8 @@ export class DescriptionEditor {
         enContextual: "",
         deDefault: "",
         deContextual: "",
-        keywords: "",
+        tag: "",
+        figmaKeyword: "",
         en: data.en,
         de: data.de,
         illustrativeKeywords: data.illustrativeKeywords || "",
