@@ -1,38 +1,55 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   DBButton,
-  DBInput,
-  DBInfotext,
-  DBStack,
+  DBNotification,
 } from "@db-ux/react-core-components";
 
+type FeedbackSemantic = "successful" | "warning" | "critical";
+
+interface Feedback {
+  message: string;
+  semantic: FeedbackSemantic;
+}
+
 const App = () => {
-  const [feedback, setFeedback] = useState<string>("");
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Listener for messages from the plugin backend (code.ts)
   useEffect(() => {
-    window.onmessage = (event) => {
-      const { pluginMessage } = event.data;
-      if (pluginMessage && pluginMessage.feedback) {
-        setFeedback(pluginMessage.feedback);
-        setIsLoading(false); // Loading ends when feedback is received
-      }
+    const handleMessage = (event: MessageEvent) => {
+      const pluginMessage = event.data?.pluginMessage;
+      if (!pluginMessage?.feedback) return;
+
+      setFeedback({
+        message: pluginMessage.feedback,
+        // The plugin sends the severity explicitly; fall back to critical so an
+        // unlabelled message is never mistaken for a success.
+        semantic: pluginMessage.semantic ?? "critical",
+      });
+      setIsLoading(false); // Loading ends when feedback is received
     };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
   }, []);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
     if (selectedFile) {
       setFile(selectedFile);
-      setFeedback(""); // Clear old feedback
+      setFeedback(null); // Clear old feedback
     }
   };
 
   const handleImport = () => {
     if (!file) {
-      setFeedback("Please select a SVG file to import.");
+      setFeedback({
+        message: "Please select a SVG file to import.",
+        semantic: "critical",
+      });
       return;
     }
 
@@ -40,20 +57,12 @@ const App = () => {
     const reader = new FileReader();
 
     reader.onload = () => {
-      const result = reader.result as string;
-
-      if (!result || !result.includes("<svg")) {
-        setFeedback("The selected file does not appear to be a valid SVG.");
-        setIsLoading(false);
-        return;
-      }
-
-      // Send data to Figma
+      // The SVG itself is validated by the plugin, which owns that rule.
       parent.postMessage(
         {
           pluginMessage: {
             type: "import-svg",
-            svg: result,
+            svg: reader.result as string,
             filename: file.name,
           },
         },
@@ -62,7 +71,10 @@ const App = () => {
     };
 
     reader.onerror = () => {
-      setFeedback("Error reading the SVG file.");
+      setFeedback({
+        message: "Error reading the SVG file.",
+        semantic: "critical",
+      });
       setIsLoading(false);
     };
 
@@ -74,18 +86,6 @@ const App = () => {
       {/* Header area */}
       <header>
         <h1 className="text-2xl">DB Logo Importer</h1>
-        <p className="text-sm">
-          Please use the{" "}
-          <a
-            href="https://marketingportal.extranet.deutschebahn.com/marketingportal/Marke-und-Design/Basiselemente/Logo/Logozusatz-mit-Tool"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline"
-          >
-            DB brand logo generator
-          </a>{" "}
-          to create a custom logo for your project or product.
-        </p>
         <p className="text-sm">
           Please also read the{" "}
           <a
@@ -109,35 +109,63 @@ const App = () => {
         </p>
       </header>
 
-      {/* Input Section */}
-      <DBStack>
-        <DBInput
-          label="Choose SVG File"
-          showLabel={false}
+      {/* Upload Area */}
+      <div
+        className="rounded-[var(--db-border-radius-sm)] p-fix-lg flex flex-col items-center gap-fix-md"
+        style={{
+          border: 'var(--db-border-width-3xs) dashed var(--db-adaptive-on-bg-basic-emphasis-60-default)',
+        }}
+      >
+        <p className="text-center text-sm m-0">
+          Use the{" "}
+          <a
+            href="https://marketingportal.extranet.deutschebahn.com/marketingportal/Marke-und-Design/Basiselemente/Logo/Logozusatz-mit-Tool"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline"
+          >
+            DB brand logo generator
+          </a>{" "}
+          to create a custom logo SVG
+        </p>
+
+        <input
+          ref={fileInputRef}
           type="file"
           accept="image/svg+xml"
           onChange={handleFileChange}
-          className="w-full"
+          className="hidden"
         />
 
         <DBButton
-          icon="upload"
-          variant="brand"
-          onClick={handleImport}
-          disabled={isLoading}
+          variant="filled"
+          onClick={() => fileInputRef.current?.click()}
         >
-          {isLoading ? "Importing..." : "Import SVG"}
+          Browse
         </DBButton>
-      </DBStack>
 
-      {/* Feedback / Status */}
+        {file && (
+          <p className="text-sm text-adaptive-on-basic-emphasis-80-default">{file.name}</p>
+        )}
+      </div>
+
+      {/* Feedback */}
       {feedback && (
-        <DBInfotext
-          semantic={feedback.includes("Success") ? "successful" : "critical"}
-        >
-          {feedback}
-        </DBInfotext>
+        <DBNotification variant="standalone" semantic={feedback.semantic}>
+          {feedback.message}
+        </DBNotification>
       )}
+
+      {/* Import Button */}
+      <DBButton
+        icon="upload"
+        variant="brand"
+        onClick={handleImport}
+        disabled={isLoading || !file}
+        width="full"
+      >
+        {isLoading ? "Importing..." : "Import SVG"}
+      </DBButton>
     </div>
   );
 };

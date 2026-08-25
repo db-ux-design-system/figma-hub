@@ -1,22 +1,38 @@
 import { CONFIG } from "../config";
 
 /**
+ * Everything that could not be bound during a logo import.
+ *
+ * Reported instead of thrown, so the caller can still deliver a usable logo
+ * while telling the user that the design tokens are missing. An unnoticed
+ * failure here produces a logo with hardcoded colours — exactly what this
+ * plugin exists to prevent.
+ */
+export interface BindingIssues {
+  /** Variables that could not be imported from the library */
+  missingVariables: string[];
+  /** Layers expected by the DB logo structure that were not found in the SVG */
+  missingLayers: string[];
+}
+
+/**
  * Binds a color variable to a layer's fill property
  *
- * @param component - The component containing the target layer
+ * @param frame - The frame containing the target layer
  * @param layerName - Name of the layer to bind the variable to
  * @param variable - The Figma variable to bind
+ * @returns true if the layer was found and bound
  */
 export function bindFillVariable(
-  component: ComponentNode,
+  frame: FrameNode,
   layerName: string,
   variable: Variable
-): void {
-  const target = component.findOne((node) => node.name === layerName);
+): boolean {
+  const target = frame.findOne((node) => node.name === layerName);
 
   if (!target || !("fills" in target)) {
     console.warn(`Layer "${layerName}" not found or doesn't support fills`);
-    return;
+    return false;
   }
 
   const paint = figma.variables.setBoundVariableForPaint(
@@ -26,64 +42,99 @@ export function bindFillVariable(
   );
 
   target.fills = [paint];
+  return true;
 }
 
 /**
- * Imports all required variables from the library
+ * Imports a single variable by key.
  *
- * @returns Object containing all imported variables
- * @throws Error if variables cannot be imported
+ * Failures are logged with the offending key and resolved as null instead of
+ * rejecting, so one bad key does not hide the state of the others.
  */
-async function importVariables(): Promise<{
-  dbLogo: Variable;
-  logoAddition: Variable;
-  componentHeight: Variable;
-}> {
-  const [dbLogo, logoAddition, componentHeight] = await Promise.all([
-    figma.variables.importVariableByKeyAsync(CONFIG.keys.dbLogo),
-    figma.variables.importVariableByKeyAsync(CONFIG.keys.logoAddition),
-    figma.variables.importVariableByKeyAsync(CONFIG.keys.componentHeight),
-  ]);
-
-  return { dbLogo, logoAddition, componentHeight };
+async function importVariable(
+  name: string,
+  key: string
+): Promise<Variable | null> {
+  try {
+    return await figma.variables.importVariableByKeyAsync(key);
+  } catch (error) {
+    console.error(
+      `Variable "${name}" (key ${key}) could not be imported:`,
+      error
+    );
+    return null;
+  }
 }
 
 /**
- * Binds design system variables to component layers and properties
+ * Binds design system variables to frame layers and properties
  * - Binds color variables to "DB Logo" and "Logo Addition" layers
- * - Binds height variable to component and SVG Container
- * - Locks component and SVG Container aspect ratio
+ * - Binds the height variable to the frame and the SVG Container
+ * - Locks the frame aspect ratio
  *
- * @param component - The component to bind variables to
- * @throws Error if variables cannot be imported or bound
+ * @param frame - The frame to bind variables to
+ * @returns The variables and layers that could not be bound
  */
 export async function bindDesignVariables(
-  component: ComponentNode
-): Promise<void> {
-  try {
-    const variables = await importVariables();
+  frame: FrameNode
+): Promise<BindingIssues> {
+  const missingVariables: string[] = [];
+  const missingLayers: string[] = [];
 
-    // Bind fill colors to specific layers
-    bindFillVariable(component, "DB Logo", variables.dbLogo);
-    bindFillVariable(component, "Logo Addition", variables.logoAddition);
+  const [dbLogo, logoAddition, componentHeight] = await Promise.all([
+    importVariable("dbLogo", CONFIG.keys.dbLogo),
+    importVariable("logoAddition", CONFIG.keys.logoAddition),
+    importVariable("componentHeight", CONFIG.keys.componentHeight),
+  ]);
 
-    // Bind height variable to SVG Container
-    const svgContainer = component.findOne(
+  if (!dbLogo) missingVariables.push("DB Logo colour");
+  if (!logoAddition) missingVariables.push("Logo Addition colour");
+  if (!componentHeight) missingVariables.push("component height");
+
+  // Bind fill colors to specific layers
+  if (dbLogo && !bindFillVariable(frame, "DB Logo", dbLogo)) {
+    missingLayers.push("DB Logo");
+  }
+  if (logoAddition && !bindFillVariable(frame, "Logo Addition", logoAddition)) {
+    missingLayers.push("Logo Addition");
+  }
+
+  // Bind height variable to the frame and its SVG Container
+  if (componentHeight) {
+    frame.setBoundVariable("height", componentHeight);
+
+    const svgContainer = frame.findOne(
       (node) => node.name === "SVG Container"
     );
     if (svgContainer && "setBoundVariable" in svgContainer) {
-      svgContainer.setBoundVariable("height", variables.componentHeight);
+      (svgContainer as FrameNode).setBoundVariable("height", componentHeight);
     }
-
-    // Bind height variable to component and lock aspect ratio
-    component.setBoundVariable("height", variables.componentHeight);
-    component.lockAspectRatio();
-
-    component.constraints = {
-      horizontal: "MIN",
-      vertical: "MIN",
-    };
-  } catch (error) {
-    throw new Error("Variables could not be linked. Check Library.");
   }
+
+  frame.lockAspectRatio();
+
+  return { missingVariables, missingLayers };
+}
+
+/**
+ * Turns binding issues into a message fragment for the user, or null when
+ * everything was bound successfully.
+ */
+export function describeBindingIssues(issues: BindingIssues): string | null {
+  const parts: string[] = [];
+
+  if (issues.missingVariables.length > 0) {
+    parts.push(
+      `variables not found in the library (${issues.missingVariables.join(", ")})`
+    );
+  }
+  if (issues.missingLayers.length > 0) {
+    parts.push(
+      `layers missing in the SVG (${issues.missingLayers.join(", ")})`
+    );
+  }
+
+  if (parts.length === 0) return null;
+
+  return `the DB design tokens could not be applied: ${parts.join("; ")}`;
 }

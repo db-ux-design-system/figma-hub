@@ -1,5 +1,6 @@
 node_modules
 dist
+dist-plugins
 .idea
 /packages/**/index.html
 /packages/**/index.js
