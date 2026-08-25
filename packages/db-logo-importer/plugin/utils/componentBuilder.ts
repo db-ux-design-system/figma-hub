@@ -91,16 +91,28 @@ export function centerInViewport(frame: FrameNode): void {
   frame.y = viewCenter.y - frame.height / 2;
 }
 
+export interface SetupFrameOptions {
+  /**
+   * Centers the frame in the viewport. Pointless when the frame goes into an
+   * auto layout slot, which positions its children itself.
+   */
+  center?: boolean;
+}
+
 /**
  * Complete frame setup including scaling, layout, and positioning
  *
  * @param frame - The frame to set up
  * @param svgNode - The SVG node inside the frame
+ * @param options - Setup options, centering is enabled by default
  */
 export function setupFrame(
   frame: FrameNode,
-  svgNode: SceneNode
+  svgNode: SceneNode,
+  options: SetupFrameOptions = {}
 ): void {
+  const { center = true } = options;
+
   // 1. Scale SVG to target height
   scaleSVGToHeight(svgNode, CONFIG.targetHeight);
 
@@ -116,6 +128,8 @@ export function setupFrame(
   // 3. Setup auto layout
   setupAutoLayout(frame);
 
-  // 4. Center in viewport
-  centerInViewport(frame);
+  // 4. Center in viewport, unless the frame is destined for a slot
+  if (center) {
+    centerInViewport(frame);
+  }
 }

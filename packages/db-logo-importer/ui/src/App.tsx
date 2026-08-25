@@ -1,37 +1,55 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   DBButton,
-  DBInfotext,
+  DBNotification,
 } from "@db-ux/react-core-components";
 
+type FeedbackSemantic = "successful" | "warning" | "critical";
+
+interface Feedback {
+  message: string;
+  semantic: FeedbackSemantic;
+}
+
 const App = () => {
-  const [feedback, setFeedback] = useState<string>("");
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Listener for messages from the plugin backend (code.ts)
   useEffect(() => {
-    window.onmessage = (event) => {
-      const { pluginMessage } = event.data;
-      if (pluginMessage && pluginMessage.feedback) {
-        setFeedback(pluginMessage.feedback);
-        setIsLoading(false); // Loading ends when feedback is received
-      }
+    const handleMessage = (event: MessageEvent) => {
+      const pluginMessage = event.data?.pluginMessage;
+      if (!pluginMessage?.feedback) return;
+
+      setFeedback({
+        message: pluginMessage.feedback,
+        // The plugin sends the severity explicitly; fall back to critical so an
+        // unlabelled message is never mistaken for a success.
+        semantic: pluginMessage.semantic ?? "critical",
+      });
+      setIsLoading(false); // Loading ends when feedback is received
     };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
   }, []);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
     if (selectedFile) {
       setFile(selectedFile);
-      setFeedback(""); // Clear old feedback
+      setFeedback(null); // Clear old feedback
     }
   };
 
   const handleImport = () => {
     if (!file) {
-      setFeedback("Please select a SVG file to import.");
+      setFeedback({
+        message: "Please select a SVG file to import.",
+        semantic: "critical",
+      });
       return;
     }
 
@@ -39,20 +57,12 @@ const App = () => {
     const reader = new FileReader();
 
     reader.onload = () => {
-      const result = reader.result as string;
-
-      if (!result || !result.includes("<svg")) {
-        setFeedback("The selected file does not appear to be a valid SVG.");
-        setIsLoading(false);
-        return;
-      }
-
-      // Send data to Figma
+      // The SVG itself is validated by the plugin, which owns that rule.
       parent.postMessage(
         {
           pluginMessage: {
             type: "import-svg",
-            svg: result,
+            svg: reader.result as string,
             filename: file.name,
           },
         },
@@ -61,7 +71,10 @@ const App = () => {
     };
 
     reader.onerror = () => {
-      setFeedback("Error reading the SVG file.");
+      setFeedback({
+        message: "Error reading the SVG file.",
+        semantic: "critical",
+      });
       setIsLoading(false);
     };
 
@@ -136,26 +149,23 @@ const App = () => {
         )}
       </div>
 
-      {/* Import Button + Feedback */}
-      <div className="flex items-center gap-fix-sm">
-        <DBButton
-          icon="upload"
-          variant="brand"
-          onClick={handleImport}
-          disabled={isLoading || !file}
-          className="shrink-0"
-        >
-          {isLoading ? "Importing..." : "Import SVG"}
-        </DBButton>
+      {/* Feedback */}
+      {feedback && (
+        <DBNotification variant="standalone" semantic={feedback.semantic}>
+          {feedback.message}
+        </DBNotification>
+      )}
 
-        {feedback && (
-          <DBInfotext
-            semantic={feedback.includes("Success") ? "successful" : "critical"}
-          >
-            {feedback}
-          </DBInfotext>
-        )}
-      </div>
+      {/* Import Button */}
+      <DBButton
+        icon="upload"
+        variant="brand"
+        onClick={handleImport}
+        disabled={isLoading || !file}
+        width="full"
+      >
+        {isLoading ? "Importing..." : "Import SVG"}
+      </DBButton>
     </div>
   );
 };

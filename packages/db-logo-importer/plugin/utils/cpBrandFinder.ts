@@ -1,42 +1,71 @@
+import { getInstanceComponentName } from "./componentIdentity";
+
 /**
- * Utilities for locating the CP Brand subcomponent and its Children slot
- * within Shell/ControlPanel component trees.
+ * Locates the CP Brand subcomponent inside a Shell/ControlPanel and determines
+ * whether it can hold an imported logo.
+ *
+ * Capability is decided structurally, by the presence of the "📦 Logo" slot,
+ * so it stays correct even if variants are renamed. The variant is resolved
+ * separately and only used to explain *why* an import is not possible.
  */
 
-/** Name pattern for CP Brand instances */
+/** Component name fragment identifying a CP Brand instance */
 const CP_BRAND_PATTERN = /CP Brand/i;
 
-/** Name pattern for the Children slot */
-const CHILDREN_SLOT_NAME = "📦 Children";
+/** Name of the slot that accepts the logo */
+const LOGO_SLOT_NAME = "📦 Logo";
 
 /**
- * Result of the CP Brand slot search
+ * How deep to descend when looking for the CP Brand.
+ *
+ * In the DS the CP Brand sits around six levels below the Shell
+ * (Shell > CP > Container > Main Container > Start Container > Brand > CP Brand).
+ * The limit keeps the search from walking entire page contents.
+ */
+const MAX_SEARCH_DEPTH = 8;
+
+/**
+ * The CP Brand variants that matter for logo placement.
+ * - logozusatz: provides the "📦 Logo" slot
+ * - custom: can be switched to Logozusatz by the user
+ * - short: fixed by its ControlPanel, supports no logo at all
+ */
+export type CPBrandVariant = "logozusatz" | "custom" | "short" | "unknown";
+
+/**
+ * Result of the CP Brand lookup
  */
 export interface CPBrandSlotResult {
-  /** Whether a usable Children slot was found */
-  hasSlot: boolean;
-  /** The CP Brand instance node */
-  cpBrandNode: SceneNode | null;
-  /** The Children slot node within CP Brand */
-  childrenSlot: SceneNode | null;
-  /** Existing logo frame inside the slot (if any) */
-  existingLogo: SceneNode | null;
+  /** The CP Brand instance, or null if the Shell has none */
+  cpBrandNode: InstanceNode | null;
+  /** Which variant is in place, used for user-facing explanations */
+  variant: CPBrandVariant;
+  /** The "📦 Logo" slot. A non-null value means the logo can be placed. */
+  logoSlot: SceneNode | null;
 }
 
 /**
- * Recursively searches a node tree for a CP Brand instance.
- *
- * @param root - The root node to search within
- * @returns The CP Brand instance or null
+ * Recursively searches for a CP Brand instance, identified by its main
+ * component so renamed instances are still found.
  */
-function findCPBrand(root: SceneNode): SceneNode | null {
-  if (CP_BRAND_PATTERN.test(root.name)) {
-    return root;
+async function findCPBrand(
+  root: SceneNode,
+  depth = 0
+): Promise<InstanceNode | null> {
+  if (depth > MAX_SEARCH_DEPTH) {
+    return null;
+  }
+
+  if (root.type === "INSTANCE") {
+    const componentName = await getInstanceComponentName(root);
+    if (componentName && CP_BRAND_PATTERN.test(componentName)) {
+      return root;
+    }
   }
 
   if ("children" in root) {
     for (const child of (root as ChildrenMixin & SceneNode).children) {
-      const found = findCPBrand(child);
+      const found = await findCPBrand(child, depth + 1);
       if (found) return found;
     }
   }
@@ -45,103 +74,51 @@ function findCPBrand(root: SceneNode): SceneNode | null {
 }
 
 /**
- * Finds the Children slot within a CP Brand node.
- *
- * @param cpBrand - The CP Brand node to search
- * @returns The Children slot node or null
+ * Finds the "📦 Logo" slot within a CP Brand instance.
  */
-function findChildrenSlot(cpBrand: SceneNode): SceneNode | null {
-  if (!("children" in cpBrand)) return null;
-
-  const parent = cpBrand as ChildrenMixin & SceneNode;
-
-  for (const child of parent.children) {
-    if (child.name === CHILDREN_SLOT_NAME) {
+function findLogoSlot(cpBrand: InstanceNode): SceneNode | null {
+  for (const child of cpBrand.children) {
+    if (child.name === LOGO_SLOT_NAME) {
       return child;
     }
-    // Recurse one level deeper in case of nested structure
-    if ("children" in child) {
-      for (const grandchild of (child as ChildrenMixin & SceneNode).children) {
-        if (grandchild.name === CHILDREN_SLOT_NAME) {
-          return grandchild;
-        }
-      }
-    }
   }
-
   return null;
 }
 
 /**
- * Finds an existing logo frame inside the Children slot.
- * Looks for frames that contain an "SVG Container" child,
- * which is the structure created by this plugin.
+ * Classifies a CP Brand by its component name.
  *
- * @param slot - The Children slot node
- * @returns The existing logo frame or null
+ * Short is checked before Custom so the more specific explanation wins if a
+ * name were to contain both.
  */
-function findExistingLogo(slot: SceneNode): SceneNode | null {
-  if (!("children" in slot)) return null;
-
-  const parent = slot as ChildrenMixin & SceneNode;
-
-  for (const child of parent.children) {
-    // Match frames that have SVG Container or look like logo frames
-    if (child.type === "FRAME" || child.type === "INSTANCE" || child.type === "COMPONENT") {
-      if ("children" in child) {
-        const hasLogoContent = (child as ChildrenMixin & SceneNode).children.some(
-          (c) => c.name === "SVG Container"
-        );
-        if (hasLogoContent) {
-          return child;
-        }
-      }
-      // Also match if the frame itself looks like a logo (name "DB" or similar)
-      if (child.name === "DB" || child.name.toLowerCase().includes("logo")) {
-        return child;
-      }
-    }
-  }
-
-  return null;
+function classifyVariant(componentName: string): CPBrandVariant {
+  if (/Logozusatz/i.test(componentName)) return "logozusatz";
+  if (/Short/i.test(componentName)) return "short";
+  if (/\(Def\) Custom/i.test(componentName)) return "custom";
+  return "unknown";
 }
 
 /**
- * Locates the CP Brand subcomponent within a Shell/ControlPanel node
- * and checks if it has a usable Children slot for logo placement.
+ * Locates the CP Brand within a Shell/ControlPanel and reports whether a logo
+ * can be placed into it.
  *
  * @param shellNode - The Shell or ControlPanel node to search within
- * @returns Result with slot information and existing logo reference
  */
-export function findCPBrandSlot(shellNode: SceneNode): CPBrandSlotResult {
-  const cpBrandNode = findCPBrand(shellNode);
+export async function findCPBrandSlot(
+  shellNode: SceneNode
+): Promise<CPBrandSlotResult> {
+  const cpBrandNode = await findCPBrand(shellNode);
 
   if (!cpBrandNode) {
-    return {
-      hasSlot: false,
-      cpBrandNode: null,
-      childrenSlot: null,
-      existingLogo: null,
-    };
+    return { cpBrandNode: null, variant: "unknown", logoSlot: null };
   }
 
-  const childrenSlot = findChildrenSlot(cpBrandNode);
-
-  if (!childrenSlot) {
-    return {
-      hasSlot: false,
-      cpBrandNode,
-      childrenSlot: null,
-      existingLogo: null,
-    };
-  }
-
-  const existingLogo = findExistingLogo(childrenSlot);
+  const componentName =
+    (await getInstanceComponentName(cpBrandNode)) || cpBrandNode.name;
 
   return {
-    hasSlot: true,
     cpBrandNode,
-    childrenSlot,
-    existingLogo,
+    variant: classifyVariant(componentName),
+    logoSlot: findLogoSlot(cpBrandNode),
   };
 }

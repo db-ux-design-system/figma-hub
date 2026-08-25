@@ -1,82 +1,98 @@
+import { getInstanceComponentName } from "./componentIdentity";
+
 /**
- * Utilities for detecting Shell and ControlPanel component contexts.
- * Used to determine if the logo should be placed inside an existing
- * CP Brand Children slot instead of creating a new frame.
+ * Resolves the current selection to the Shell/ControlPanel instances that
+ * should receive an imported logo.
+ *
+ * Detection runs against the main component name, not the layer name, so
+ * renamed instances are still recognised.
  */
 
 /**
- * Name patterns that identify Shell or ControlPanel components/instances
+ * Component names of Shell and ControlPanel roots, e.g.
+ * "Shell → (Def) 1440x1024 - Desktop (Beta)" or "CP → (Def) Top - Mobile (Beta)".
+ *
+ * Anchored at the start so subcomponents like "↳ Shell Content" or
+ * "↳ CP Navigation → …" are not mistaken for roots.
  */
-const SHELL_PATTERNS = [/^Shell\s*→/i, /^Shell\s/i];
-const CONTROL_PANEL_PATTERNS = [/ControlPanel\s*→/i, /ControlPanel\s/i];
+const SHELL_OR_CP_PATTERN = /^(Shell|CP|ControlPanel)\b/i;
 
 /**
- * Checks if a node name matches Shell or ControlPanel patterns
+ * Returns the node as a Shell/ControlPanel root, or null if it is not one.
  */
-function isShellOrControlPanel(name: string): boolean {
-  return (
-    SHELL_PATTERNS.some((p) => p.test(name)) ||
-    CONTROL_PANEL_PATTERNS.some((p) => p.test(name))
-  );
+async function asShellRoot(node: BaseNode): Promise<InstanceNode | null> {
+  if (node.type !== "INSTANCE") {
+    return null;
+  }
+
+  const componentName = await getInstanceComponentName(node);
+
+  if (!componentName || !SHELL_OR_CP_PATTERN.test(componentName)) {
+    return null;
+  }
+
+  return node;
 }
 
 /**
- * Traverses the node tree upward to find a Shell or ControlPanel ancestor.
- * This handles cases where the user selects a child node within the Shell.
+ * Resolves a node to the Shell/ControlPanel it belongs to.
  *
- * @param node - Starting node to check
- * @returns The Shell/ControlPanel instance node, or null
+ * The outermost match wins: a ControlPanel nested inside a Shell resolves to
+ * the Shell, so two selected nodes in the same Shell do not produce two
+ * separate targets pointing at the same CP Brand.
+ *
+ * @returns The containing Shell/ControlPanel, or null if the node is outside one
  */
-function findShellAncestor(
-  node: SceneNode
-): SceneNode | null {
+async function resolveShell(node: SceneNode): Promise<InstanceNode | null> {
   let current: BaseNode | null = node;
+  let outermost: InstanceNode | null = null;
 
-  while (current && "parent" in current) {
-    if ("name" in current && isShellOrControlPanel(current.name as string)) {
-      return current as SceneNode;
+  while (current) {
+    const shell = await asShellRoot(current);
+    if (shell) {
+      outermost = shell;
     }
     current = current.parent;
   }
 
-  return null;
+  return outermost;
 }
 
 /**
- * Result of shell detection analysis
+ * Result of shell detection across the whole selection
  */
 export interface ShellDetectionResult {
-  /** Whether a Shell or ControlPanel context was found */
-  isShellContext: boolean;
-  /** The Shell or ControlPanel node (could be the selection itself or an ancestor) */
-  shellNode: SceneNode | null;
+  /** The Shell/ControlPanel instances to import into, without duplicates */
+  shells: InstanceNode[];
+  /** Selected nodes that do not belong to any Shell */
+  ignoredCount: number;
 }
 
 /**
- * Checks the current Figma selection for Shell or ControlPanel context.
- * Examines both the selected node itself and its ancestors.
+ * Maps every selected node to its Shell/ControlPanel.
  *
- * @returns Detection result with the shell node if found
+ * Multiple selected nodes inside the same Shell collapse into one target.
  */
-export function detectShellContext(): ShellDetectionResult {
-  const selection = figma.currentPage.selection;
+export async function detectShellContext(): Promise<ShellDetectionResult> {
+  const shells: InstanceNode[] = [];
+  const seenIds = new Set<string>();
+  let ignoredCount = 0;
 
-  if (selection.length === 0) {
-    return { isShellContext: false, shellNode: null };
+  for (const node of figma.currentPage.selection) {
+    const shell = await resolveShell(node);
+
+    if (!shell) {
+      ignoredCount++;
+      continue;
+    }
+
+    if (seenIds.has(shell.id)) {
+      continue;
+    }
+
+    seenIds.add(shell.id);
+    shells.push(shell);
   }
 
-  const selected = selection[0];
-
-  // Check if the selected node itself is a Shell or ControlPanel
-  if (isShellOrControlPanel(selected.name)) {
-    return { isShellContext: true, shellNode: selected };
-  }
-
-  // Check ancestors
-  const ancestor = findShellAncestor(selected);
-  if (ancestor) {
-    return { isShellContext: true, shellNode: ancestor };
-  }
-
-  return { isShellContext: false, shellNode: null };
+  return { shells, ignoredCount };
 }
