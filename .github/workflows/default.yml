@@ -17,7 +17,7 @@ jobs:
 
   build:
     name: Build
-    runs-on: ubuntu-24.04 # Use Ubuntu 24.04 explicitly
+    runs-on: ubuntu-26.04
     needs: [init]
     steps:
       - name: ⏬ Checkout repo
