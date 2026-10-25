@@ -1,0 +1,23 @@
+{
+  "name": "db-icon-studio",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Figma plugin to validate and edit icon component sets according to DB guidelines.",
+  "main": "index.js",
+  "workspaces": [
+    "plugin",
+    "ui"
+  ],
+  "scripts": {
+    "build": "npm-run-all --parallel build:*",
+    "build:code": "npm run build -w=db-icon-studio-code -- --minify",
+    "build:ui": "npm run build -w=db-icon-studio-ui",
+    "dev": "npm-run-all --parallel dev:*",
+    "dev:code": "npm run dev -w=db-icon-studio-code",
+    "dev:ui": "npm run dev -w=db-icon-studio-ui",
+    "test": "npm run test -w=db-icon-studio-code",
+    "test:watch": "npm run test:watch -w=db-icon-studio-code"
+  },
+  "author": "DB Systel GmbH",
+  "license": "Apache-2.0"
+}

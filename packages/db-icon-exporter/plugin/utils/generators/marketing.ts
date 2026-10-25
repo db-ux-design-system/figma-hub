@@ -1,0 +1,148 @@
+// utils/generators/marketing.ts
+
+import {
+  IconData,
+  ParsedDescriptionFunctional,
+  ParsedDescriptionIllustrative,
+} from "../../types";
+import { ALLOWED_SIZES_FUNCTIONAL } from "../../config";
+import {
+  extractIconBaseName,
+  extractIconSize,
+  isFilledVariant,
+  cleanFilename,
+} from "../helpers";
+
+export function generateMarketingPortalCSV(
+  allIcons: IconData[],
+  iconType: string
+): string {
+  console.log(
+    `🔧 Marketing CSV: Start (${allIcons.length} Icons, Type: ${iconType})`
+  );
+
+  const csvRows: { filename: string; row: string }[] = [];
+
+  const componentSets = new Map<string, IconData[]>();
+
+  allIcons.forEach((icon) => {
+    const baseName = extractIconBaseName(icon.name);
+    if (!componentSets.has(baseName)) {
+      componentSets.set(baseName, []);
+    }
+    componentSets.get(baseName)!.push(icon);
+  });
+
+  console.log(`🔧 ${componentSets.size} Component Sets gefunden`);
+
+  const sortedSetNames = Array.from(componentSets.keys()).sort();
+
+  if (iconType === "functional") {
+    sortedSetNames.forEach((setName) => {
+      const variants = componentSets.get(setName)!;
+      const firstVariant = variants[0];
+      const parsed = firstVariant.parsedDescription as ParsedDescriptionFunctional;
+      const category = firstVariant.category;
+
+      ALLOWED_SIZES_FUNCTIONAL.forEach((size) => {
+        const outlinedVariant = variants.find((v) => {
+          const vSize = extractIconSize(v.name);
+          const vIsFilled = isFilledVariant(v.name);
+          return vSize === size && !vIsFilled;
+        });
+
+        if (outlinedVariant) {
+          const categorySlug = category.toLowerCase().replace(/\s+/g, "_").replace(/&/g, "");
+          const nameSlug = setName.toLowerCase().replace(/\s+/g, "_");
+          let filename = `db_ic_${categorySlug}_${nameSlug}_${size}.svg`;
+          filename = cleanFilename(filename);
+
+          let title: string;
+          if (size === 64 || size === 48) {
+            title = `${size}dp`;
+          } else {
+            const titleWords = setName.split(/[\s-]+/).map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+            title = `${titleWords.join(" ")} ${size}dp`;
+          }
+
+          const tags: string[] = [category];
+          if (parsed.enDefault) tags.push(parsed.enDefault);
+          if (parsed.enContextual) tags.push(...parsed.enContextual.split(",").map((s) => s.trim()));
+          if (parsed.deDefault) tags.push(parsed.deDefault);
+          if (parsed.deContextual) tags.push(...parsed.deContextual.split(",").map((s) => s.trim()));
+          if (parsed.keywords) tags.push(...parsed.keywords.split(",").map((k) => k.trim()));
+
+          const tagString = tags.filter(Boolean).join(",");
+          const row = [`"${filename}"`, `"${size}dp"`, `"${title}"`, `""`, `"Functionale Icon"`, `"${tagString}"`, `"Functionale Icon"`].join(",");
+          csvRows.push({ filename, row });
+        }
+
+        const filledVariant = variants.find((v) => {
+          const vSize = extractIconSize(v.name);
+          const vIsFilled = isFilledVariant(v.name);
+          return vSize === size && vIsFilled;
+        });
+
+        if (filledVariant) {
+          const categorySlug = category.toLowerCase().replace(/\s+/g, "_").replace(/&/g, "");
+          const nameSlug = setName.toLowerCase().replace(/\s+/g, "_");
+          let filename = `db_ic_${categorySlug}_${nameSlug}_${size}_filled.svg`;
+          filename = cleanFilename(filename);
+
+          let title: string;
+          if (size === 64 || size === 48) {
+            title = `${size}dp Filled`;
+          } else {
+            const titleWords = setName.split(/[\s-]+/).map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+            title = `${titleWords.join(" ")} Filled ${size}dp`;
+          }
+
+          const tags: string[] = [category];
+          if (parsed.enDefault) tags.push(parsed.enDefault);
+          if (parsed.enContextual) tags.push(...parsed.enContextual.split(",").map((s) => s.trim()));
+          if (parsed.deDefault) tags.push(parsed.deDefault);
+          if (parsed.deContextual) tags.push(...parsed.deContextual.split(",").map((s) => s.trim()));
+          if (parsed.keywords) tags.push(...parsed.keywords.split(",").map((k) => k.trim()));
+
+          const tagString = tags.filter(Boolean).join(",");
+          const row = [`"${filename}"`, `"${size}dp"`, `"${title}"`, `""`, `"Functionale Icon"`, `"${tagString}"`, `"Functionale Icon"`].join(",");
+          csvRows.push({ filename, row });
+        }
+      });
+    });
+  } else {
+    sortedSetNames.forEach((setName) => {
+      const variants = componentSets.get(setName)!;
+      const firstVariant = variants[0];
+      const parsed = firstVariant.parsedDescription as ParsedDescriptionIllustrative;
+      const category = firstVariant.category;
+      const size = extractIconSize(firstVariant.name) || 64;
+
+      const categorySlug = category.toLowerCase().replace(/\s+/g, "_").replace(/&/g, "");
+      const nameSlug = setName.toLowerCase().replace(/\s+/g, "_");
+      let filename = `db_ic_il_${categorySlug}_${nameSlug}.svg`;
+      filename = cleanFilename(filename);
+
+      const titleWords = setName.split(/[\s-]+/).map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+      const title = titleWords.join(" ");
+
+      const tags: string[] = [category];
+      if (parsed.en) tags.push(parsed.en);
+      if (parsed.de) tags.push(parsed.de);
+      if (parsed.keywords) tags.push(...parsed.keywords.split(",").map((k) => k.trim()));
+
+      const tagString = tags.filter(Boolean).join(",");
+      const row = [`"${filename}"`, `"${size}dp"`, `"${title}"`, `""`, `"Illustrative Icon"`, `"${tagString}"`, `"Illustrative Icon"`].join(",");
+      csvRows.push({ filename, row });
+    });
+  }
+
+  csvRows.sort((a, b) => a.filename.localeCompare(b.filename));
+
+  if (iconType === "illustrative") {
+    const header = '"Original filename","Width","Title","Short Description","Categories","Free Tags","Realm"';
+    return header + "\n" + csvRows.map((item) => item.row).join("\n");
+  }
+
+  return csvRows.map((item) => item.row).join("\n");
+}
