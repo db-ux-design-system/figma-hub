@@ -1,3 +1,12 @@
+export type VariableScope =
+  | "ALL_SCOPES"
+  | "ALL_FILLS"
+  | "FRAME_FILL"
+  | "SHAPE_FILL"
+  | "TEXT_FILL"
+  | "STROKE_COLOR"
+  | "EFFECT_COLOR";
+
 export interface Mapping {
   name: string;
   light: string | number;
@@ -10,6 +19,8 @@ export interface ImportMessage {
   data: ColorData;
   deleteMissing: boolean;
   fileName?: string;
+  themePrefix?: string;
+  variablePrefix?: string;
 }
 
 export interface ColorData {
